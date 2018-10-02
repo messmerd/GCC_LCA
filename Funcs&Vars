@@ -2,3 +2,36 @@
   //Variable
   //Variable
 //Etc...
+
+SECTION: INIT
+//bluetooth_sync_internal()
+  //
+//read_sd_card()
+  //
+//sensor_setup()
+  //
+//test_setup()
+  //
+//Date&Time_Setup()
+  //
+  
+SECTION: LOOP
+//push_button_start()
+  //
+//setup_routine()
+  //
+//Ben&Dalton_Delay(pretest_delay)
+  //
+
+SECTION: INTERNAL WHILE LOOP --> This will actually be an interrupt routine
+//read_sensors()
+  //
+//store_data()
+  //
+//interrupt_routine_delay(sample_rate)
+  //
+//push_button_stop()
+  //
+  
+ SECTION: POST TEST
+ //bluetooth_sync()

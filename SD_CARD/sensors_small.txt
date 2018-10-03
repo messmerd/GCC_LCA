@@ -1,0 +1,30 @@
+{
+  "0": {
+    "name": "Thermistor 1",
+    "pin": "A0",
+    "ana_dig": "a",
+    "pullup_res": 0,
+    "corr_eq": ""
+  },
+  "1": {
+    "name": "Thermistor 2",
+    "pin": "A1",
+    "ana_dig": "a",
+    "pullup_res": 0,
+    "corr_eq": ""
+  },
+  "2": {
+    "name": "Thermistor 3",
+    "pin": "A2",
+    "ana_dig": "a",
+    "pullup_res": 0,
+    "corr_eq": ""
+  },
+  "3": {
+    "name": "Thermistor 4",
+    "pin": "A3",
+    "ana_dig": "a",
+    "pullup_res": 0,
+    "corr_eq": ""
+  }
+}

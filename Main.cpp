@@ -45,22 +45,15 @@
 
 void setup(){
   //sensor pin setup, will be set up in a function in a later version
-  pinMode(t_0, INPUT_PULLDOWN);
-  pinMode(t_1, INPUT_PULLDOWN);
-  pinMode(t_2, INPUT_PULLDOWN);
-  pinMode(t_3, INPUT_PULLDOWN);
+  pinMode(t_0, INPUT_PULLDOWN); //first thermocouple input
+  pinMode(t_1, INPUT_PULLDOWN); //second thermocouple input
+  pinMode(t_2, INPUT_PULLDOWN); //third thermocouple input
+  pinMode(t_3, INPUT_PULLDOWN); //fourth thermocouple input
   
   //button setup, will probably always be here even in later versions
   pinMode(button, INPUT_PULLDOWN);
-  
-  //chronodot serial input
-  pinMode(sda_i2c, INPUT);
 }
 
 void loop(){
-  
-}
-
-String dataSD(){  //stores all the data from the SD card
   
 }

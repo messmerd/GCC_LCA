@@ -3,9 +3,14 @@
 
 #include <Arduino.h>
 
-extern const char *CONFIG_FILE;
-extern const char *SENSORS_FILE;
-extern const char *DEBUG_FILE;
+//extern const char *CONFIG_FILE;
+//extern const char *SENSORS_FILE;
+//extern const char *DEBUG_FILE;
+
+#define CONFIG_FILE "/config.txt"
+#define SENSORS_FILE "/sensors.txt"
+#define DEBUG_FILE "/debug.txt"
+#define DATALOG_FILE "/datalog0.txt"
 
 struct Config
 {
@@ -34,7 +39,6 @@ struct Sensor
 }; 
 
 boolean readConfig();
-boolean readConfig(char *config_file, char *sensors_file, char *debug_file);
 
 #endif
 

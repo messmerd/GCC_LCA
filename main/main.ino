@@ -9,9 +9,11 @@ const char *SENSORS_FILE = "/sensors.txt";
 const char *DEBUG_FILE = "/debug.txt";
 char *DATALOG_FILE = "/datalog0.txt";
 
-const short LED_PIN = 9; // Pin 12 isn't working... Maybe it has to do with the SD card reader? 
-const short PUSHBUTTON_PIN = 11;  
-const int chipSelect = 10; // For the SD card reader
+#define LED_PIN 9                 // Pin 12 isn't working... Maybe it has to do with the SD card reader? 
+#define PUSHBUTTON_PIN 11  
+const int chipSelect = 10;        // For the SD card reader
+#define THERMOCOUPLE_PIN_0 A0     // This identifies the port the data is collected from.
+#define NUMSAMPLES 5              // This is a random sample amount
 
 int _timer = 0;
 int _timer_max = 1000; 
@@ -19,13 +21,14 @@ int _timer_max = 1000;
 int led_value = 0;
 
 void initTimer0(double seconds);
-void collectAndWriteData();
-//void collectData();
+double collectThermocoupleData(int pin, int samples = 5);
+void printToFile(char *filename, String text);
 
 void setup() {
 
   pinMode(LED_PIN, OUTPUT);
   pinMode(PUSHBUTTON_PIN, INPUT); 
+  analogReference(EXTERNAL); 
   
   Serial.begin(9600);
   while (!Serial) {
@@ -52,44 +55,48 @@ void loop() {
     digitalWrite(LED_PIN, led_value);
     led_value=!led_value;
     _timer = 0;
-    //Serial.print("Timer event. led_value=");
-    //Serial.println(led_value);
-    collectAndWriteData(); 
+
+    printToFile(DATALOG_FILE, (String)collectThermocoupleData(THERMOCOUPLE_PIN_0, NUMSAMPLES)); // Read Thermocouple 1 and print to file
   }
   
 }
 
 
-void collectAndWriteData()
+double collectThermocoupleData(int pin, int num_samples = 5)
 {
-  // make a string for assembling the data to log:
-  String dataString = "";
-  
-  // read three sensors and append to the string:
-  for (int analogPin = 0; analogPin < 3; analogPin++) {
-    int sensor = analogRead(analogPin);
-    dataString += String(sensor);
-    if (analogPin < 2) {
-      dataString += ",";
-    }
+  uint8_t i;
+  double average = 0.0; // Initializes average as a variable
+
+  for(i=0; i<num_samples; i++) { // This loop gathers a certain number of samples and sums them up
+    average += analogRead(pin); // this part reads info in from the thermocouple
+    //delay(10);
   }
-  
+
+  // These next few lines could be described in the "correction_eq" section for the sensor a config file: 
+  average /= num_samples; // divides average by 5 so it accurately represents the average
+  average = average *4.9; // confusing, but the information is stored on a 1023 scale, where each value of 1-1023 represents 4.9mV.  So multiplying by 4.9 converts it to mV
+
+  return (average - 1250)/5; // final calculations based on the thermocouple chip math. Units are Celcius
+}
+
+
+void printToFile(char *filename, String text)
+{
   // open the file. note that only one file can be open at a time,
   // so you have to close this one before opening another.
-  File dataFile = SD.open(DATALOG_FILE, FILE_WRITE);
+  File dataFile = SD.open(filename, FILE_WRITE);
   
   // if the file is available, write to it:
   if (dataFile) {
-    dataFile.println(dataString);
+    dataFile.println(text);
     dataFile.close();
     // print to the serial port too:
-    Serial.println(dataString);
+    Serial.println(text);
   }
   // if the file isn't open, pop up an error:
   else {
     Serial.println("error opening the data log file");
   }
-  
 }
 
 

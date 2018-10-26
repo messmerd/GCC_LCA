@@ -24,10 +24,15 @@ extern Config conf; // A struct containing the config file info
 
 unsigned int _timer = 0;
 unsigned int _timer_max = 1000; 
- 
+
+unsigned int counter = 0; 
+
 boolean led_value = 0;
 
-void initTimer0(double seconds);
+#if !defined(ARDUINO_SAM_DUE) 
+  void initTimer0(double seconds);
+#endif
+
 double collectAnalogThermocoupleData(int pin, int samples = 5);
 //double collectAnalogThermocoupleDataOld(int pin, int samples = 5);
 
@@ -42,7 +47,10 @@ void setup() {
 
   pinMode(LED_PIN, OUTPUT);
   pinMode(PUSHBUTTON_PIN, INPUT); 
-  analogReference(EXTERNAL); 
+
+  #if !defined(ARDUINO_SAM_DUE) 
+    analogReference(EXTERNAL); // Note: Due uses 3.3 v reference which would cause analog thermocouples to not work (given the way things are currently set up)
+  #endif
   
   Serial.begin(9600);
   while (!Serial) {
@@ -58,9 +66,12 @@ void setup() {
   
   readConfig();
   Serial.println();
-  initTimer0(conf.sample_rate);
 
   delay(500); // Just in case things need to settle
+  
+  #if !defined(ARDUINO_SAM_DUE) 
+    initTimer0(conf.sample_rate);
+  #endif
   
   Serial.println("Press pushbutton to start test.");
   while (!digitalRead(PUSHBUTTON_PIN)) {; };  // Start test when pushbutton is pressed. (STILL NEED TO TEST) 
@@ -75,18 +86,20 @@ void loop() {
     led_value=!led_value;
     _timer = 0;
 
-    String dataString = "a0: " + (String)collectAnalogThermocoupleData(THERMOCOUPLE_PIN_0, NUMSAMPLES) + " C.\n";
+    String dataString = "T=" + (String)counter + "\n";
+    dataString += "a0: " + (String)collectAnalogThermocoupleData(THERMOCOUPLE_PIN_0, NUMSAMPLES) + " C.\n";
     dataString += "a1: " + (String)collectAnalogThermocoupleData(THERMOCOUPLE_PIN_1, NUMSAMPLES) + " C.\n";
     dataString += "d0: " + (String)digital_thermo_0.readCelsius() + " C.\n"; 
     dataString += "d1: " + (String)digital_thermo_1.readCelsius() + " C.\n\n"; 
     //Serial.println(dataString);
     printToFile(DATALOG_FILE, dataString); // print to file
+    counter++;
   }
   
 }
 
 
-double collectAnalogThermocoupleData(int pin, int num_samples = 5)
+double collectAnalogThermocoupleData(int pin, int num_samples)
 {
   uint8_t i = 0;
   double average = 0.0; // Initializes average as a variable
@@ -104,7 +117,7 @@ double collectAnalogThermocoupleData(int pin, int num_samples = 5)
 }
 
 /*
-double collectAnalogThermocoupleDataOld(int pin, int num_samples = 5)
+double collectAnalogThermocoupleDataOld(int pin, int num_samples)
 {
   uint8_t i;
   float average; // Initializes average as a variable
@@ -133,7 +146,7 @@ double collectAnalogThermocoupleDataOld(int pin, int num_samples = 5)
 */
 
 
-void printToFile(char *filename, String text, boolean append = true)
+void printToFile(char *filename, String text, boolean append)
 {
   if (append != true) {
     // Delete file here. The file will essentially be overwritten rather than appended to. 
@@ -158,22 +171,24 @@ void printToFile(char *filename, String text, boolean append = true)
 }
 
 
-ISR(TIMER0_COMPA_vect){    //This is the interrupt request
-  _timer++;
-}
+#if !defined(ARDUINO_SAM_DUE)  // These functions are for the internal timer and don't work on the Due
+  ISR(TIMER0_COMPA_vect){    //This is the interrupt request
+    _timer++;
+  }
 
-void initTimer0(double seconds) {
-  // 1 ms minimum (0.001 seconds)
-  //OCR0A=(250000*seconds)-1;
-  _timer = 0;
-  _timer_max = 1000.0*seconds; 
-  TCCR0A|=(1<<WGM01);    //Set the CTC mode
-  OCR0A=0xF9;            //Set the value for 1ms
-  TIMSK0|=(1<<OCIE0A);   //Set the interrupt request
-  sei();                 //Enable interrupt
-  TCCR0B|=(1<<CS01);    //Set the prescale 1/64 clock
-  TCCR0B|=(1<<CS00);
-  
-}
+  void initTimer0(double seconds) {
+    // 1 ms minimum (0.001 seconds)
+    //OCR0A=(250000*seconds)-1;
+    _timer = 0;
+    _timer_max = 1000.0*seconds; 
+    TCCR0A|=(1<<WGM01);    //Set the CTC mode
+    OCR0A=0xF9;            //Set the value for 1ms
+    TIMSK0|=(1<<OCIE0A);   //Set the interrupt request
+    sei();                 //Enable interrupt
+    TCCR0B|=(1<<CS01);    //Set the prescale 1/64 clock
+    TCCR0B|=(1<<CS00);
+    
+  }
+#endif
 
 

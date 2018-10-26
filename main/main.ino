@@ -25,7 +25,8 @@ extern Config conf; // A struct containing the config file info
 unsigned int _timer = 0;
 unsigned int _timer_max = 1000; 
 
-unsigned int counter = 0; 
+unsigned int samples_elapsed = 0; 
+unsigned int last_sample = 0; 
 
 boolean led_value = 0;
 
@@ -69,12 +70,26 @@ void setup() {
 
   delay(500); // Just in case things need to settle
   
-  #if !defined(ARDUINO_SAM_DUE) 
-    initTimer0(conf.sample_rate);
-  #endif
+  last_sample = conf.test_duration/conf.sample_rate; // The last sample before the test ends. 
   
   Serial.println("Press pushbutton to start test.");
   while (!digitalRead(PUSHBUTTON_PIN)) {; };  // Start test when pushbutton is pressed. (STILL NEED TO TEST) 
+
+  #if !defined(ARDUINO_SAM_DUE) 
+    initTimer0(conf.sample_rate);
+  #endif
+
+  if (conf.start_delay > 0.0) {
+    unsigned int start_delay_last = conf.start_delay/conf.sample_rate; 
+    while (samples_elapsed < start_delay_last) {
+      if (_timer >= _timer_max) {
+        _timer = 0;
+        samples_elapsed++;
+      }
+    }
+    samples_elapsed = 0; 
+  }
+  
 }
 
 void loop() {
@@ -86,15 +101,17 @@ void loop() {
     led_value=!led_value;
     _timer = 0;
 
-    String dataString = "T=" + (String)counter + "\n";
+    String dataString = "T=" + (String)samples_elapsed + "\n";
     dataString += "a0: " + (String)collectAnalogThermocoupleData(THERMOCOUPLE_PIN_0, NUMSAMPLES) + " C.\n";
     dataString += "a1: " + (String)collectAnalogThermocoupleData(THERMOCOUPLE_PIN_1, NUMSAMPLES) + " C.\n";
     dataString += "d0: " + (String)digital_thermo_0.readCelsius() + " C.\n"; 
     dataString += "d1: " + (String)digital_thermo_1.readCelsius() + " C.\n\n"; 
     //Serial.println(dataString);
     printToFile(DATALOG_FILE, dataString); // print to file
-    counter++;
+    samples_elapsed++;
   }
+
+  while (samples_elapsed >= last_sample) {}; // Ends the test by going into an infinite loop. It works for now, but we should probably change it later. 
   
 }
 

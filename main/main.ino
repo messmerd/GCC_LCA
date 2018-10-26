@@ -68,6 +68,8 @@ void setup() {
   readConfig();
   Serial.println();
 
+  // NEED TO CHECK THAT CONFIG STUFF IS VALID - especially the sample rate
+
   delay(500); // Just in case things need to settle
   
   last_sample = conf.test_duration/conf.sample_rate; // The last sample before the test ends. 
@@ -75,28 +77,19 @@ void setup() {
   Serial.println("Press pushbutton to start test.");
   while (!digitalRead(PUSHBUTTON_PIN)) {; };  // Start test when pushbutton is pressed. (STILL NEED TO TEST) 
 
+  delay(conf.start_delay*1000); 
+  
   #if !defined(ARDUINO_SAM_DUE) 
     initTimer0(conf.sample_rate);
   #endif
 
-  if (conf.start_delay > 0.0) {
-    unsigned int start_delay_last = conf.start_delay/conf.sample_rate; 
-    while (samples_elapsed < start_delay_last) {
-      if (_timer >= _timer_max) {
-        _timer = 0;
-        samples_elapsed++;
-      }
-    }
-    samples_elapsed = 0; 
-  }
-  
 }
 
 void loop() {
 
   //digitalWrite(LED_PIN, digitalRead(PUSHBUTTON_PIN));
 
-  if (_timer >= _timer_max) {
+  if (_timer >= _timer_max) {  // One sample period has passed
     digitalWrite(LED_PIN, led_value);
     led_value=!led_value;
     _timer = 0;

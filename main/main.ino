@@ -50,7 +50,7 @@ void setup() {
   pinMode(PUSHBUTTON_PIN, INPUT); 
 
   #if !defined(ARDUINO_SAM_DUE) 
-    analogReference(EXTERNAL); // Note: Due uses 3.3 v reference which would cause analog thermocouples to not work (given the way things are currently set up)
+    analogReference(DEFAULT); // 5v on Uno and Mega. Note: Due uses 3.3 v reference which would cause analog thermocouples to not work (given the way things are currently set up)
   #endif
   
   Serial.begin(9600);
@@ -195,9 +195,9 @@ void printToFile(char *filename, String text, boolean append)
     OCR0A=0xF9;            //Set the value for 1ms
     TIMSK0|=(1<<OCIE0A);   //Set the interrupt request
     sei();                 //Enable interrupt
-    TCCR0B|=(1<<CS01);    //Set the prescale 1/64 clock
-    TCCR0B|=(1<<CS00);
-    
+    //TCCR0B|=(1<<CS01);    //Set the prescale 1/64 clock
+    //TCCR0B|=(1<<CS00);
+    TCCR0B|=(1<<CS02); // Testing.... /256 rather than /64
   }
 #endif
 

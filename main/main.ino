@@ -83,6 +83,7 @@ void setup() {
     initTimer0(conf.sample_rate);
   #endif
 
+  _timer = _timer_max; // The first sample will start right away
 }
 
 void loop() {
@@ -94,11 +95,11 @@ void loop() {
     led_value=!led_value;
     _timer = 0;
 
-    String dataString = "T=" + (String)samples_elapsed + "\n";
-    dataString += "a0: " + (String)collectAnalogThermocoupleData(THERMOCOUPLE_PIN_0, NUMSAMPLES) + " C.\n";
-    dataString += "a1: " + (String)collectAnalogThermocoupleData(THERMOCOUPLE_PIN_1, NUMSAMPLES) + " C.\n";
-    dataString += "d0: " + (String)digital_thermo_0.readCelsius() + " C.\n"; 
-    dataString += "d1: " + (String)digital_thermo_1.readCelsius() + " C.\n\n"; 
+    String dataString = "" + (String)samples_elapsed + "\t";
+    dataString += "" + (String)collectAnalogThermocoupleData(THERMOCOUPLE_PIN_0, NUMSAMPLES) + "\t";
+    dataString += "" + (String)collectAnalogThermocoupleData(THERMOCOUPLE_PIN_1, NUMSAMPLES) + "\t";
+    dataString += "" + (String)digital_thermo_0.readCelsius() + "\t"; 
+    dataString += "" + (String)digital_thermo_1.readCelsius() + ""; 
     //Serial.println(dataString);
     printToFile(DATALOG_FILE, dataString); // print to file
     samples_elapsed++;
@@ -195,9 +196,9 @@ void printToFile(char *filename, String text, boolean append)
     OCR0A=0xF9;            //Set the value for 1ms
     TIMSK0|=(1<<OCIE0A);   //Set the interrupt request
     sei();                 //Enable interrupt
-    //TCCR0B|=(1<<CS01);    //Set the prescale 1/64 clock
-    //TCCR0B|=(1<<CS00);
-    TCCR0B|=(1<<CS02); // Testing.... /256 rather than /64
+    TCCR0B|=(1<<CS01);    //Set the prescale 1/64 clock
+    TCCR0B|=(1<<CS00);
+    //TCCR0B|=(1<<CS02); // Testing.... /256 rather than /64
   }
 #endif
 

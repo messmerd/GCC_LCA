@@ -11,24 +11,24 @@ RTC_DS3231 rtc;
 
 //char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
-#define MAXDO_0   50
-#define MAXCS_0   51
-#define MAXDO_1   48
-#define MAXCS_1   49
-#define MAXDO_2   46
-#define MAXCS_2   47
-#define MAXDO_3   44
-#define MAXCS_3   45
-#define MAXDO_4   42
-#define MAXCS_4   43
-#define MAXDO_5   40
-#define MAXCS_5   41
-#define MAXDO_6   38
-#define MAXCS_6   39
-#define MAXDO_7   36
-#define MAXCS_7   37
+#define MAXDO_0   48
+#define MAXCS_0   49
+#define MAXDO_1   46
+#define MAXCS_1   47
+#define MAXDO_2   44
+#define MAXCS_2   45
+#define MAXDO_3   42
+#define MAXCS_3   43
+#define MAXDO_4   40
+#define MAXCS_4   41
+#define MAXDO_5   3
+#define MAXCS_5   2
+#define MAXDO_6   5
+#define MAXCS_6   4
+#define MAXDO_7   7
+#define MAXCS_7   6
 
-#define MAXCLK    35
+#define MAXCLK    33
 
 #define LED_PIN 12                 // Pin 12 isn't working... Maybe it has to do with the SD card reader? 
 #define PUSHBUTTON_PIN 11         // Start test pushbutton
@@ -45,6 +45,8 @@ unsigned int last_sample = 0;
 unsigned int data_file_number = 0; 
 
 boolean led_value = 0;
+
+char dataFileName[16] = DATALOG_FILE_ROOT;
 
 #if !defined(ARDUINO_SAM_DUE) 
   void initTimer0(double seconds);
@@ -83,7 +85,10 @@ void setup() {
   }
   Serial.println("SD init.");
 
-  data_file_number = getNextDataFile(); 
+  data_file_number = getNextDataFile();
+  strcat(dataFileName, String(data_file_number).c_str());
+  strcat(dataFileName, ".txt");  // THERE IS A MAX LENGTH TO THIS, SO THERE'S A MAX NUMBER OF DATA FILES
+  Serial.println("Output data file: " + (String)dataFileName);
 
   // RTC init
   if (! rtc.begin()) {
@@ -115,6 +120,7 @@ void setup() {
 
 void loop() {
   if (_timer >= _timer_max) {  // One sample period has passed
+    //noInterrupts();                 //Disable interrupts  (!!!)
     digitalWrite(LED_PIN, led_value);
     led_value=!led_value;
     _timer = 0;
@@ -128,8 +134,7 @@ void loop() {
     dataString += (String)digital_thermo_5.readCelsius() + "\t"; 
     dataString += (String)digital_thermo_6.readCelsius() + "\t"; 
     dataString += (String)digital_thermo_7.readCelsius(); 
-
-    printToFile((String)DATALOG_FILE_ROOT + (String)data_file_number + ".txt", dataString, true); // print to file
+    printToFile(dataFileName, dataString, true); // print to file
 
     /*
     DateTime right_now = rtc.now(); 
@@ -137,6 +142,7 @@ void loop() {
     Serial.println("Hour: " + String(right_now.hour()) + ". Minute: " + String(right_now.minute()) + ". Second: " + String(right_now.second()));
     */
     samples_elapsed++;
+    //interrupts();                 //Enable interrupts  (!!!)
   }
 
   while (samples_elapsed >= last_sample) {}; // Ends the test by going into an infinite loop. It works for now, but we should probably change it later. 

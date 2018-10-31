@@ -9,6 +9,7 @@ Config conf;
 Sensor* sensors;
 
 extern RTC_DS3231 rtc; 
+//extern char dataFileName[16];
 
 Config::Config() {};  // Create default constructor later
 
@@ -87,7 +88,7 @@ boolean Config::read(boolean setRTC)
 }
 
 
-void printToFile(String filename, String text, boolean append)
+void printToFile(char* filename, String text, boolean append)
 {
   if (append != true) {
     // Delete file here. The file will essentially be overwritten rather than appended to. 
@@ -117,7 +118,7 @@ unsigned int getNextDataFile()
   while (SD.exists(DATALOG_FILE_ROOT + (String)num + ".txt")) {
     num++; 
   }
-  Serial.println("Output data file: " + (String)DATALOG_FILE_ROOT + (String)num + ".txt");
+  //Serial.println("Output data file: " + (String)DATALOG_FILE_ROOT + (String)num + ".txt");
   return num; 
 }
 

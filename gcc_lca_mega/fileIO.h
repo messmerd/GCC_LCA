@@ -40,7 +40,7 @@ struct Sensor
 }; 
 
 
-void printToFile(String filename, String text, boolean append = true);
+void printToFile(char* filename, String text, boolean append = true);
 unsigned int getNextDataFile();
 
 

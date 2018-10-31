@@ -11,24 +11,24 @@ RTC_DS3231 rtc;
 
 //char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
-#define MAXDO_0   3
-#define MAXCS_0   4
-#define MAXDO_1   32
-#define MAXCS_1   33
-#define MAXDO_2   34
-#define MAXCS_2   35
-#define MAXDO_3   36
-#define MAXCS_3   37
-#define MAXDO_4   38
-#define MAXCS_4   39
+#define MAXDO_0   50
+#define MAXCS_0   51
+#define MAXDO_1   48
+#define MAXCS_1   49
+#define MAXDO_2   46
+#define MAXCS_2   47
+#define MAXDO_3   44
+#define MAXCS_3   45
+#define MAXDO_4   42
+#define MAXCS_4   43
 #define MAXDO_5   40
 #define MAXCS_5   41
-#define MAXDO_6   42
-#define MAXCS_6   43
-#define MAXDO_7   44
-#define MAXCS_7   45
+#define MAXDO_6   38
+#define MAXCS_6   39
+#define MAXDO_7   36
+#define MAXCS_7   37
 
-#define MAXCLK    5
+#define MAXCLK    35
 
 #define LED_PIN 9                 // Pin 12 isn't working... Maybe it has to do with the SD card reader? 
 #define PUSHBUTTON_PIN 11         // Start test pushbutton

@@ -30,7 +30,7 @@ RTC_DS3231 rtc;
 
 #define MAXCLK    35
 
-#define LED_PIN 9                 // Pin 12 isn't working... Maybe it has to do with the SD card reader? 
+#define LED_PIN 12                 // Pin 12 isn't working... Maybe it has to do with the SD card reader? 
 #define PUSHBUTTON_PIN 11         // Start test pushbutton
 #define chipSelect 10             // For the SD card reader
 

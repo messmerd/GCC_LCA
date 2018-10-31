@@ -117,6 +117,7 @@ unsigned int getNextDataFile()
   while (SD.exists(DATALOG_FILE_ROOT + (String)num + ".txt")) {
     num++; 
   }
+  Serial.println("Output data file: " + (String)DATALOG_FILE_ROOT + (String)num + ".txt");
   return num; 
 }
 

@@ -119,7 +119,7 @@ void loop() {
     led_value=!led_value;
     _timer = 0;
 
-    String dataString = "" + (String)samples_elapsed + "\t";
+    String dataString = "#" + (String)samples_elapsed + "\t";
     dataString += (String)digital_thermo_0.readCelsius() + "\t"; 
     dataString += (String)digital_thermo_1.readCelsius() + "\t"; 
     dataString += (String)digital_thermo_2.readCelsius() + "\t"; 
@@ -129,7 +129,7 @@ void loop() {
     dataString += (String)digital_thermo_6.readCelsius() + "\t"; 
     dataString += (String)digital_thermo_7.readCelsius(); 
 
-    printToFile((String)DATALOG_FILE_ROOT + (String)data_file_number + ".txt", dataString, false); // print to file
+    printToFile((String)DATALOG_FILE_ROOT + (String)data_file_number + ".txt", dataString, true); // print to file
 
     /*
     DateTime right_now = rtc.now(); 

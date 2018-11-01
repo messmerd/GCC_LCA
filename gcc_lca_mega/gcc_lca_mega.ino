@@ -11,22 +11,23 @@ RTC_DS3231 rtc;
 
 //char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
-#define MAXDO_0   50
-#define MAXCS_0   51
-#define MAXDO_1   48
-#define MAXCS_1   49
-#define MAXDO_2   46
-#define MAXCS_2   47
-#define MAXDO_3   44
-#define MAXCS_3   45
-#define MAXDO_4   42
-#define MAXCS_4   43
-#define MAXDO_5   40
-#define MAXCS_5   41
-#define MAXDO_6   38
-#define MAXCS_6   39
-#define MAXDO_7   36
-#define MAXCS_7   37
+//Note: pins 50 and 51 appear to not work on this Mega
+#define MAXDO_0   48
+#define MAXCS_0   49
+#define MAXDO_1   46
+#define MAXCS_1   47
+#define MAXDO_2   44
+#define MAXCS_2   45
+#define MAXDO_3   42
+#define MAXCS_3   43
+#define MAXDO_4   40
+#define MAXCS_4   41
+#define MAXDO_5   38
+#define MAXCS_5   39
+#define MAXDO_6   36
+#define MAXCS_6   37
+#define MAXDO_7   34
+#define MAXCS_7   35
 
 #define MAXCLK    33
 

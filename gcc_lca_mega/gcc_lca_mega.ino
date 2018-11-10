@@ -12,6 +12,7 @@ RTC_DS3231 rtc;         // Real-time clock (RTC) object
 //char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
 // Digital thermocouple chip select and data output pins:
+// Note: pins 50 and 51 appear to not work on this Mega
 #define MAXDO_0   48
 #define MAXCS_0   49
 #define MAXDO_1   46
@@ -22,12 +23,12 @@ RTC_DS3231 rtc;         // Real-time clock (RTC) object
 #define MAXCS_3   43
 #define MAXDO_4   40
 #define MAXCS_4   41
-#define MAXDO_5   3
-#define MAXCS_5   2
-#define MAXDO_6   5
-#define MAXCS_6   4
-#define MAXDO_7   7
-#define MAXCS_7   6
+#define MAXDO_5   38
+#define MAXCS_5   39
+#define MAXDO_6   36
+#define MAXCS_6   37
+#define MAXDO_7   34
+#define MAXCS_7   35
 
 #define MAXCLK    33              // Shared clock for all digital thermocouples
 

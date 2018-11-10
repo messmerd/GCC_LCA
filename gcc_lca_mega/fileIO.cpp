@@ -1,4 +1,4 @@
-#include <ArduinoJson.h>
+#include "ArduinoJson.h"
 #include "fileIO.h"	
 #include "RTClib.h"
 #include <SPI.h>
@@ -13,6 +13,7 @@ extern RTC_DS3231 rtc;
 
 Config::Config() {};  // Create default constructor later
 
+// Reads from SD card's config file, updates values of config variables stored on Arduino, and also sets RTC if needed. 
 boolean Config::read(boolean setRTC)
 {
   // Open file for reading
@@ -87,7 +88,7 @@ boolean Config::read(boolean setRTC)
   return 0; 
 }
 
-
+// Prints text to a file specified by filename. May append to file or overwrite. 
 void printToFile(char* filename, String text, boolean append)
 {
   if (append != true) {
@@ -112,6 +113,8 @@ void printToFile(char* filename, String text, boolean append)
   }
 }
 
+// Finds a new unique data file name to use for the current test. 
+// Returns the unique number to use in the new data file name.
 unsigned int getNextDataFile()
 {
   unsigned int num = 0; 
@@ -119,8 +122,7 @@ unsigned int getNextDataFile()
     num++; 
   }
   //Serial.println("Output data file: " + (String)DATALOG_FILE_ROOT + (String)num + ".txt");
-  return num; 
+  return num; // Returns the unique number to use in the new data file name
 }
-
 
 

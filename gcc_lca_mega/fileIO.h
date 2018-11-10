@@ -8,10 +8,11 @@
 #define DEBUG_FILE "/debug.txt"
 #define DATALOG_FILE_ROOT "/datalog"
 
+// Class for working with config file and sensors file on SD card 
 class Config
 {
 public: 
-  Config();
+  Config();                   // Default constructor - needs to be implemented
 
   String package_name;        // Package name
   unsigned int test_duration; // Test duration
@@ -20,27 +21,31 @@ public:
   char temp_units;            // C, F, or K
   String initial_date;        // Initial date
   String initial_time;        // Initial time
-  boolean reset_date_time;    //says whether to reset the date and time or not
+  boolean reset_date_time;    // Says whether to reset the date and time or not
   
   boolean need_to_sync_sd;    // For future use
   boolean need_to_sync_bt;    // For future use
 
-  boolean read(boolean setRTC = false);
+  boolean read(boolean setRTC = false); // Reads from SD card's config file, updates values of config variables stored on Arduino, and also sets RTC if needed. 
 };
 
-
+// This struct stores information about a sensor so that sensors can be treated modularly and be freely added/removed from system. Currently, none of this information is used. 
 struct Sensor
 { 
   String sensor_name; 
-  short a_d;                  //tells whether each sensor is analog or digital
-  short commp;                //tells what each senors communication protocol is
-  int* pins;                  //tells which pins the sensors are hooked up to
-  String adjust_;             //tells whether there is a scaling factor or offset for each sensor
-  String isr;                 //gives the sensors ISR code
+  short a_d;                  // Whether a sensor is analog or digital
+  short commp;                // Which communication protocol a sensor uses
+  int* pins;                  // Which Arduino pins the sensor uses
+  String adjust_;             // The scaling factor or offset for a sensor. (X = input)
+  String isr;                 // ISR code to be executed when sensor data is received
 }; 
 
 
+// Prints text to a file specified by filename. May append to file or overwrite.
 void printToFile(char* filename, String text, boolean append = true);
+
+// Finds a new unique data file name to use for the current test. 
+// Returns the unique number to use in the new data file name.
 unsigned int getNextDataFile();
 
 

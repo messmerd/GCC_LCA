@@ -48,7 +48,7 @@ unsigned int data_file_number = 0;
 
 boolean led_value = 0;
 
-char dataFileName[16] = DATALOG_FILE_ROOT;  // There's a max length to this! 
+char dataFileName[16] = DATALOG_FILE_ROOT;  // There's a max length to this! "data9999.txt" is the last file because the SD library uses short 8.3 names for files. 10,000 total data files.   
 
 void initTimer0(double seconds);
 

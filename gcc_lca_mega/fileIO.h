@@ -6,7 +6,7 @@
 #define CONFIG_FILE "/config.txt"
 #define SENSORS_FILE "/sensors.txt"
 #define DEBUG_FILE "/debug.txt"
-#define DATALOG_FILE_ROOT "/datalog"
+#define DATALOG_FILE_ROOT "/data"
 
 // Class for working with config file and sensors file on SD card 
 class Config

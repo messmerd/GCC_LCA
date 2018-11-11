@@ -1,41 +1,41 @@
-/*
- * This code is meant to be used with an Arduino Nano, 
- * A Adafruit MAX 31855 Digital Thermocouple, and a Vellemer VMA307 RGB LED Module
- * 
- * The goal of the code is to change the color of the LED based off of the 
- * temperatre reading of the thermocouple. (Red for hot, Green for mid temp, and blue for cold
- * 
- * WHile it was designed for the Arduino Nano it can still be used by similar 8  bit arduino products
- * like the leonardo, uno, mega, and maybe the micro (did not work with our micro because of a bug)
- */
-
+// Bang-Bang Temperature Control
 #include <SPI.h>
 #include "Adafruit_MAX31855.h"
+
 #define COMMON_ANNODE 
 
-// Default connection is using software SPI, but comment and uncomment one of
-// the two examples below to switch between software SPI and hardware SPI:
+// Upper and lower temperature bounds in degrees Celcius: 
+#define TEMP_UPPER_BOUND 50
+#define TEMP_LOWER_BOUND 40
 
+// Time between temperature measurements in milliseconds: 
+#define SAMPLE_RATE 1000
+
+// Defines what digital pins each part of the thermocouple is connected to: 
 #define MAXDO   3
 #define MAXCS   4
 #define MAXCLK  5
-#define LEDR 2
-//Defines what digital pins each part of the thermocouple is linked with
 
-int ledDigitalOne[] = {6,8,7}; //the three digital ports the LED is plugged into
-// 11 = red, 10 = blue, 9  = green
+#define LEDR       2    // Red LED pin
+#define RELAY_PIN  11   // Relay pin 
 
-const boolean ON = HIGH;
-const boolean OFF = LOW;
-//Defines on and off to be a low voltage and a high voltage respectivly. 
+// Defines three temperature regions for determining which color to set the RGB LED (in Celcius): 
+#define LED_TEMP_LOWER_BOUND  43 
+#define LED_TEMP_UPPER_BOUND  47 
 
+int ledDigitalOne[] = {6,8,7}; // The three digital ports the LED is plugged into
+// 6 = red, 8 = blue, 7 = green
+
+// Defines on and off to be a low voltage and a high voltage respectivly:
+#define ON HIGH
+#define OFF LOW
+
+//Defines primary LED colors based on which LED lights up on the board:
 const boolean RED[] = {ON, OFF, OFF};
 const boolean BLUE[] = {OFF,ON,OFF};
 const boolean GREEN[] = {OFF,OFF,ON};
-//Defines primary LED colors based on which LED lights up on the board
 
-
-// initialize the Thermocouple
+// Initialize the thermocouple
 Adafruit_MAX31855 thermocouple(MAXCLK, MAXCS, MAXDO);
 
 // Example creating a thermocouple instance with hardware SPI
@@ -46,109 +46,75 @@ Adafruit_MAX31855 thermocouple(MAXCLK, MAXCS, MAXDO);
 void setup() {
   Serial.begin(9600);
 
-  pinMode(2,OUTPUT);
-  pinMode(11,OUTPUT);
-
-  // initialize the 11th digital pin as an output
-  // this is for the relay
-  
-  while (!Serial) delay(1); // wait for Serial on Leonardo/Zero, etc
-
-  //Serial.println("MAX31855 test");
-  // wait for MAX chip to stabilize
-
-  for (int i = 0; i < 3; i++)
+  // Initialize output pins: 
+  pinMode(LEDR,OUTPUT);
+  pinMode(RELAY_PIN,OUTPUT);
+  for (int i = 0; i < 3; i++) 
   {
-    pinMode(ledDigitalOne[i],OUTPUT);
+    pinMode(ledDigitalOne[i],OUTPUT);   // Initialize RGB LED
   }
-  //initializes the led pins to be able to recieve an output
+  
+  while (!Serial) delay(1);   // Wait for Serial
   
   delay(500);
 }
 
 void loop() {
-  // basic readout test, just print the current temp
-  
-  
-  // Serial.print("Internal Temp = ");
-  //Serial.println(thermocouple.readInternal());
-   // Prints the internal temperature of the thermocouple which the amplifier uses to generate a celcius temperature.
-   //THIS IS NOT NEEDED
-
-   double c = thermocouple.readCelsius();
-   if (isnan(c)) 
-   //Checks to make sure the thermocouple is running, if it isn't it prints that out
+   double temp = thermocouple.readCelsius();  // Read thermocouple 
+   
+   if (isnan(temp)) // If the thermocouple is not working properly
    {
      Serial.println("Something wrong with thermocouple!");
    } 
-   else
-   //This runs when the thermouple is connected
+   else             // Else, the thermocouple is working properly
    {
-     //Serial.print("C = "); 
-     Serial.println(c); 
-     //Prints the temperature read by the thermocouple in Celcius
+     Serial.println(temp);   //Prints the temperature read by the thermocouple in Celcius
    }
 
-    if(c <= 40)
+    if(temp <= TEMP_LOWER_BOUND)        // If the temperature is less than or equal to the lower bound
     {
-      digitalWrite(11,HIGH);
-      digitalWrite(2,HIGH);
-    
+      // Turn relay and RGB LED on: 
+      digitalWrite(RELAY_PIN, HIGH);    // Relay on; Voltage is now across resistor; Temperature will rise
+      digitalWrite(LEDR, HIGH);
     }
-    // if the temperature is less than or equal to 32 degrees c (as read by the thermocouple
-    // writes a high voltage to the relay to let power through the resisitor
-    else if (c >= 50)
+    else if (temp >= TEMP_UPPER_BOUND)  // Else if the temperature is greater than or equal to the upper bound
     {
-      digitalWrite(11,LOW);
-      digitalWrite(2,LOW);
-      
-      
+      // Turn relay and RGB LED off: 
+      digitalWrite(RELAY_PIN, LOW);     // Relay off; No voltage across resistor; Temperature will decrease
+      digitalWrite(LEDR, LOW);
     }
-    
-    //if the temp is more than 38 degrees c
-    //Writes a low voltage to the relay to stop power from going through the resistor
-   
-   if(c < 43)
+
+   // This if-else statement sets the color of the RGB LED based on the temperature:
+   if (temp < LED_TEMP_LOWER_BOUND)     // In the lower temperature region
    {
+      // Calls a user-created function (found at the bottom of the code) used to light up the RGB LED blue:
       setColor(ledDigitalOne, BLUE);
-      // calls a user created function (found at the bottom of the code) used to light up the RGB LED blue
    }
-   else if(c > 47)
+   else if(temp > LED_TEMP_UPPER_BOUND) // In the upper temperature region 
    {
-      setColor(ledDigitalOne,RED);
-      //calls setColor to light the LED up red
+      // Calls setColor to light the LED up red:
+      setColor(ledDigitalOne, RED);
    }
-   else
+   else                                 // In the middle temperature region 
    {
-        setColor(ledDigitalOne,GREEN);
-        //calls setColor to light the LED up green
+      // Calls setColor to light the LED up green:
+      setColor(ledDigitalOne,GREEN);
    }
-    //sets the color of the led based off of the temperature
-   
-   
- 
-   delay(1000);
+
+   delay(SAMPLE_RATE);  // Delay before next temperature reading 
 }
 
-void setColor(int* led, boolean* color)
-//Function takes in a specific LED and a changeable set of colors
-//Writes to the LED to change the color based on the color input
-{
-  for(int i = 0; i< 3; i++)
-  {
-    digitalWrite(led[i],color[i]);
-  }
-  // writes to the led to change the color based on the boolean input color
-}
 
-void setColor(int* led, const boolean* color)
-//Function takes in an LED pin location and a constant set of colors
+// Function takes in an LED pin location and a constant set of colors
 // Changes that constant into a changeable boolean and call setColor again
+void setColor(int* led, const boolean* color)
 {
-  boolean tempColor[] = {color[0],color[1],color[2]};
-  //Redefines the constant boolean as a changeable boolean
-  
-  setColor(led,tempColor);
-  //Recalls setColor with a changeable boolean
+  for (int i = 0; i < 3; i++)
+  {
+    // Writes to the RGB LED to change the color based on the input color
+    digitalWrite(led[i], color[i]);
   }
+
+}
 //
+

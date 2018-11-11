@@ -73,13 +73,13 @@ void loop() {
 
     if(temp <= TEMP_LOWER_BOUND)        // If the temperature is less than or equal to the lower bound
     {
-      // Turn relay and RGB LED on: 
+      // Turn relay and red LED on: 
       digitalWrite(RELAY_PIN, HIGH);    // Relay on; Voltage is now across resistor; Temperature will rise
       digitalWrite(LEDR, HIGH);
     }
     else if (temp >= TEMP_UPPER_BOUND)  // Else if the temperature is greater than or equal to the upper bound
     {
-      // Turn relay and RGB LED off: 
+      // Turn relay and red LED off: 
       digitalWrite(RELAY_PIN, LOW);     // Relay off; No voltage across resistor; Temperature will decrease
       digitalWrite(LEDR, LOW);
     }

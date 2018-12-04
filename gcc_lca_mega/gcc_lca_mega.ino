@@ -12,7 +12,7 @@ RTC_DS3231 rtc;         // Real-time clock (RTC) object
 //char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
 // Digital thermocouple chip select and data output pins:
-// Note: pins 50 and 51 appear to not work on this Mega
+// Note: pins 50 and 51 appear to not work on this Mega (50, 51, and 52 are used for SPI apparently)
 #define MAXDO_0   48
 #define MAXCS_0   49
 #define MAXDO_1   46
@@ -76,6 +76,7 @@ void setup() {
   }
 
   // Initialize SD library
+  // Note: SD card must be formatted as FAT16 or FAT32 
   while (!SD.begin(chipSelect)) {
     Serial.println(F("fail init. SD"));
     delay(1000);

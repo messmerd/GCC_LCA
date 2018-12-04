@@ -2,14 +2,16 @@
 #include <SPI.h>
 #include "Adafruit_MAX31855.h"
 
-#define COMMON_ANNODE 
-
 // Upper and lower temperature bounds in degrees Celcius: 
 #define TEMP_UPPER_BOUND 50
 #define TEMP_LOWER_BOUND 40
 
 // Time between temperature measurements in milliseconds: 
 #define SAMPLE_RATE 1000
+
+// Defines three temperature regions for determining which color to set the RGB LED (in Celcius): 
+#define LED_TEMP_LOWER_BOUND  43 
+#define LED_TEMP_UPPER_BOUND  47 
 
 // Defines what digital pins each part of the thermocouple is connected to: 
 #define MAXDO   3
@@ -19,18 +21,14 @@
 #define LEDR       2    // Red LED pin
 #define RELAY_PIN  11   // Relay pin 
 
-// Defines three temperature regions for determining which color to set the RGB LED (in Celcius): 
-#define LED_TEMP_LOWER_BOUND  43 
-#define LED_TEMP_UPPER_BOUND  47 
-
-int ledDigitalOne[] = {6,8,7}; // The three digital ports the LED is plugged into
+int ledDigitalOne[] = {6,8,7};    // The three digital ports the LED is plugged into
 // 6 = red, 8 = blue, 7 = green
 
-// Defines on and off to be a low voltage and a high voltage respectivly:
+// Defines on and off to be a low voltage and a high voltage respectively:
 #define ON HIGH
 #define OFF LOW
 
-//Defines primary LED colors based on which LED lights up on the board:
+// Defines primary LED colors based on which LED lights up on the board:
 const boolean RED[] = {ON, OFF, OFF};
 const boolean BLUE[] = {OFF,ON,OFF};
 const boolean GREEN[] = {OFF,OFF,ON};
@@ -85,25 +83,23 @@ void loop() {
     }
 
    // This if-else statement sets the color of the RGB LED based on the temperature:
-   if (temp < LED_TEMP_LOWER_BOUND)     // In the lower temperature region
+   if (temp < LED_TEMP_LOWER_BOUND)       // In the lower temperature region
    {
       // Calls a user-created function (found at the bottom of the code) used to light up the RGB LED blue:
       setColor(ledDigitalOne, BLUE);
-   }
-   else if(temp > LED_TEMP_UPPER_BOUND) // In the upper temperature region 
+   } 
+   else if (temp > LED_TEMP_UPPER_BOUND)  // In the upper temperature region 
    {
       // Calls setColor to light the LED up red:
       setColor(ledDigitalOne, RED);
-   }
-   else                                 // In the middle temperature region 
+   } 
+   else                                   // In the middle temperature region 
    {
       // Calls setColor to light the LED up green:
       setColor(ledDigitalOne,GREEN);
    }
-
    delay(SAMPLE_RATE);  // Delay before next temperature reading 
 }
-
 
 // Function takes in an LED pin location and a constant set of colors
 // Changes that constant into a changeable boolean and call setColor again
@@ -114,7 +110,8 @@ void setColor(int* led, const boolean* color)
     // Writes to the RGB LED to change the color based on the input color
     digitalWrite(led[i], color[i]);
   }
-
 }
+
+
 //
 

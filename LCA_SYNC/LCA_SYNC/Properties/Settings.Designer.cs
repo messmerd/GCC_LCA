@@ -22,5 +22,29 @@ namespace LCA_SYNC.Properties {
                 return defaultInstance;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("DropDownList")]
+        public global::System.Windows.Forms.ComboBoxStyle DropDownList {
+            get {
+                return ((global::System.Windows.Forms.ComboBoxStyle)(this["DropDownList"]));
+            }
+            set {
+                this["DropDownList"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("DropDown")]
+        public global::System.Windows.Forms.ComboBoxStyle Simple {
+            get {
+                return ((global::System.Windows.Forms.ComboBoxStyle)(this["Simple"]));
+            }
+            set {
+                this["Simple"] = value;
+            }
+        }
     }
 }

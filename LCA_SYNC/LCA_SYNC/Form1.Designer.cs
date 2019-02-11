@@ -44,7 +44,7 @@
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
             this.labelApplicationLabel = new System.Windows.Forms.Label();
             this.buttonConnectDisconnect = new System.Windows.Forms.Button();
-            this.comboBox1 = new System.Windows.Forms.ComboBox();
+            this.arduinoList = new System.Windows.Forms.ComboBox();
             this.buttonArduinoSync = new System.Windows.Forms.Button();
             this.mainBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.serialInterfaceBindingSource = new System.Windows.Forms.BindingSource(this.components);
@@ -206,17 +206,17 @@
             this.buttonConnectDisconnect.Text = "Connect/Disconnect";
             this.buttonConnectDisconnect.UseVisualStyleBackColor = true;
             // 
-            // comboBox1
+            // arduinoList
             // 
-            this.comboBox1.DataBindings.Add(new System.Windows.Forms.Binding("DropDownStyle", global::LCA_SYNC.Properties.Settings.Default, "DropDownList", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.comboBox1.DropDownStyle = global::LCA_SYNC.Properties.Settings.Default.DropDownList;
-            this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.ImeMode = System.Windows.Forms.ImeMode.NoControl;
-            this.comboBox1.Location = new System.Drawing.Point(211, 42);
-            this.comboBox1.Name = "comboBox1";
-            this.comboBox1.Size = new System.Drawing.Size(210, 21);
-            this.comboBox1.TabIndex = 0;
-            this.comboBox1.SelectedIndexChanged += new System.EventHandler(this.comboBox1_SelectedIndexChanged);
+            this.arduinoList.DataBindings.Add(new System.Windows.Forms.Binding("DropDownStyle", global::LCA_SYNC.Properties.Settings.Default, "DropDownList", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.arduinoList.DropDownStyle = global::LCA_SYNC.Properties.Settings.Default.DropDownList;
+            this.arduinoList.FormattingEnabled = true;
+            this.arduinoList.ImeMode = System.Windows.Forms.ImeMode.NoControl;
+            this.arduinoList.Location = new System.Drawing.Point(211, 42);
+            this.arduinoList.Name = "arduinoList";
+            this.arduinoList.Size = new System.Drawing.Size(210, 21);
+            this.arduinoList.TabIndex = 0;
+            this.arduinoList.SelectedIndexChanged += new System.EventHandler(this.comboBox1_SelectedIndexChanged);
             // 
             // buttonArduinoSync
             // 
@@ -244,7 +244,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(484, 461);
             this.Controls.Add(this.buttonArduinoSync);
-            this.Controls.Add(this.comboBox1);
+            this.Controls.Add(this.arduinoList);
             this.Controls.Add(this.labelApplicationLabel);
             this.Controls.Add(this.progressBar1);
             this.Controls.Add(this.buttonConnectDisconnect);
@@ -283,7 +283,7 @@
         private System.Windows.Forms.TabPage DataPage;
         private System.Windows.Forms.Button buttonConnectDisconnect;
         private System.Windows.Forms.Button buttonArduinoSync;
-        private System.Windows.Forms.ComboBox comboBox1;
+        private System.Windows.Forms.ComboBox arduinoList;
         private System.Windows.Forms.BindingSource mainBindingSource;
         private System.Windows.Forms.BindingSource serialInterfaceBindingSource;
     }

@@ -1,6 +1,10 @@
 # Folders
-**/bin/
-**/debug/
+**/bin
+**/debug
+**/Debug
+**/.vs
+**/obj
+**/packages
 
 # Prerequisites
 *.d

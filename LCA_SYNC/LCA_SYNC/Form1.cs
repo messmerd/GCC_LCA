@@ -37,6 +37,7 @@ namespace LCA_SYNC
         /// </summary>
         SerialInterface serial;
         object[] deviceList;
+        private BindingSource arduinoListBinding;
 
         public Main()
         {
@@ -47,6 +48,11 @@ namespace LCA_SYNC
 
             //serial.Arduino.NewDataReceived += arduinoBoard_NewDataReceived;  // !!!!!!!!!!!!!!!!!!!!!!!!!!!  Will need to implement this somehow. (From the Arduino side?)
             serial.USBPnPDeviceChanged += serial_USBPnPDeviceChanged;
+            //serial.LCAArduinos_Changed += serial_LCAArduinos_Changed;
+            //serial.LCAArduinos.OnAdd += serial_LCAArduinos_Changed;
+            //serial.LCAArduinos.OnRemove += serial_LCAArduinos_Changed;
+
+            
 
             this.FormClosing += Main_FormClosing;  // Trying w/o this. B/c PnP watcher stopped working again for some reason
 
@@ -58,33 +64,25 @@ namespace LCA_SYNC
             //comboBox1.DataSource = serial.LCAArduinos;
             //comboBox1.DisplayMember = "displayName";
             //comboBox1.ValueMember = "Port.PortName";
-            
+
 
             //comboBox1.Items.AddRange(serial.LCAArduinos.Select(a => a.displayName).Cast<object>().ToArray());
-            comboBox1.Items.AddRange(deviceList);
-            comboBox1.SelectedIndex = 0;
+
+            //arduinoList.Items.AddRange(deviceList);
+            arduinoListBinding = new BindingSource();
+            arduinoListBinding.DataSource = serial.LCAArduinos;
+            arduinoListBinding.ListChanged += serial_LCAArduinos_Changed;
+            arduinoList.DataSource = arduinoListBinding;
+            arduinoList.DisplayMember = "displayName";
+            //arduinoList.ValueMember = "Self";   // What is the default value of this? Is it self? 
+            
+            //arduinoList.SelectedIndex = 0;
 
             serial.StartPnPWatcher();  // Start watching for USB PnP devices to be added/removed/modified. 
 
-
             // Find LCA arduinos
+            serial.LocateLCADevices();
 
-            serial.LocateLCADevices();  // PnP watcher doesn't work whether this goes or not...
-
-
-            /*
-            // Do this AFTER finding the arduinos: 
-            try
-            {
-                serial.Arduino.OpenConnection();
-                
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show("Error: Can not connect to the Arduino Board - Configure the COM Port in the app.config file and check whether an Arduino Board is connected to your computer.");
-                MessageBox.Show(e.Message);
-            }
-            */
 
             // Probably should do all this differently: 
             //List<Tuple<String, UInt16>> result = serial.ArduinosConnected();
@@ -124,6 +122,8 @@ namespace LCA_SYNC
                 MessageBox.Show("No Arduino detected.");
             }
             */
+
+            
 
             
 
@@ -180,7 +180,7 @@ namespace LCA_SYNC
 
 
         /// <summary>
-        /// USBDeviceChanged event is catched in
+        /// USBDeviceChanged event is caught in
         /// order to prevent send/receive errors
         /// and allow the program to connect to
         /// the Arduino automatically.
@@ -224,7 +224,7 @@ namespace LCA_SYNC
                 // Update LCA Arduino List here
                 // Do code to stop from writing to port or start writing, or whatever
             }
-            else if (serial.LCAArduinos.Exists(a => a.Port.PortName == SerialInterface.GetPortName(device))) // If the added/removed device was an LCA Arduino not in use
+            else if (serial.LCAArduinos.ToList().Exists(a => a.Port.PortName == SerialInterface.GetPortName(device))) // If the added/removed device was an LCA Arduino not in use
             {
                 Console.WriteLine("An LCA arduino device you were not using was {0}.", wop);
                 //Console.WriteLine(serial.Arduino.Port.PortName);
@@ -244,6 +244,25 @@ namespace LCA_SYNC
             //((ManagementEventWatcher)sender).
 
         }
+
+        /// <summary>
+        /// LCAArduinos_Changed event is caught in
+        /// order to update anything when LCAArduinos
+        /// list is changed or values within it are 
+        /// changed.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        void serial_LCAArduinos_Changed(object sender, ListChangedEventArgs e)  // Maybe use arduinoList.DataSourceChanged event instead? 
+        {
+            Console.Write("LCAArduinos has been changed: ");
+            Console.Write("ListChanagedType = {0}, ", e.ListChangedType.ToString());
+            Console.Write("OldIndex = {0}, ", e.OldIndex.ToString());
+            Console.WriteLine("NewIndex = {0}. ", e.NewIndex.ToString());
+            //Console.WriteLine("PropertyDescriptor = {0}.", e.PropertyDescriptor.ToString());  // This isn't displaying for some reason.. An exception?
+
+        }
+        
 
 
         private void Form1_Load(object sender, EventArgs e)

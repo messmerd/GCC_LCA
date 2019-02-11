@@ -15,7 +15,7 @@ public:
   Config();                   // Default constructor - needs to be implemented
 
   String package_name;        // Package name
-  unsigned int test_duration; // Test duration
+  unsigned long test_duration;// Test duration
   unsigned int start_delay;   // Selay in seconds between the button push and the test start
   double sample_rate;         // Sample rate
   char temp_units;            // C, F, or K
@@ -50,4 +50,3 @@ unsigned int getNextDataFile();
 
 
 #endif
-

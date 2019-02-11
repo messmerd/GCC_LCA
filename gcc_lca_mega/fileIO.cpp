@@ -1,3 +1,4 @@
+
 #include "ArduinoJson.h"
 #include "fileIO.h"	
 #include "RTClib.h"
@@ -11,7 +12,10 @@ Sensor* sensors;
 extern RTC_DS3231 rtc; 
 //extern char dataFileName[16];
 
-Config::Config() {};  // Create default constructor later
+extern char eot;
+
+Config::Config() // Create default constructor later
+{ };  
 
 // Reads from SD card's config file, updates values of config variables stored on Arduino, and also sets RTC if needed. 
 boolean Config::read(boolean setRTC)
@@ -19,6 +23,7 @@ boolean Config::read(boolean setRTC)
   // Open file for reading
   File file = SD.open(CONFIG_FILE);
 
+  // Try using DynamicJsonBuffer to compare? 
   StaticJsonBuffer<400> jsonBuffer;  // The size of this buffer can make or break this code. 400 was enough. I don't know the minimum  
 
   // Parse the root object
@@ -105,11 +110,11 @@ void printToFile(char* filename, String text, boolean append)
     dataFile.println(text);
     dataFile.close();
     // print to the serial port too:
-    Serial.println(text);
+    Serial.println(text+(String)eot);
   }
   // if the file isn't open, pop up an error:
   else {
-    Serial.println("error w/ datalog");
+    Serial.println("error w/ datalog"+(String)eot);
   }
 }
 
@@ -124,5 +129,3 @@ unsigned int getNextDataFile()
   //Serial.println("Output data file: " + (String)DATALOG_FILE_ROOT + (String)num + ".txt");
   return num; // Returns the unique number to use in the new data file name
 }
-
-

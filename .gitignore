@@ -5,6 +5,12 @@
 **/.vs
 **/obj
 **/packages
+bin/
+.vs/
+debug/
+Debug/
+obj/
+packages/
 
 # Prerequisites
 *.d

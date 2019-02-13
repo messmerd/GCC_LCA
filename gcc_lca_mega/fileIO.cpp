@@ -12,7 +12,7 @@ Sensor* sensors;
 extern RTC_DS3231 rtc; 
 //extern char dataFileName[16];
 
-extern char eot;
+extern byte eot;
 
 Config::Config() // Create default constructor later
 { };  
@@ -30,7 +30,7 @@ boolean Config::read(boolean setRTC)
   JsonObject &root = jsonBuffer.parseObject(file);
 
   if (!root.success()) {
-    Serial.println(F("config read fail, using default"));
+    //Serial.println(F("config read fail, using default"));
     return 1; // error 
   }
 
@@ -43,18 +43,18 @@ boolean Config::read(boolean setRTC)
   initial_time = root["init_time"] | "00:00:00";   // 00:00:00 initial time
   reset_date_time = root["reset_date_time"] | 1;   // Time and date are reset by default.  
 
-  Serial.println(package_name);
-  Serial.println(test_duration);
-  Serial.println(start_delay);
-  Serial.println(sample_rate);
-  Serial.println(temp_units);
-  Serial.println(initial_date);
-  Serial.println(initial_time);
-  Serial.println(reset_date_time);
+  //Serial.println(package_name);
+  //Serial.println(test_duration);
+  //Serial.println(start_delay);
+  //Serial.println(sample_rate);
+  //Serial.println(temp_units);
+  //Serial.println(initial_date);
+  //Serial.println(initial_time);
+  //Serial.println(reset_date_time);
 
   if (setRTC && reset_date_time) // If you want to set the RTC and it needs to be set
   {
-    Serial.print("Setting the date and time...");
+    //Serial.print("Setting the date and time...");
     // Maybe there's a more efficient way of doing these:
     int16_t y = atoi(initial_date.substring(6, 10).c_str());
     int8_t m = atoi(initial_date.substring(3, 5).c_str());
@@ -83,10 +83,10 @@ boolean Config::read(boolean setRTC)
     
     // Serialize JSON to file
     if (root.printTo(file) == 0) {
-      Serial.println(F("Failed to write to file"));
+      //Serial.println(F("Failed to write to file"));
     }
     
-    Serial.println("done!");
+    //Serial.println("done!");
   }
   
   file.close();
@@ -107,14 +107,14 @@ void printToFile(char* filename, String text, boolean append)
   
   // if the file is available, write to it:
   if (dataFile) {
-    dataFile.println(text);
+    //dataFile.println(text);
     dataFile.close();
     // print to the serial port too:
-    Serial.println(text+(String)eot);
+    //Serial.println(text+(String)eot);
   }
   // if the file isn't open, pop up an error:
   else {
-    Serial.println("error w/ datalog"+(String)eot);
+    //Serial.println("error w/ datalog"+(String)eot);
   }
 }
 

@@ -71,8 +71,9 @@ unsigned long last_sample = 0;
 unsigned int data_file_number = 0; 
 
 bool dataReceived = false;
-String dataIn;
-char sot, eot; 
+byte dataIn[150];
+int dataInPos;
+byte sot, eot; 
 
 boolean led_value = 0;
 
@@ -103,11 +104,21 @@ void setup() {
   // This is only used for analog thermocouples currently, but we are no longer using them: 
   analogReference(DEFAULT); // 5v on Uno and Mega. Note: Due uses 3.3 v reference which would cause analog thermocouples to not work (given the way things are currently set up)
 
-  dataIn.reserve(200);
-  dataIn = "";
+  //dataIn.reserve(200);
+  //dataIn = "";
+  //dataIn = new byte[150];
+  int i = 0;
+  for (i=0; i<150; i++)
+  {
+    dataIn[i] = 0x00; 
+  }
+  dataInPos = 0;
   dataReceived = false;
-  sot = 2; //'\x02'; //'!';
-  eot = 3; //'\x03'; //'.';
+  sot = 0x02; //'\x02'; //'!';
+  eot = 0x03; //'\x03'; //'.';
+
+  //sot = '(';
+  //eot = ')';
 
   digitalWrite(LED_PIN2, digitalRead(CD_PIN));  // LED is on when SD card is inserted and off when it is not.
 
@@ -119,26 +130,27 @@ void setup() {
   // Initialize SD library
   // Note: SD card must be formatted as FAT16 or FAT32 
   while (!SD.begin(chipSelect)) {
-    Serial.println(F("fail init. SD"));
+    //Serial.println(F("fail init. SD"));
     delay(1000);
   }
-  Serial.println("SD init.");
+  //Serial.println("SD init.");
   
-  digitalWrite(LED_PIN2, digitalRead(CD_PIN));
+  digitalWrite(LED_PIN2, LOW);
 
   data_file_number = getNextDataFile(); // Get unique number to use for new unique data file name
   strcat(dataFileName, String(data_file_number).c_str());
   strcat(dataFileName, ".txt");  // THERE IS A MAX LENGTH TO THIS, SO THERE'S A MAX NUMBER OF DATA FILES
-  Serial.println("Output data file: " + (String)dataFileName);
+  //Serial.println("Output data file: " + (String)dataFileName);
 
   // RTC init
-  if (! rtc.begin()) {
+  /*
+  if (!rtc.begin()) {
     Serial.println("Couldn't find RTC");
     while (1);
-  }
+  }*/
 
   conf.read(true);   // Read from config file, setting the date and time if needed
-  Serial.println();
+  //Serial.println();
 
   // NEED TO CHECK THAT CONFIG STUFF IS VALID - especially the sample rate
 
@@ -148,7 +160,7 @@ void setup() {
 
   digitalWrite(LED_PIN2,LOW);
 
-  Serial.println("Press pushbutton to start test.");
+  //Serial.println("Press pushbutton to start test.");
   while (!digitalRead(PUSHBUTTON_PIN)) {; };  // Start test when pushbutton is pressed. 
 
 
@@ -204,10 +216,10 @@ void loop() {
     {
       if (ProcessData())
       {
-        dataIn = "";
-        dataReceived = false;
+
       }
-      dataIn = "";
+      //dataIn.clear();  // Not needed if you set dataInPos to 0. Will be overwritten.
+      dataInPos = 0; 
       dataReceived = false;
     }
     //interrupts();
@@ -261,16 +273,31 @@ void initTimer1(double seconds) {
 void serialEvent(){   // Note: serialEvent() doesn't work on Arduino Due!!!
   //delay(100); 
 
-  char inChar;
+  int inByte;
   while (Serial && Serial.available()>0) {
     // get the new byte:
-    inChar = (char)Serial.read();
+    inByte = Serial.read();
     // add it to the inputString:
-    dataIn += inChar;
+    dataIn[dataInPos] = inByte;
+    dataInPos++;
+
+    if (dataInPos == 150)
+    {
+      // Error. dataIn buffer is full.
+    }
     // if the incoming character is a newline, set a flag so the main loop can
     // do something about it:
-    if (inChar == eot) {
+    if (inByte == 0x03) {
       dataReceived = true;
+      //Serial.clear();
+      serial_flush_buffer();
+      break;
     }
   }
+}
+
+void serial_flush_buffer()
+{
+  while (Serial.read() >= 0)
+   ; // do nothing
 }

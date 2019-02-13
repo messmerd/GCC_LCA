@@ -28,6 +28,9 @@ namespace LCA_SYNC
         static char eot; // End of text
         static char sot; // Start of text 
 
+        static byte eotb;
+        static byte sotb;
+
         public ManagementBaseObject mgmtBaseObj { get; set; }
         public SerialPort Port { get; set; }
 
@@ -66,38 +69,6 @@ namespace LCA_SYNC
 
         private List<byte> _ReceivedBytes;
 
-        /*  is this a good design? 
-        private String _SendData;
-        public String SendData   // Can set SendData to send data  - is this a good design? 
-        {
-            get { return _SendData; }
-            set
-            {
-                _SendData = value;  // Do this?
-                // Send data:
-                if (Port != null && Port.IsOpen)
-                {
-                    try
-                    {
-                        Port.Write(sot + _SendData + eot);
-                        _SendData = "";
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine(e.GetType().Name + ": " + e.Message);
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Arduino isn't open.");
-                    throw new InvalidOperationException("Can't send data if the serial port is closed!");
-                }
-
-            }
-
-        }
-        */
-
         public String packageName { get; set; }
         public String displayName { get; set; }
         private UInt32 testDuration { get; set; }
@@ -120,71 +91,17 @@ namespace LCA_SYNC
         public enum COMMERROR { VALID = 0, NULL, INVALID, UNVALIDATED, TIMEOUT, PORTBUSY, INVALIDINPUT, PORTERROR, OTHER };
         private COMMERROR _ResponseValidity;
 
-        public ArduinoBoard()
-        {
-            System.Threading.CancellationTokenSource _ExpectedResponseCancellation = new System.Threading.CancellationTokenSource();
-            mgmtBaseObj = null;
-            Port = new SerialPort();
-            Port.ErrorReceived += delegate { _ResponseValidity = COMMERROR.PORTERROR; _ExpectedResponseCancellation.Cancel(); };
-            lca = false;
-            type = "NULL";
-            vid = "NULL";
-            pid = "NULL";
-            packageName = "NULL";
-            displayName = "NULL";
-            _ReceivedData = "";
-            //_SendData = "";
-            _syncNeeded = true;
-            _ExpectedResponseType = DATACATEGORY.PING;  // Pinging the arduino is the 1st step
-
-            eot = '\x03';
-            sot = '\x02';
-            _ResponseValidity = COMMERROR.NULL;
-            //_Busy = true;   // Assuming ping happens at start 
-            //OpenConnection(); // ? 
-
-            testDuration = 0;
-            startDelay = 0;
-            sampleRate = 0;
-            _ReceivedBytes = new List<byte>();
-            Port.Encoding = Encoding.GetEncoding(28591);
-        }
-
-        public ArduinoBoard(String portName)
-        {
-            System.Threading.CancellationTokenSource _ExpectedResponseCancellation = new System.Threading.CancellationTokenSource();
-            mgmtBaseObj = null;
-            Port = new SerialPort(portName);
-            Port.ErrorReceived += delegate { _ResponseValidity = COMMERROR.PORTERROR; _ExpectedResponseCancellation.Cancel(); };
-            lca = false;
-            type = "NULL";
-            vid = "NULL";
-            pid = "NULL";
-            packageName = "NULL";
-            displayName = "NULL";
-            _ReceivedData = "";
-            //_SendData = "";
-            _syncNeeded = true;
-            _ExpectedResponseType = DATACATEGORY.PING;  // Pinging the arduino is the 1st step
-            eot = '\x03';
-            sot = '\x02';
-            //OpenConnection(); // ?
-            _ResponseValidity = COMMERROR.NULL;
-            //_Busy = true;   // Assuming ping happens at start 
-            testDuration = 0;
-            startDelay = 0;
-            sampleRate = 0;
-            _ReceivedBytes = new List<byte>();
-            Port.Encoding = Encoding.GetEncoding(28591);
-        }
-
         public ArduinoBoard(ManagementBaseObject device)
         {
-            System.Threading.CancellationTokenSource _ExpectedResponseCancellation = new System.Threading.CancellationTokenSource();
+            Console.WriteLine("Creating a new arduino device (in constructor now)");
+            _ExpectedResponseCancellation = new CancellationTokenSource();
             lca = false;                            // to be determined...
             mgmtBaseObj = device;
             Port = new SerialPort(SerialInterface.GetPortName(device));
-            Port.ErrorReceived += delegate { _ResponseValidity = COMMERROR.PORTERROR; _ExpectedResponseCancellation.Cancel(); };  // Untested - Could occur after data received event which could cause issues.
+            Port.DataReceived += arduinoBoard_DataReceived;
+            
+            //Port.ErrorReceived += delegate { _ResponseValidity = COMMERROR.PORTERROR; _ExpectedResponseCancellation.Cancel(); };  // Untested - Could occur after data received event which could cause issues.
+            
             // See  https://docs.microsoft.com/en-us/dotnet/api/system.io.ports.serialport.errorreceived?view=netframework-4.7.2 
 
             //Console.WriteLine("In ArduinoBoard constructor, Port.PortName = "+Port.PortName);
@@ -200,6 +117,9 @@ namespace LCA_SYNC
             _ExpectedResponseType = DATACATEGORY.PING;  // Pinging the arduino is the 1st step
             eot = '\x03'; //'.'; //'\x03';
             sot = '\x02'; //'!'; // '\x02' 
+            eotb = 0x03;
+            sotb = 0x02;
+
             _ResponseValidity = COMMERROR.NULL;
             //_Busy = true;   // Assuming ping happens at start 
             testDuration = 0;
@@ -407,7 +327,6 @@ namespace LCA_SYNC
                 {
                     if (gotLock) { commLock.Exit(); }
                     throw new ArduinoCommunicationException("The serial port is null or not open.");
-                    //return new Response("", COMMERROR.OTHER);
                 }
 
                 // The timeoutLength is the total time in milliseconds between just before the data is sent and right after the response is received. 
@@ -417,7 +336,6 @@ namespace LCA_SYNC
                 }
 
                 bool noResponse = true;
-                _ExpectedResponseCancellation = new CancellationTokenSource();  // needed
                 _ResponseValidity = COMMERROR.UNVALIDATED;  // If nothing happens to this, it will remain as UNVALIDATED after the response has been received.
                 SendData(cat, subcat, action, data);
                 try
@@ -430,22 +348,23 @@ namespace LCA_SYNC
                     noResponse = false;
                 }
 
+                _ExpectedResponseCancellation.Dispose();
+                _ExpectedResponseCancellation = new CancellationTokenSource(); // Create new one for next time
+
                 if (noResponse)
                 {
                     throw new ArduinoCommunicationException("No response.");
                 }
-                //string resp_data = _ReceivedData;          // Create local copy before giving up the lock
-                //List<byte> resp_data;
 
                 List<byte> resp_data_bytes = new List<byte>();
-                //_ReceivedBytes.CopyTo(resp_data_bytes);          // Create local copy before giving up the lock
 
-                //int i = 0;
+                resp_data_bytes.AddRange(_ReceivedBytes);
+
+                /*
                 foreach (var x in _ReceivedBytes)
                 {
                     resp_data_bytes.Add(x);
-                    //i++;
-                }
+                }*/
 
                 Console.WriteLine("################# CommunicateRaw. Received: {0}\nOR ALSO THE SAME AS............ : {1}", BytesToString(resp_data_bytes), BitConverter.ToString(resp_data_bytes.ToArray()));
 
@@ -572,19 +491,20 @@ namespace LCA_SYNC
             Port.ReadTimeout = 2000;  // ???
             Port.WriteTimeout = 1000; // Fixed the problem! yay 
 
-            Port.NewLine = eot.ToString(); // ? 
+            //Port.NewLine = eot.ToString(); // ? 
 
             // SerialPort() defaults: COM1, 9600 baud rate, 8 data bits, 0 parity bits, no parity, 1 stop bit, no handshake
             // Arduino defaults:                            8 data bits, 0 parity bits, no parity, 1 stop bit, no handshake(?). Can be changed. 
 
             if (!Port.IsOpen)
             {
-                Port.DataReceived += arduinoBoard_DataReceived;
+                
                 //arduinoBoard.PortName =  ConfigurationSettings.AppSettings["ArduinoPort"];
 
                 // For debugging: Port.PortName = ConfigurationSettings.AppSettings["VirtualPort"]; // com0com virtual serial port
 
                 Port.Open();
+                Port.DiscardInBuffer();
             }
             else
             {
@@ -612,7 +532,7 @@ namespace LCA_SYNC
         /// </summary>
         void arduinoBoard_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
-            Console.WriteLine(Port.Encoding.ToString());
+            
             Console.WriteLine("In arduinoBoard_DataReceived. The current thread is " + Thread.CurrentThread.ManagedThreadId.ToString());
 
             //string data = ((char)Port.ReadChar()).ToString();//Read 
@@ -628,22 +548,27 @@ namespace LCA_SYNC
             //Console.WriteLine(p.ReadBufferSize.ToString());
 
             String data = null;
+            List<byte> data2 = new List<byte>();
 
             //Console.WriteLine("hereeeee");
 
             try
             {
+                //Port.StopBits = 0; 
+                Port.Encoding = Encoding.Default;
+                Console.WriteLine("Just before read, the encoding is: " + Port.Encoding.ToString() + " Stop bits: " + Port.StopBits);
 
-                /*
                 // This is not really working well. 
                 while (p.BytesToRead > 0)
                 {
-                    data += p.ReadExisting();
-                    //data += p.ReadLine();
-                }*/
+                    data2.Add((byte)p.ReadByte());
 
-                data = Port.ReadTo(eot.ToString()); // Read until the EOT char. This is working well as of 2/9/2019.
-                data += eot;
+                    //data += p.ReadLine();
+                }
+
+                //data = Port.ReadTo(eot.ToString()); // Read until the EOT char. This is working well as of 2/9/2019.
+                //data += eot;
+
                 //data.Append(eot);
                 // Maybe read bytes at a time instead...? 
             }
@@ -658,30 +583,42 @@ namespace LCA_SYNC
             }
 
             _ReceivedData += data;
+            _ReceivedBytes.AddRange(data2);
 
+
+            Console.WriteLine("In arduinoBoard_DataReceived  -----> Just received: {0}, and _ReceivedBytes={1} ", BitConverter.ToString(data2.ToArray()), BitConverter.ToString(_ReceivedBytes.ToArray()));
+            
+            /*
             if (data != null && data.First() != '#')  // Just so that there isn't a bunch of spam
             {
                 Console.WriteLine("Data received:   " + data);
             }
+            */
 
-
-            if (_ReceivedData != "" && _ReceivedData.Last() == eot && _ReceivedData.First() == sot)
+            if (_ReceivedBytes.Count != 0 && _ReceivedBytes.Last() == eotb && _ReceivedBytes.First() == sotb)
             {
-                _ReceivedBytes.Clear();
+                //_ReceivedBytes.Clear();
                 //List<byte> received_bytes = new List<byte>(); 
-                foreach (char c in _ReceivedData)
-                {
-                    _ReceivedBytes.Add((byte)c);
-                }
+                //foreach (char c in _ReceivedData)
+                //{
+                //    _ReceivedBytes.Add((byte)c);
+                //}
 
-                Console.WriteLine("In arduinoBoard_DataReceived  -----> Just received: " + BitConverter.ToString(_ReceivedBytes.ToArray()));
+
 
 
                 // Cancel
-                _ExpectedResponseCancellation.Cancel();  // Data has been received, so cancel the delay in any thread waiting for this event
-                                                         // The entire data packet has been received. 
-                                                         //ProcessData(_ReceivedData);  // _ReceivedData should be copied once edited
-                                                         //_ReceivedData = ""; 
+                // Before using the condition, this gave an error saying that the object didn't exist:
+                if (_ExpectedResponseCancellation != null)
+                {
+                    _ExpectedResponseCancellation?.Cancel();  // Data has been received, so cancel the delay in any thread waiting for this event
+                                                              // The entire data packet has been received. 
+                                                              //ProcessData(_ReceivedData);  // _ReceivedData should be copied once edited
+                                                              //_ReceivedData = ""; 
+                }
+
+
+
 
             }
 
@@ -726,12 +663,12 @@ namespace LCA_SYNC
 
         public string BytesToString(object bytes)
         {
-            return Encoding.Default.GetString(((List<byte>)bytes).ToArray());
+            return Encoding.GetEncoding(28591).GetString(((List<byte>)bytes).ToArray());
         }
 
         public string BytesToString(byte[] bytes)
         {
-            return Encoding.Default.GetString(bytes);
+            return Encoding.GetEncoding(28591).GetString(bytes);
         }
 
         public List<byte> StringToBytes(string str)

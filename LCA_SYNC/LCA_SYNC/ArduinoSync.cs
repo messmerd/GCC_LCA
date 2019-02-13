@@ -230,91 +230,101 @@ namespace LCA_SYNC
 
             Console.WriteLine("Currently verifying arduino on port " + port + "..."); 
             
-            ArduinoBoard ard = LCAArduinos.ToList().Find(a => a.Port.PortName == port);  // Gives ArduinoBoard if one with that port exists, else null
+            bool ardExists = LCAArduinos.ToList().Exists(a => a.Port.PortName == port);  // Gives ArduinoBoard if one with that port exists, else null
 
-            if (ard == null) // If an LCA arduino with the port specified doesn't exist in the LCAArduinos list, create an ArduinoBoard 
+
+
+            if (!ardExists) // If an LCA arduino with the port specified doesn't exist in the LCAArduinos list, create an ArduinoBoard 
             {
-                ard = new ArduinoBoard(device);
-                //ard.ExpectedResponseType = DATACATEGORY.PING;  // Getting ready to ping it  // Set ExpectedResponseType to DATACATEGORY.PING in constructor.
-            }
-
-            if (!ard.Port.IsOpen)  // ?
-            {
-                ard.OpenConnection();
-            }
-
-            System.Threading.CancellationTokenSource source = new System.Threading.CancellationTokenSource();  // Can/should this be used? 
-
-            var t = Task.Run(async delegate
-            {
-                ard.LCAChanged += delegate { Console.WriteLine("Canceling delay."); try { source?.Cancel(); } catch (Exception ee) {Console.WriteLine(ee.Message); } };
-                Response resp = new Response(null,ArduinoBoard.COMMERROR.INVALID);
                 
-                try
-                {
-                    Console.WriteLine("Now pinging arduino...");
-                    //ard.SendPing(); // Old code. Commenting out to test new code:
-                    resp = await ard.Ping(5000); 
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message + " Inner exception: " + ex.InnerException?.Message); 
-                }
+                
 
-                Console.WriteLine("After Communicate. resp.data="+resp.data+", resp.validity="+resp.validity.ToString());
+                System.Threading.CancellationTokenSource source = new System.Threading.CancellationTokenSource();  // Can/should this be used? 
 
-
-                /* // Old code. Commenting out to test new code
-                if (!ard.lca)
+                var t = Task.Run(async delegate
                 {
-                    //Console.WriteLine("Waiting...");
+                    Console.WriteLine("Creating a new arduino device");
+                    ArduinoBoard ard = new ArduinoBoard(device);
+                    //ard.ExpectedResponseType = DATACATEGORY.PING;  // Getting ready to ping it  // Set ExpectedResponseType to DATACATEGORY.PING in constructor.
+
+                    if (!ard.Port.IsOpen)  // ?
+                    {
+                        ard.OpenConnection();
+                    }
+                    //ard.LCAChanged += delegate { Console.WriteLine("Canceling delay."); try { source?.Cancel(); } catch (Exception ee) { Console.WriteLine(ee.Message); } };
+                    Response resp = new Response(null, ArduinoBoard.COMMERROR.NULL);
+
                     try
                     {
-                        await Task.Delay(TimeSpan.FromMilliseconds(100), source.Token); //.ConfigureAwait(false);  // If the timespan is too long, it crashes!!!!!!!!!!!1
-
+                        Console.WriteLine("Now pinging arduino...");
+                        //ard.SendPing(); // Old code. Commenting out to test new code:
+                        resp = await ard.Ping(5000);
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine("Task.Delay's exception: " + ex.GetType().Name + ": " + ex.Message);
+                        Console.WriteLine(ex.Message + " Inner exception: " + ex.InnerException);
                     }
-                }
-                //Console.WriteLine("After delay.");
-                */
 
-                if (resp.validity != ArduinoBoard.COMMERROR.VALID)  //(!ard.lca)  // After 5 ms, if the arduino instance hasn't gotten a ping back telling that it's an LCA board
-                {
-                    if (LCAArduinos.ToList().Exists(a => a.Port.PortName == port))
+                    Console.WriteLine("After Communicate. resp.data=" + resp.data + ", resp.validity=" + resp.validity.ToString());
+
+
+                    /* // Old code. Commenting out to test new code
+                    if (!ard.lca)
                     {
-                        // One of the LCA arduinos is not responding!
-                        // Set some kind of status variable in arduino instance? (Unresponsive, RunningTest, ComputerMode, etc.)
-                        //  
-                        Console.WriteLine("Ping response not received, but the device on this port is thought to be a verified LCA arduino.");
+                        //Console.WriteLine("Waiting...");
+                        try
+                        {
+                            await Task.Delay(TimeSpan.FromMilliseconds(100), source.Token); //.ConfigureAwait(false);  // If the timespan is too long, it crashes!!!!!!!!!!!1
+
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("Task.Delay's exception: " + ex.GetType().Name + ": " + ex.Message);
+                        }
+                    }
+                    //Console.WriteLine("After delay.");
+                    */
+
+                    if (resp.validity != ArduinoBoard.COMMERROR.VALID)  //(!ard.lca)  // After 5 ms, if the arduino instance hasn't gotten a ping back telling that it's an LCA board
+                    {
+                        if (LCAArduinos.ToList().Exists(a => a.Port.PortName == port))
+                        {
+                            // One of the LCA arduinos is not responding!
+                            // Set some kind of status variable in arduino instance? (Unresponsive, RunningTest, ComputerMode, etc.)
+                            //  
+                            Console.WriteLine("Ping response not received, but the device on this port is thought to be a verified LCA arduino.");
+                        }
+                        else
+                        {
+                            //ard.Port.Close();
+                            //ard.Port = null;  // "Destroy" its serial port (unecessary?)
+                            //ard = null;       // "Destroy" the arduino instance, since ping was not received 
+                            Console.WriteLine("Ping response not received. The ArduinoBoard instance should be set to null.");
+                        }
+
                     }
                     else
                     {
-                        //ard.Port.Close();
-                        //ard.Port = null;  // "Destroy" its serial port (unecessary?)
-                        //ard = null;       // "Destroy" the arduino instance, since ping was not received 
-                        Console.WriteLine("Ping response not received. The ArduinoBoard instance should be set to null.");
+
+                        Console.WriteLine("\n\nYES!!!! IT PINGED SUCCESSFULLY!!!!!\n\n");
+
+                        LCAArduinos.Add(ard); // Usually, this would be done only after GetInfo()  (???), but I'm doing it now to test the UI since GetInfo is not implemented yet. 2/9/2019.
+
+                        // Claim position as the "current", in-use arduino here, if it is untaken. 
+                        ArduinoBoard.COMMERROR result = await ard.RefreshInfo(); // It pinged successfully, so it's a real LCA arduino. It should get more info about itself and add itself to the 
+                                                                                 // await a delay? Delay for the length of a timeout.
+                                                                                 // after delay, check that info has been received (syncNeeded == false). If it hasn't, give error or something. 
+
+                        // In arduino instance, add arduino to LCAArduinos, and also to Arduino if that was claimed earlier. (once data received)
+                        // In arduino instance, destroy this thread (if possible) to prevent it from sitting here doing nothing until it times out. 
                     }
-                    
-                }
-                else
-                {
 
-                    LCAArduinos.Add(ard); // Usually, this would be done only after GetInfo()  (???), but I'm doing it now to test the UI since GetInfo is not implemented yet. 2/9/2019.
+                    return;
+                });
 
-                    // Claim position as the "current", in-use arduino here, if it is untaken. 
-                    ArduinoBoard.COMMERROR result = await ard.RefreshInfo(); // It pinged successfully, so it's a real LCA arduino. It should get more info about itself and add itself to the 
-                    // await a delay? Delay for the length of a timeout.
-                    // after delay, check that info has been received (syncNeeded == false). If it hasn't, give error or something. 
-                    
-                    // In arduino instance, add arduino to LCAArduinos, and also to Arduino if that was claimed earlier. (once data received)
-                    // In arduino instance, destroy this thread (if possible) to prevent it from sitting here doing nothing until it times out. 
-                }
-                
-                return;
-            });
+
+            }
+
 
             //Console.WriteLine("End of ActivateArduino.\n\n");
 

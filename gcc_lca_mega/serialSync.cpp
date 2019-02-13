@@ -28,29 +28,42 @@ bool ProcessData()
 
   switch (dataIn[1] & 0x07)
   {
-    case '0':  // Null/Error?
+    case 0x00:  // Null/Error?
       // Error? 
-      return false; 
-    case '1':  // Ping
-      if (dataIn == (String)sot+'\x01'+'\x00'+(String)eot) {
-      Serial.print((String)sot+'\x01'+'\x00'+"qlc9KNMKi0mAyT4o"+(String)eot);
-      return true; // true means success(?)
-      } else {return false; }
-    case '2': // Config 
-      return ProcessConfigRequest(); 
+      return; 
+    case 0x01:  // Ping
+      if (dataIn == (String)sot+'\x01'+'\xF0'+(String)eot) {
+      //Serial.print((String)sot+(String)'\x01'+(String)'\xF0'+"qlc9KNMKi0mAyT4o"+(String)eot);
 
-    case '3': // Other -  Not implemented yet, so return error
+      // Windows is expecting: 02-01-f0-71-6c-63-39-4b-4e-4d-4b-69-30-6d-41-79-54-34-6f-03
+      // \x02\x01\xf0\x71\x6c\x63\x39\x4b\x4e\x4d\x4b\x69\x30\x6d\x41\x79\x54\x34\x6f\x03
+      
+      //Serial.write("\x02\x01\xF0qlc9KNMKi0mAyT4o\x03");  // not using sot and eot variables...
+      Serial.write("\x02\x01\xf0\x71\x6c\x63\x39\x4b\x4e\x4d\x4b\x69\x30\x6d\x41\x79\x54\x34\x6f\x03");
+
+      
+      //Serial.print("qlc9KNMKi0mAyT4o"+(String)eot);
+      //Serial.write(sot+'\x01'+'\xF0');
+      //Serial.write("qlc9KNMKi0mAyT4o"+eot); 
+      
+      digitalWrite(10,HIGH);
+      return; // true means success(?)
+      } else {return; }
+    case 0x02: // Config 
+      ProcessConfigRequest(); 
+      return;
+    case 0x03: // Other -  Not implemented yet, so return error
       // 
-      return false; 
+      return; 
 
-    case '4': // Not implemented yet, so return error
-      return false;
+    case 0x04: // Not implemented yet, so return error
+      return;
     default:
       // Error occurred! 
-      return false;
+      return;
   
   }
-  return false; 
+  return; 
 }
 
 
@@ -89,7 +102,7 @@ bool ProcessConfigRequest()
   else if (action == 1) // Write 
   {
     // Not implemented yet...
-    return true;
+    return false;
   }
   else  // Invlaid action value
   {

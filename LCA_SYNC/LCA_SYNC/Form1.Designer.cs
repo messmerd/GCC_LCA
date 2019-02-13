@@ -236,7 +236,7 @@
             // 
             // serialInterfaceBindingSource
             // 
-            this.serialInterfaceBindingSource.DataSource = typeof(Arduino_Serial_Interface.SerialInterface);
+            this.serialInterfaceBindingSource.DataSource = typeof(SerialInterface);
             // 
             // Main
             // 

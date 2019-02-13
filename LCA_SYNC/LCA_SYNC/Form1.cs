@@ -23,7 +23,7 @@ using Windows.Devices.Enumeration.Pnp;
 using Windows.Foundation;
 using System.Management;
 
-using Arduino_Serial_Interface;
+//using Arduino_Serial_Interface;
 
 namespace LCA_SYNC
 {

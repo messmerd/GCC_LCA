@@ -106,8 +106,8 @@ void setup() {
   dataIn.reserve(200);
   dataIn = "";
   dataReceived = false;
-  sot = '\x02'; //'!';
-  eot = '\x03'; //'.';
+  sot = 2; //'\x02'; //'!';
+  eot = 3; //'\x03'; //'.';
 
   digitalWrite(LED_PIN2, digitalRead(CD_PIN));  // LED is on when SD card is inserted and off when it is not.
 
@@ -146,6 +146,7 @@ void setup() {
   
   last_sample = conf.test_duration/conf.sample_rate; // The last sample before the test ends. 
 
+  digitalWrite(LED_PIN2,LOW);
 
   Serial.println("Press pushbutton to start test.");
   while (!digitalRead(PUSHBUTTON_PIN)) {; };  // Start test when pushbutton is pressed. 
@@ -169,6 +170,7 @@ void loop() {
     led_value=!led_value;
     _timer = 0;
 
+    
     // Read from sensors and put results into a string
     String dataString = "#" + (String)samples_elapsed + "\t";
     dataString += (String)digital_thermo_0.readCelsius() + "\t"; 
@@ -180,8 +182,10 @@ void loop() {
     dataString += (String)digital_thermo_6.readCelsius() + "\t"; 
     dataString += (String)digital_thermo_7.readCelsius(); 
 
+    
+    
     // Write the measurements to the data file on the SD card
-    printToFile(dataFileName, dataString, true); // print to file
+    //printToFile(dataFileName, dataString, true); // print to file
 
     // The time on the ChronoDot real-time clock (RTC) wasn't working, so RTC timestamps are disabled for now. 
     /*
@@ -194,14 +198,22 @@ void loop() {
   }
 
   if (dataReceived) {
-    if (Serial && ProcessData())
+    //digitalWrite(LED_PIN2,HIGH);
+    //noInterrupts();
+    if (Serial)  // Problem with this line? Maybe remove the Serial condition? 
     {
+      if (ProcessData())
+      {
+        dataIn = "";
+        dataReceived = false;
+      }
       dataIn = "";
       dataReceived = false;
     }
+    //interrupts();
   }
 
-  digitalWrite(LED_PIN2, digitalRead(CD_PIN));
+  //digitalWrite(LED_PIN2, digitalRead(CD_PIN));
 
   while (samples_elapsed >= last_sample) {}; // Ends the test by going into an infinite loop. It works for now, but we should probably change it later. 
   
@@ -248,6 +260,7 @@ void initTimer1(double seconds) {
 
 void serialEvent(){   // Note: serialEvent() doesn't work on Arduino Due!!!
   //delay(100); 
+
   char inChar;
   while (Serial && Serial.available()>0) {
     // get the new byte:

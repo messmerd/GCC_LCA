@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.IO.Ports;
 using System.Configuration;
@@ -15,7 +16,7 @@ using System.Text.RegularExpressions;
 using System.ComponentModel;
 using Windows.Management;
 
-namespace Arduino_Serial_Interface
+namespace LCA_SYNC
 {
 
     public enum DATACATEGORY : byte { NULL, PING, CONFIG, OTHER, SENSORS, DATAFILE };  
@@ -247,23 +248,29 @@ namespace Arduino_Serial_Interface
             var t = Task.Run(async delegate
             {
                 ard.LCAChanged += delegate { Console.WriteLine("Canceling delay."); try { source?.Cancel(); } catch (Exception ee) {Console.WriteLine(ee.Message); } };
-
+                Response resp = new Response(null,ArduinoBoard.COMMERROR.INVALID);
+                
                 try
                 {
                     Console.WriteLine("Now pinging arduino...");
-                    ard.SendPing();
+                    //ard.SendPing(); // Old code. Commenting out to test new code:
+                    resp = await ard.Ping(5000); 
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex.Message);
+                    Console.WriteLine(ex.Message + " Inner exception: " + ex.InnerException?.Message); 
                 }
 
+                Console.WriteLine("After Communicate. resp.data="+resp.data+", resp.validity="+resp.validity.ToString());
+
+
+                /* // Old code. Commenting out to test new code
                 if (!ard.lca)
                 {
                     //Console.WriteLine("Waiting...");
                     try
                     {
-                        await Task.Delay(TimeSpan.FromMilliseconds(100), source.Token)/*.ConfigureAwait(false)*/;  // If the timespan is too long, it crashes!!!!!!!!!!!1
+                        await Task.Delay(TimeSpan.FromMilliseconds(100), source.Token); //.ConfigureAwait(false);  // If the timespan is too long, it crashes!!!!!!!!!!!1
 
                     }
                     catch (Exception ex)
@@ -272,8 +279,9 @@ namespace Arduino_Serial_Interface
                     }
                 }
                 //Console.WriteLine("After delay.");
+                */
 
-                if (!ard.lca)  // After 5 ms, if the arduino instance hasn't gotten a ping back telling that it's an LCA board
+                if (resp.validity != ArduinoBoard.COMMERROR.VALID)  //(!ard.lca)  // After 5 ms, if the arduino instance hasn't gotten a ping back telling that it's an LCA board
                 {
                     if (LCAArduinos.ToList().Exists(a => a.Port.PortName == port))
                     {
@@ -305,7 +313,7 @@ namespace Arduino_Serial_Interface
                     // In arduino instance, destroy this thread (if possible) to prevent it from sitting here doing nothing until it times out. 
                 }
                 
-                //return 42;
+                return;
             });
 
             //Console.WriteLine("End of ActivateArduino.\n\n");
@@ -505,597 +513,7 @@ namespace Arduino_Serial_Interface
 
     }
 
-    public class ArduinoBoard
-    {
-
-        static char eot; // End of text
-        static char sot; // Start of text 
-
-        public ManagementBaseObject mgmtBaseObj { get; set; }
-        public SerialPort Port { get; set; }
-
-        public EventHandler LCAChanged { get; set; }
-        private bool _lca;  // Whether the device is a legit LCA arduino (true) or not (false)
-        public bool lca
-        {
-            get { return _lca; }
-            set
-            {
-                if (LCAChanged != null && _lca != value)
-                {
-                    _lca = value;
-                    LCAChanged?.Invoke(this, new EventArgs());
-                }
-            }
-        }
-        String type; // Mega, Uno, Nano, etc. 
-
-        String vid;
-        String pid;
-
-        public ArduinoBoard Self  // Is there a better way to do this in Form1? DataSource
-        {
-            get { return this; }
-        }
-
-        private DATACATEGORY _ExpectedResponseType { get; set; }
-        private System.Threading.CancellationTokenSource _ExpectedResponseCancellation { get; set; }
-
-        private String _ReceivedData;   // Stores last data received via Serial
-        public String ReceivedData
-        {
-            get { return _ReceivedData; }
-        }
-
-        /*  is this a good design? 
-        private String _SendData;
-        public String SendData   // Can set SendData to send data  - is this a good design? 
-        {
-            get { return _SendData; }
-            set
-            {
-                _SendData = value;  // Do this?
-                // Send data:
-                if (Port != null && Port.IsOpen)
-                {
-                    try
-                    {
-                        Port.Write(sot + _SendData + eot);
-                        _SendData = "";
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine(e.GetType().Name + ": " + e.Message);
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Arduino isn't open.");
-                    throw new InvalidOperationException("Can't send data if the serial port is closed!");
-                }
-
-            }
-
-        }
-        */
-
-        public String packageName { get; set; }
-        public String displayName { get; set; }
-        private UInt32 testDuration { get; set; }
-        private byte startDelay { get; set; }
-        private byte sampleRate { get; set; }
-
-        //public static String PINGVALUE = "10" + "qlc9KNMKi0mAyT4oKlVky6w7gtHympiyzpdJhE8gj2PPgvO0am5zoSeqkOanME";  // "1" (PING) + 62-character random string from random.org + eot
-        public static String PINGVALUE = '\x01' + '\x00' + "qlc9KNMKi0mAyT4o";  // "10" (PING) + 62-character random string from random.org + eot
-        // !10qlc9KNMKi0mAyT4o.
-
-        private bool _syncNeeded;
-        public bool syncNeeded
-        {
-            get { return _syncNeeded; }
-        }
-
-        private bool _Busy;
-
-        public enum COMMERROR { NULL, VALID, INVALID, UNVALIDATED, TIMEOUT, PORTBUSY, INVALIDINPUT, PORTERROR, OTHER };
-        private COMMERROR _ResponseValidity; 
-
-        public ArduinoBoard()
-        {
-            System.Threading.CancellationTokenSource _ExpectedResponseCancellation = new System.Threading.CancellationTokenSource();
-            mgmtBaseObj = null;
-            Port = new SerialPort();
-            Port.ErrorReceived += delegate { _ResponseValidity = COMMERROR.PORTERROR; _ExpectedResponseCancellation.Cancel(); };
-            lca = false; 
-            type = "NULL";
-            vid = "NULL";
-            pid = "NULL";
-            packageName = "NULL";
-            displayName = "NULL";
-            _ReceivedData = "";
-            //_SendData = "";
-            _syncNeeded = true;
-            _ExpectedResponseType = DATACATEGORY.PING;  // Pinging the arduino is the 1st step
-
-            eot = '\x03';
-            sot = '\x02';
-            _ResponseValidity = COMMERROR.NULL;
-            _Busy = true;   // Assuming ping happens at start 
-            //OpenConnection(); // ? 
-
-            testDuration = 0;
-            startDelay = 0;
-            sampleRate = 0; 
-        }
-
-        public ArduinoBoard(String portName)
-        {
-            System.Threading.CancellationTokenSource _ExpectedResponseCancellation = new System.Threading.CancellationTokenSource();
-            mgmtBaseObj = null;
-            Port = new SerialPort(portName);
-            Port.ErrorReceived += delegate { _ResponseValidity = COMMERROR.PORTERROR; _ExpectedResponseCancellation.Cancel(); };
-            lca = false;
-            type = "NULL";
-            vid = "NULL";
-            pid = "NULL";
-            packageName = "NULL";
-            displayName = "NULL";
-            _ReceivedData = "";
-            //_SendData = "";
-            _syncNeeded = true;
-            _ExpectedResponseType = DATACATEGORY.PING;  // Pinging the arduino is the 1st step
-            eot = '\x03';
-            sot = '\x02';
-            //OpenConnection(); // ?
-            _ResponseValidity = COMMERROR.NULL;
-            _Busy = true;   // Assuming ping happens at start 
-            testDuration = 0;
-            startDelay = 0;
-            sampleRate = 0;
-        }
-
-        public ArduinoBoard(ManagementBaseObject device)
-        {
-            System.Threading.CancellationTokenSource _ExpectedResponseCancellation = new System.Threading.CancellationTokenSource();
-            lca = false;                            // to be determined...
-            mgmtBaseObj = device;
-            Port = new SerialPort(SerialInterface.GetPortName(device));
-            Port.ErrorReceived += delegate { _ResponseValidity = COMMERROR.PORTERROR; _ExpectedResponseCancellation.Cancel(); };  // Untested - Could occur after data received event which could cause issues.
-            // See  https://docs.microsoft.com/en-us/dotnet/api/system.io.ports.serialport.errorreceived?view=netframework-4.7.2 
-
-            //Console.WriteLine("In ArduinoBoard constructor, Port.PortName = "+Port.PortName);
-
-            vid = SerialInterface.GetVID(device);
-            pid = SerialInterface.GetPID(device);
-            type = SerialInterface.GetArduinoType(vid, pid);
-            packageName = "NULL";                   // to be found
-            displayName = "NULL";                   // to be found
-            _ReceivedData = "";
-            //_SendData = "";
-            _syncNeeded = true;
-            _ExpectedResponseType = DATACATEGORY.PING;  // Pinging the arduino is the 1st step
-            eot = '\x03'; //'.'; //'\x03';
-            sot = '\x02'; //'!'; // '\x02' 
-            _ResponseValidity = COMMERROR.NULL;
-            _Busy = true;   // Assuming ping happens at start 
-            testDuration = 0;
-            startDelay = 0;
-            sampleRate = 0;
-        }
-
-        ~ArduinoBoard()
-        {
-            CloseConnection();
-        }
-
-        private void SendData(String data)
-        {
-            if (Port != null && Port.IsOpen && !_Busy)
-            {
-                try
-                {
-                    _Busy = true;
-                    Port.Write(sot + data + eot);
-                }
-                catch (Exception e)
-                {
-                    //Console.WriteLine(e.GetType().Name + ": " + e.Message);
-                    throw e;
-                }
-            }
-            else
-            {
-                //Console.WriteLine("Arduino isn't open.");
-                throw new InvalidOperationException("Can't send data if the serial port is closed or busy!");
-            }
-        }
-
-        private void SendData(byte[] data)
-        {
-            data.Prepend((byte)sot).Append((byte)eot); // Add sot and eot to byte array
-
-            if (Port != null && Port.IsOpen && !_Busy)
-            {
-                try
-                {
-                    _Busy = true;
-                    Port.Write(data, 0, data.Length);
-                    Console.WriteLine("Just wrote: " + BitConverter.ToString(data));
-                }
-                catch (Exception e)
-                {
-                    //Console.WriteLine(e.GetType().Name + ": " + e.Message);
-                    throw e;
-                }
-            }
-            else
-            {
-                //Console.WriteLine("Arduino isn't open.");
-                throw new InvalidOperationException("Can't send data if the serial port is closed or busy!");
-            }
-        }
-
-        public void SendData(DATACATEGORY cat, byte subcat, ACTION action, String data=null)
-        {
-            // Need to check for invalid input in this method!!!! 
-            // Return a COMMERROR ?  An maybe change everything over to Exceptions (b/c some errors already begin as exceptions, and they are more detailed in description and don't require a special Response class)?
-
-            switch (cat)
-            {
-                case DATACATEGORY.NULL:
-                    SendData(new byte[] { 0x00, 0x00 });  // cat = 0
-                    break;
-                case DATACATEGORY.PING:
-                    SendData(new byte[] { 0x01, 0x00 });  // cat = 1
-                    break;
-                case DATACATEGORY.CONFIG:
-                    // cat = 2. The first hex is F just so that the byte isn't 0x02, which is sot. 
-                    SendData(new byte[] { 0xF2, (byte)((byte)action | subcat) });  // cat = 2
-                    break;
-                case DATACATEGORY.OTHER:
-                    // Not implemented yet...
-                    // Real-time toggle
-                    // Stop/stop tests 
-                    // Sensor code? 
-                    // Rick-roll
-                    // etc.
-                    // Don't forget the 0x02 and 0x03 bytes can't be used
-                    break;
-                case DATACATEGORY.SENSORS:
-                    // Not implemented yet...
-                    break;
-                case DATACATEGORY.DATAFILE:
-                    // The two bytes are structured as: (data file # - upper 5b)(cat), (data file # - lower 6b)0(action)
-                    SendData(new byte[] { (byte)(((subcat & 0x7C0) >> 3) | (byte)cat), (byte)(((subcat & 0x3F) << 2) | (byte)action) });
-                    break;
-                default:
-                    Console.WriteLine("Error. Invalid transmission category.");
-                    break;
-            }
-
-        }
-
-        public void SendData(DATACATEGORY cat, CONFIGCATEGORY subcat, ACTION action, String data = null)
-        {
-            SendData(cat, (byte)subcat, action, data);
-        }
-
-        public void SendPing()
-        {
-            // Use ExpectedResponseType = DATACATEGORY.PING;  here???? 
-            try
-            {
-                SendData("10");  // 10 is for ping. SendData does the rest. 
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.GetType().Name + ": " + e.Message);
-            }
-        }
-
-
-        /// <summary>
-        /// Raised when new  <see cref="WeatherDataItem"/>s are added
-        /// </summary>
-
-        public event EventHandler NewDataReceived;
-
-        public void setArduino(ManagementBaseObject ard)
-        {
-            mgmtBaseObj = ard;
-            Port.PortName = SerialInterface.GetPortName(ard);
-            // set other info here using ard
-        }
-
-        public async Task<COMMERROR> RefreshInfo()
-        {
-            // Get all information about Arduino here:
-            // Name of lca sensor package
-            // Config file
-            // Sensors info
-            // List of data file filenames (if lastdatafile# - total#offiles > 0.5*total#offiles, then it would be less data needed to specify which files are present rather than missing (?))
-            // ...
-
-            Console.WriteLine("In RefreshInfo.");
-
-            Response results = await Communicate(DATACATEGORY.CONFIG, CONFIGCATEGORY.ALL, ACTION.READVAR);
-
-            if (results.validity == COMMERROR.VALID)  // Only update values if successful
-            {
-                List<object> results2;
-                results2 = (List<object>)results.data;
-
-                packageName = results2[0].ToString();
-                displayName = packageName + " (" + Port.PortName + ")";
-                testDuration = (uint)results2[1];
-                startDelay = (byte)results2[2];
-                sampleRate = (byte)results2[3];
-            }
-
-            Console.WriteLine("At end of RefreshInfo.");
-
-            return results.validity;
-
-        }
-
-
-        double _GetTimeoutLength(DATACATEGORY cat, CONFIGCATEGORY subcat, ACTION action, String data = null)
-        {
-            return 100.0; // Implement this later. 
-        }
-
-        private async Task<Response> CommunicateRaw(DATACATEGORY cat, CONFIGCATEGORY subcat, ACTION action, String data = null)
-        {
-            // Returns the raw response without validating it. 
-            // It can still return some errors (in Response.validity), but it can't find fault with the content of the data received, so Response.validity should never be INVALID. 
-
-            if (_Busy)
-            {
-                // new Exception()
-                return new Response("", COMMERROR.PORTBUSY);
-            }
-
-            if (Port == null || !Port.IsOpen)
-            {
-                return new Response("", COMMERROR.OTHER);
-            }
-
-            double timeoutLength = _GetTimeoutLength(cat, subcat, action, data);
-
-            _ExpectedResponseCancellation = new System.Threading.CancellationTokenSource();  // needed
-            _ResponseValidity = COMMERROR.UNVALIDATED;  // If nothing happens to this, it will remain as UNVALIDATED after the response has been received.
-            SendData(cat, subcat, action, data);
-            await Task.Delay(TimeSpan.FromMilliseconds(timeoutLength), _ExpectedResponseCancellation.Token);
-            return new Response(_ReceivedData, _ResponseValidity);  // Should it be COMMERROR.UNVALIDATED rather than _ResponseValidity ?  Probably not 
-        }
-
-        public async Task<Response> Communicate(DATACATEGORY cat, CONFIGCATEGORY subcat, ACTION action, String data = null)
-        {
-            Response resp;
-            try
-            {
-                resp = await CommunicateRaw(cat, subcat, action, data);
-            }
-            catch (Exception)
-            {
-                throw;
-            }
-
-            if (resp.validity != COMMERROR.UNVALIDATED && resp.validity != COMMERROR.VALID)   // Invalid response ()
-            {
-                return resp;
-            }
-            else if (resp.validity == COMMERROR.VALID)  // Should not be valid at this point
-            {
-                return new Response(resp.data, COMMERROR.OTHER);
-                // Or throw some unknown error exception
-            }
-            else  // Unvalidated response (the only good response here), now need to parse it and validate it
-            {
-                switch (cat)
-                {
-                    case DATACATEGORY.NULL:  // I'm not sure what sorts of repsonses would be in this category, if any, since I don't know anything that would be sent in this category
-
-                        //throw new Exception("Unknown error");
-                        return new Response(resp.data, COMMERROR.OTHER);
-
-                    case DATACATEGORY.PING:
-                        if (resp.data.ToString().Equals(sot+PINGVALUE+eot))
-                        {
-                            _ExpectedResponseType = DATACATEGORY.NULL; // This assumes only one response type at a time
-                            lca = true;
-                            return new Response("Successful ping", COMMERROR.VALID);
-                        }
-                        else
-                        {
-                            return new Response("Ping failed", COMMERROR.INVALID);
-                        }
-
-                    case DATACATEGORY.CONFIG:
-                        if (subcat == CONFIGCATEGORY.ALL)
-                        {
-                            // Check for sot and eot ? When should that be done ?
-                            if (_ReceivedData.Length > 42 || _ReceivedData.Length < 10) { return new Response("The response string was of the wrong length.", COMMERROR.INVALID); }
-                            if (_ReceivedData[1] != '\xF2' && _ReceivedData[2] != (byte)((byte)action | (byte)subcat)) { return new Response("The response string contained the wrong request code.", COMMERROR.INVALID); }
-
-                            List<object> results = new List<object>();
-
-                            int nullterm = _ReceivedData.IndexOf('\x00');
-                            if (nullterm == -1)
-                            {
-                                return new Response("Could not parse the Package Name from the response string.", COMMERROR.INVALID);
-                            }
-                            else
-                            {
-                                results.Add(_ReceivedData.Substring(3,nullterm-4));  // Don't include the null term. in the package name 
-                            }
-                            if (_ReceivedData.Length != nullterm + 6) { return new Response("The response string was of the wrong length.", COMMERROR.INVALID); }
-
-                            results.Add(_ReceivedData.Substring(nullterm + 1, 3)); // The test duration 
-                            results.Add(_ReceivedData.Substring(nullterm + 4, 1)); // The start delay  
-                            results.Add(_ReceivedData.Substring(nullterm + 5, 1)); // The sample rate  
-                            return new Response(results, COMMERROR.VALID);
-                        }
-                        else
-                        {
-                            // Not implemented yet 
-                            return new Response("Not implemented yet...", COMMERROR.OTHER);
-                        }
-                    
-                    default:
-                        return new Response(resp.data, COMMERROR.OTHER);
-                }
-
-            }
-
-        }
-
-        /// <summary>
-        /// Opens the connection to an Arduino board
-        /// </summary>
-        public void OpenConnection()
-        {
-            // This method is throwing an exception. 1/28/2019.
-
-            Port.ReadTimeout = 1500;  // ???
-            Port.WriteTimeout = 99; // Fixed the problem! yay 
-
-            Port.NewLine = eot.ToString(); // ? 
-
-            // SerialPort() defaults: COM1, 9600 baud rate, 8 data bits, 0 parity bits, no parity, 1 stop bit, no handshake
-            // Arduino defaults:                            8 data bits, 0 parity bits, no parity, 1 stop bit, no handshake(?). Can be changed. 
-
-            if (!Port.IsOpen)
-            {
-                Port.DataReceived += arduinoBoard_DataReceived;
-                //arduinoBoard.PortName =  ConfigurationSettings.AppSettings["ArduinoPort"];
-
-                // For debugging: Port.PortName = ConfigurationSettings.AppSettings["VirtualPort"]; // com0com virtual serial port
-
-                Port.Open();
-            }
-            else
-            {
-                throw new InvalidOperationException("The Serial Port is already open!");
-
-            }
-
-
-
-        }
-
-        /// <summary>
-        /// Closes the connection to the Arduino Board.
-        /// </summary>
-        public void CloseConnection()
-        {
-            if (Port != null && Port.IsOpen == true)
-            {
-                Port.Close();
-            }
-        }
-
-        /// <summary>
-        /// Reads weather data from the arduinoBoard serial port
-        /// </summary>
-        void arduinoBoard_DataReceived(object sender, SerialDataReceivedEventArgs e)
-        {
-            //string data = ((char)Port.ReadChar()).ToString();//Read 
-
-            SerialPort p = (SerialPort)sender;
-
-            if (Port == null)  // p is not null when Port is???
-            {
-                Console.WriteLine("The port should only be null here if the ArduinoBoard receives data after the ping times out (in ActivateArduino). {0} {1}", ((SerialPort)sender).ToString(), e.EventType);
-                return; 
-            }
-
-            //Console.WriteLine(p.ReadBufferSize.ToString());
-
-            String data = null;
-
-            //Console.WriteLine("hereeeee");
-
-            try
-            {
-
-                /*
-                // This is not really working well. 
-                while (p.BytesToRead > 0)
-                {
-                    data += p.ReadExisting();
-                    //data += p.ReadLine();
-                }*/
-                  
-                data = Port.ReadTo(eot.ToString()); // Read until the EOT char. This is working well as of 2/9/2019.
-                data += eot;
-                // Maybe read bytes at a time instead...? 
-            }
-            catch (Exception exc)
-            {
-                // For some reason, this keeps going on after the main loop finishes in the arduino program: (it eventually stops though)
-                Console.WriteLine("In arduino's DataReceived handler: " + exc.Message + " " + e.EventType);
-                // Other code here????
-                // Set state to unresponsive or timeout? 
-                return;
-            }
-
-            _ReceivedData += data;
-
-            if (data.First() != '#')  // Just so that there isn't a bunch of spam
-            {
-                Console.WriteLine("Data received:   " + data);
-            }
-            
-
-            if (_ReceivedData != "" && _ReceivedData.Last() == eot && _ReceivedData.First() == sot)
-            {
-                // Cancel
-                _ExpectedResponseCancellation.Cancel();  // Data has been received, so cancel the delay in any thread waiting for this event
-                // The entire data packet has been received. 
-                ProcessData(_ReceivedData);  // _ReceivedData should be copied once edited
-                _ReceivedData = ""; 
-                
-            }
-
-            //Console.WriteLine("end hereeee");
-
-        }
-
-        void ProcessData(String data)
-        {
-            Console.WriteLine("In ProcessData.");
-
-            data = data.TrimStart(sot).TrimEnd(eot);
-
-            if (_ExpectedResponseType == DATACATEGORY.PING && data.Equals(PINGVALUE))
-            {
-                Console.WriteLine("Setting lca to true.");
-                _ExpectedResponseType = DATACATEGORY.NULL; // This assumes only one response type at a time
-                lca = true;
-                
-            }
-            else
-            {
-                // If it can be expecting more than one kind of data at one time, then if it wasn't a ping response, that doesn't imply the ping is never received.
-            }
-
-
-            if (NewDataReceived != null && _ExpectedResponseType != DATACATEGORY.PING) // If there is someone waiting for this event to be fired
-            {
-                NewDataReceived(this, new EventArgs()); //Fire the event, indicating that new WeatherData was added to the list.
-            }
-        }
-
-        /// <summary>
-        /// Sends the command to the Arduino board which triggers the board
-        /// to send the weather data it has internally stored.
-        /// </summary>
-        
-
-
-    }
-
+ 
     public struct Response
     {
         public object data { get; }
@@ -1106,5 +524,24 @@ namespace Arduino_Serial_Interface
             this.validity = validity;
         }
     }
+
+    public class ArduinoCommunicationException : Exception
+    {
+        public ArduinoCommunicationException()
+        {
+        }
+
+        public ArduinoCommunicationException(string message)
+            : base(message)
+        {
+        }
+
+        public ArduinoCommunicationException(string message, Exception inner)
+            : base(message, inner)
+        {
+        }
+    }
+
+    
 
 }

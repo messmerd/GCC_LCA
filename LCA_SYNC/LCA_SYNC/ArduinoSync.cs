@@ -28,9 +28,9 @@ namespace LCA_SYNC
 // enum for arduino operating states? (Unresponsive, RunningTest, ComputerMode, etc.)
 
 /// <summary>
-/// Encapsulates the communication from and to
-/// an Arduino Board which sends weather data
-/// it has stored previously
+/// Encapsulates the communication to and from 
+/// serial ports, with support for arduino 
+/// devices.
 /// </summary>
     public class SerialInterface
     {
@@ -66,10 +66,22 @@ namespace LCA_SYNC
             }
         }
 
+        private int _Arduino = -1;
         public ArduinoBoard Arduino
         {
-            get;
-            set;
+            get
+            {
+                if (_Arduino >= 0)
+                {
+                    return LCAArduinos?[_Arduino];
+                }
+                else
+                {
+                    return null;
+                }
+
+            }
+            set {; }
 
             /*  // Causes stack overflow exception for some reason: 
             get {return Arduino; }
@@ -80,6 +92,9 @@ namespace LCA_SYNC
             }
             */
         }
+
+        private static SpinLock _ActivateArduinoLock;
+        //private static object ;
 
         //public EventHandler LCAArduinos_Changed { get; set; }
         private BindingList<ArduinoBoard> _LCAArduinos;
@@ -98,7 +113,7 @@ namespace LCA_SYNC
         }
         public ManagementEventWatcher pnpWatcher { get; set; }
         public EventArrivedEventHandler pnpWatcherHandler { get; set; }
-
+        
 
         private SerialInterface()  // Default constructor
         {
@@ -107,8 +122,94 @@ namespace LCA_SYNC
             LCAArduinos = new BindingList<ArduinoBoard>();
             pnpWatcher = null;
             pnpWatcherHandler = null;
-
+            USBPnPDeviceChanged += SerialInterface_USBPnPDeviceChanged;
+            _Arduino = -1;
+            _ActivateArduinoLock = new SpinLock();
+            //_GotActivateArduinoLock = false; 
             //startPnPWatcher();
+
+        }
+
+        private void SerialInterface_USBPnPDeviceChanged(object sender, EventArrivedEventArgs e)
+        {
+            Console.WriteLine("USB PnP device changed");
+
+            // Need to find way to distinguish between adding and removing, b/c this event is triggered by both
+
+            //Console.WriteLine("weatherData_USBPnPDeviceChanged event");
+
+            //Console.WriteLine("You have added or removed a USB device. weatherData_USBDeviceChanged.\nEventArgs={0}\nsender={1}",e.ToString(),sender.ToString());
+            //Console.WriteLine(((ManagementBaseObject)(((EventArrivedEventArgs)e).Context))["TargetInstance"].ToString());
+
+            ManagementBaseObject device = (ManagementBaseObject)e.NewEvent["TargetInstance"];  // Is this right?
+            string wclass = e.NewEvent.SystemProperties["__Class"].Value.ToString(); 
+            string port = GetPortName(device);
+
+            Console.WriteLine(wclass);
+            Console.WriteLine(port);
+            Console.WriteLine(Arduino?.Port?.PortName == port);
+
+            string wop = string.Empty;
+            switch (wclass)
+            {
+                case "__InstanceModificationEvent":
+                    wop = "modified";
+                    break;
+                case "__InstanceCreationEvent":
+                    wop = "created";
+                    break;
+                case "__InstanceDeletionEvent":
+                    wop = "deleted";
+                    break;
+                default:
+                    wop = "error";
+                    break;
+            }
+
+            if (Arduino?.Port?.PortName == port) //(Arduino != null && device.Equals(Arduino.mgmtBaseObj)) // If the added/removed device is the LCA Arduino in use
+            {
+                Console.WriteLine("The LCA arduino device on port {0} that you were using was {1}.", port, wop);
+
+                if (wop == "created")
+                {
+                    throw new InvalidOperationException("Cannot create an arduino device that is already created and in use. ");
+                }
+                else if (wop == "deleted")
+                {
+                    // Handle errors here.
+                    // Remove device from LCAArduinos and Arduino? Or have some disabled or error state that it places it in? 
+                }
+                
+
+                // Update LCA Arduino List 
+                // Do code to stop from writing to port or start writing, or whatever
+            }
+
+            Console.WriteLine("here");
+            if (LCAArduinos.ToList().Exists(a => a?.Port?.PortName == port)) //(LCAArduinos.ToList().Exists(a => a.Port.PortName == SerialInterface.GetPortName(device))) // If the added/removed device was an LCA Arduino not in use
+            {
+                Console.WriteLine("An LCA arduino device on port {0} that you were not using was {1}.", port, wop);
+                //Console.WriteLine(serial.Arduino.Port.PortName);
+                //MessageBox.Show("An LCA arduino device you were not using was " + wop + ".");
+
+                // Update LCA Arduino List here
+            }
+            else  // The added/removed device was not an LCA Arduino (an LCA Arduino device previously known by the program)
+            {
+                Console.WriteLine("A non-LCA-Arduino device on port {0} was {1}.", port, wop); 
+
+                if (wop == "created" && IsGenuineArduino(device))  // A new arduino device was added!
+                {
+                    
+                    Thread.Sleep(TimeSpan.FromMilliseconds(5000));
+                    ActivateArduino(device); // Checks if it is an LCA arduino device, and adds it to LCAArduinos if it is
+                }
+                
+            }
+            //((ManagementBaseObject)e["TargetInstance"])["Name"]
+            //((ManagementEventWatcher)sender).
+
+            Console.WriteLine("done with USB PnP device change.");
 
         }
 
@@ -127,9 +228,9 @@ namespace LCA_SYNC
             pnpWatcher.Scope = scopeObject;
             pnpWatcher.Query = queryObject;
 
-            pnpWatcherHandler = new EventArrivedEventHandler(USBPnPDeviceChanged);
+            //pnpWatcherHandler = new EventArrivedEventHandler(USBPnPDeviceChanged);
 
-            pnpWatcher.EventArrived += pnpWatcherHandler;
+            pnpWatcher.EventArrived += USBPnPDeviceChanged; // pnpWatcherHandler;
 
             pnpWatcher.Options.Timeout = new TimeSpan(0, 0, 5);
             //new EventArrivedEventHandler(USBDeviceChanged);
@@ -138,27 +239,24 @@ namespace LCA_SYNC
         }
 
         /// <summary>
-        /// Holds a List of <see cref="WeatherDataItem"/> in order
-        /// to store weather data received from an Arduino Board.
-        /// </summary>
-        List<WeatherDataItem> weatherDataItems = new List<WeatherDataItem>();
-
-        /// <summary>
         /// Raised when a USB device is connected
         /// or disconnected from the computer. 
         /// </summary>
-        public event EventHandler USBPnPDeviceChanged;
-
+        public event EventArrivedEventHandler USBPnPDeviceChanged;
+        
+        public event ArduinoEventHandler ArduinoDataChanged;
+        
         /// <summary>
         /// Gets a list of <see cref="WeatherDataItem"/> which was
         /// previsously retrieved from an Arduino Board.
         /// </summary>
+        /*
         internal List<WeatherDataItem> WeatherDataItems
         {
             get { return weatherDataItems; }
-        }
+        }*/
 
-        
+
 
 
         public void PrintWow()
@@ -169,11 +267,11 @@ namespace LCA_SYNC
 
         
 
-        public void LocateLCADevices()
+        public async Task LocateLCADevices()
         {
             foreach (ManagementBaseObject dev in FindArduinos())
             {
-                ActivateArduino(dev);
+                await ActivateArduino(dev);
 
             }
 
@@ -224,29 +322,49 @@ namespace LCA_SYNC
         }
 
 
-        public void ActivateArduino(ManagementBaseObject device)  // Verifies that an arduino is LCA, and activates it if it is
+        public async Task ActivateArduino(ManagementBaseObject device)  // Verifies that an arduino is LCA, and activates it if it is
         {
             String port = GetPortName(device);
-
-            Console.WriteLine("Currently verifying arduino on port " + port + "..."); 
-            
             bool ardExists = LCAArduinos.ToList().Exists(a => a.Port.PortName == port);  // Gives ArduinoBoard if one with that port exists, else null
 
+            if (ardExists) // If an LCA arduino with the port specified doesn't exist in the LCAArduinos list, create an ArduinoBoard 
+            {
+                return; 
+            }
 
-
-            if (!ardExists) // If an LCA arduino with the port specified doesn't exist in the LCAArduinos list, create an ArduinoBoard 
+            Console.WriteLine("Currently verifying arduino on port " + port + "...");
+            
+            try
             {
                 
-                
 
-                System.Threading.CancellationTokenSource source = new System.Threading.CancellationTokenSource();  // Can/should this be used? 
+                //CancellationTokenSource source = new CancellationTokenSource();  // Can/should this be used? 
 
-                var t = Task.Run(async delegate
+                // Now awaiting this:  (2/24/2019)
+                await Task.Run(async delegate
                 {
-                    Console.WriteLine("Creating a new arduino device");
-                    ArduinoBoard ard = new ArduinoBoard(device);
-                    //ard.ExpectedResponseType = DATACATEGORY.PING;  // Getting ready to ping it  // Set ExpectedResponseType to DATACATEGORY.PING in constructor.
+                    Console.WriteLine("Lock status before TryEnter: _ActivateArduinoLock.IsHeld = {0}, _ActivateArduinoLock.IsHeldByCurrentThread = {1} ", _ActivateArduinoLock.IsHeld, _ActivateArduinoLock.IsHeldByCurrentThread);
+                    bool _GotActivateArduinoLock = false;
+                    try
+                    {
+                        _ActivateArduinoLock.TryEnter(1, ref _GotActivateArduinoLock);  // Only want one at a time. Else more than one ArduinoBoard instance could exist and be communicating with the same arduino during the activation stage. 
+                    }
+                    catch (Exception ex)
+                    {
+                        if (_GotActivateArduinoLock) { _ActivateArduinoLock.Exit(false); }
+                        Console.WriteLine("ActivateArduino TryEnter exception: " + ex.Message + " Inner exception: " + ex.InnerException);
+                        return;
+                    }
 
+                    if (!_GotActivateArduinoLock) { Console.WriteLine("Could not enter critical section. Lock is held by another thread. "); return; } // Don't enter the critical section if the lock wasn't acquired. 
+
+                    ArduinoBoard ard = new ArduinoBoard(device);
+                    
+                    Console.WriteLine("Created a new arduino device. _GotActivateArduinoLock = {0}", _GotActivateArduinoLock);
+                    Console.WriteLine("Lock status after TryEnter: _ActivateArduinoLock.IsHeld = {0}, _ActivateArduinoLock.IsHeldByCurrentThread = {1} ", _ActivateArduinoLock.IsHeld, _ActivateArduinoLock.IsHeldByCurrentThread); 
+                    //ArduinoBoard ard = new ArduinoBoard(device);
+                    //ard.ExpectedResponseType = DATACATEGORY.PING;  // Getting ready to ping it  // Set ExpectedResponseType to DATACATEGORY.PING in constructor.
+                    ard.ArduinoDataChanged += delegate (object sender, ArduinoEventArgs e) { ArduinoDataChanged.Invoke(sender, e); };  // Pass event from arduinos' event handlers to SerialInterface's ArduinoDataChanged event handler 
                     if (!ard.Port.IsOpen)  // ?
                     {
                         ard.OpenConnection();
@@ -259,31 +377,15 @@ namespace LCA_SYNC
                         Console.WriteLine("Now pinging arduino...");
                         //ard.SendPing(); // Old code. Commenting out to test new code:
                         resp = await ard.Ping(5000);
+                        
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine(ex.Message + " Inner exception: " + ex.InnerException);
+                        Console.WriteLine("Back in ActivateArduino: "+ex.Message + " Inner exception: " + ex.InnerException);
                     }
 
-                    Console.WriteLine("After Communicate. resp.data=" + resp.data + ", resp.validity=" + resp.validity.ToString());
-
-
-                    /* // Old code. Commenting out to test new code
-                    if (!ard.lca)
-                    {
-                        //Console.WriteLine("Waiting...");
-                        try
-                        {
-                            await Task.Delay(TimeSpan.FromMilliseconds(100), source.Token); //.ConfigureAwait(false);  // If the timespan is too long, it crashes!!!!!!!!!!!1
-
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine("Task.Delay's exception: " + ex.GetType().Name + ": " + ex.Message);
-                        }
-                    }
-                    //Console.WriteLine("After delay.");
-                    */
+                    //Console.WriteLine("After Communicate. resp.data=" + resp.data + ", resp.validity=" + resp.validity.ToString());
+                    //Console.WriteLine("Lock status after ping: _ActivateArduinoLock.IsHeld = {0}, _ActivateArduinoLock.IsHeldByCurrentThread = {1} ", _ActivateArduinoLock.IsHeld, _ActivateArduinoLock.IsHeldByCurrentThread);
 
                     if (resp.validity != ArduinoBoard.COMMERROR.VALID)  //(!ard.lca)  // After 5 ms, if the arduino instance hasn't gotten a ping back telling that it's an LCA board
                     {
@@ -296,10 +398,10 @@ namespace LCA_SYNC
                         }
                         else
                         {
-                            //ard.Port.Close();
-                            //ard.Port = null;  // "Destroy" its serial port (unecessary?)
-                            //ard = null;       // "Destroy" the arduino instance, since ping was not received 
-                            Console.WriteLine("Ping response not received. The ArduinoBoard instance should be set to null.");
+                            ard.Port.Close();
+                            ard.Port = null;  // "Destroy" its serial port (unecessary?)
+                            ard = null;       // "Destroy" the arduino instance, since ping was not received 
+                            Console.WriteLine("Ping response not received. The ArduinoBoard instance was set to null.");
                         }
 
                     }
@@ -308,25 +410,57 @@ namespace LCA_SYNC
 
                         Console.WriteLine("\n\nYES!!!! IT PINGED SUCCESSFULLY!!!!!\n\n");
 
+
                         LCAArduinos.Add(ard); // Usually, this would be done only after GetInfo()  (???), but I'm doing it now to test the UI since GetInfo is not implemented yet. 2/9/2019.
 
+                        if (_Arduino == -1)  // If no arduino is in use
+                        {
+                            _Arduino = LCAArduinos.Count - 1; // Add this arduino as the one in use
+                        }
+
                         // Claim position as the "current", in-use arduino here, if it is untaken. 
-                        ArduinoBoard.COMMERROR result = await ard.RefreshInfo(); // It pinged successfully, so it's a real LCA arduino. It should get more info about itself and add itself to the 
-                                                                                 // await a delay? Delay for the length of a timeout.
-                                                                                 // after delay, check that info has been received (syncNeeded == false). If it hasn't, give error or something. 
+
+                        //Console.WriteLine("");
+
+                        try
+                        {
+                            ArduinoBoard.COMMERROR result = await ard.RefreshInfo(); // It pinged successfully, so it's a real LCA arduino. It should get more info about itself and add itself to the 
+                                                                                        // await a delay? Delay for the length of a timeout.
+                                                                                        // after delay, check that info has been received (syncNeeded == false). If it hasn't, give error or something. 
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(ex.Message + " Inner exception: " + ex.InnerException);
+                        }
+
 
                         // In arduino instance, add arduino to LCAArduinos, and also to Arduino if that was claimed earlier. (once data received)
                         // In arduino instance, destroy this thread (if possible) to prevent it from sitting here doing nothing until it times out. 
                     }
-
+                    Console.WriteLine("About to exit lock. _ActivateArduinoLock.IsHeld = {0}, _ActivateArduinoLock.IsHeldByCurrentThread = {1} ", _ActivateArduinoLock.IsHeld, _ActivateArduinoLock.IsHeldByCurrentThread);
+                    if (_GotActivateArduinoLock) { _ActivateArduinoLock.Exit(false); }
+                    Console.WriteLine("End of Task.\n\n\n");
                     return;
                 });
 
 
+                
+
+
+                //Console.WriteLine("End of ActivateArduino.\n\n");
+
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("In ActivateArduino, caught: {0}", e.Message);
+                
+            }
+            finally
+            {
+                //if (_GotActivateArduinoLock) { _ActivateArduinoLock.Exit(); }
             }
 
-
-            //Console.WriteLine("End of ActivateArduino.\n\n");
 
         }
 
@@ -362,7 +496,8 @@ namespace LCA_SYNC
 
         public static String GetArduinoType(String vid, String pid)
         {
-            if (vid.ToLower() == "2341")  // Has the official Arduino USB PID
+            // Maybe return an enum instead? And then make another funtion for getting the string from the enum?
+            if (vid.ToLower() == "2341" || vid.ToLower() == "1b4f")  // Has the official Arduino LLC USB PID or Sparkfun USB PID (?)
             {
                 switch (pid.ToLower())
                 {
@@ -401,7 +536,7 @@ namespace LCA_SYNC
             // The 0403 VID was used by older Arduinos which use FTDI
             // Now, Arduinos use the 2341 VID. 
             String vid = GetVID(dev);
-            return vid == "2341" || (vid == "0403" && dev["Description"].ToString().Contains("Arduino"));
+            return vid == "2341" || vid == "1b4f" || (vid == "0403" && dev["Description"].ToString().Contains("Arduino"));
         }
 
         /* // I'm going to remove support for fake arduinos since we won't be using them anyway
@@ -474,30 +609,6 @@ namespace LCA_SYNC
     */ 
 
 
-    class WeatherDataItem
-    {
-        DateTime date;
-        public DateTime Date
-        {
-            get { return date; }
-            set { date = value; }
-        }
-
-        float temperatureCelsius;
-        public float TemperatureCelsius
-        {
-            get { return temperatureCelsius; }
-            set { temperatureCelsius = value; }
-        }
-
-        public void FromString(string weatherDataItemString)
-        {
-            string[] weatherDataItemArray = weatherDataItemString.Split('=');
-            DateTime.TryParse(weatherDataItemArray[0], out date);
-            float.TryParse(weatherDataItemArray[1].Replace('.', ','), out temperatureCelsius);
-        }
-    }
-
     class ConfigDataItem
     {
 
@@ -535,23 +646,7 @@ namespace LCA_SYNC
         }
     }
 
-    public class ArduinoCommunicationException : Exception
-    {
-        public ArduinoCommunicationException()
-        {
-        }
-
-        public ArduinoCommunicationException(string message)
-            : base(message)
-        {
-        }
-
-        public ArduinoCommunicationException(string message, Exception inner)
-            : base(message, inner)
-        {
-        }
-    }
-
+    
     
 
 }

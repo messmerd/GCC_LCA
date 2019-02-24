@@ -15,9 +15,11 @@ namespace LCA_SYNC
         [STAThread]
         static void Main()
         {
+
+            /*
             char sot = '\x02';
             char eot = '\x03';
-
+            */
 
             /*
             List<char> c = new List<char>(); ;
@@ -27,7 +29,7 @@ namespace LCA_SYNC
 
             String data = '\x01'.ToString();
             */
-
+            /*
             string key = "qlc9KNMKi0mAyT4o";
             char[] key_char = new char[] { (char)0x01, (char)0xF0 };
             byte[] key_byte = new byte[] { 0x01, 240 };
@@ -76,6 +78,8 @@ namespace LCA_SYNC
             Console.WriteLine();
             //System.Text.Encoding.
             //System.Text.Encoding.GetEncoding(28591);
+
+            */
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);

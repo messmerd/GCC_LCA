@@ -43,15 +43,19 @@ bool ProcessData()
       
       //Serial.write("\x02\x01\xF0qlc9KNMKi0mAyT4o\x03");  // not using sot and eot variables...
       //Serial.write("\x02\x01\xf0\x71\x6c\x63\x39\x4b\x4e\x4d\x4b\x69\x30\x6d\x41\x79\x54\x34\x6f\x03");
+      
       Serial.write(byte_array, 20);
+      dataInPos = 0; 
+      dataReceived = false;
+      
       Serial.flush(); // ? 
       
       digitalWrite(10,HIGH);
       return true; // true means success(?)
       } else {return false; }
     case 0x02: // Config 
-      //ProcessConfigRequest(); 
-      return false;
+      ProcessConfigRequest(); 
+      return true;
     case 0x03: // Other -  Not implemented yet, so return error
       // 
       return false; 
@@ -82,19 +86,20 @@ bool ProcessConfigRequest()
     switch (subcat) 
     {
       case 0: // All
-        return false;
         Serial.write(sot); 
         Serial.write(dataIn[1]);
         Serial.write(dataIn[2]);
         Serial.print(conf.package_name);  // Using null terminator to mark end of string
-        Serial.print(0x00);
-        byte bytebuffer[3];  // Stores bottom 3 bytes of long. 
-        bytebuffer[0] = conf.test_duration >> 16;
-        bytebuffer[1] = conf.test_duration >> 8;
-        bytebuffer[2] = conf.test_duration;
-        Serial.write(bytebuffer, 3); // Send as 3 bytes
-        Serial.write((byte)conf.start_delay);
-        Serial.write((byte)conf.sample_rate);
+        Serial.write(0x00);
+        //byte bytebuffer[3];  // Stores bottom 3 bytes of long. 
+        //bytebuffer[0] = (conf.test_duration >> 16);
+        //bytebuffer[1] = (conf.test_duration >> 8);
+        //bytebuffer[2] = conf.test_duration;
+        //Serial.write(bytebuffer, 3); // Send as 3 bytes
+        Serial.print(conf.test_duration, HEX);
+        Serial.write(0x00);
+        Serial.write((byte)(conf.start_delay+0x4));
+        Serial.write((byte)(conf.sample_rate+0x4));
         Serial.write(eot);
         
         return true;

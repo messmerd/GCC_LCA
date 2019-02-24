@@ -105,14 +105,17 @@
       <SubType>Designer</SubType>
     </None>
     <None Include="packages.config" />
-    <None Include="Properties\DataSources\Arduino_Serial_Interface.ArduinoBoard.datasource" />
-    <None Include="Properties\DataSources\Arduino_Serial_Interface.ConfigDataItem.datasource" />
-    <None Include="Properties\DataSources\Arduino_Serial_Interface.SerialInterface.datasource" />
-    <None Include="Properties\DataSources\Arduino_Serial_Interface.WeatherDataItem.datasource" />
+    <None Include="Properties\DataSources\ArduinoBoard.COMMERROR.datasource" />
+    <None Include="Properties\DataSources\ArduinoBoard.datasource" />
+    <None Include="Properties\DataSources\ArduinoCommunicationException.datasource" />
+    <None Include="Properties\DataSources\ArduinoEventArgs.datasource" />
+    <None Include="Properties\DataSources\ConfigDataItem.datasource" />
     <None Include="Properties\DataSources\LCA_SYNC.Properties.Resources.datasource" />
     <None Include="Properties\DataSources\LCA_SYNC.Properties.Settings.datasource" />
     <None Include="Properties\DataSources\Main.datasource" />
     <None Include="Properties\DataSources\Program.datasource" />
+    <None Include="Properties\DataSources\Response.datasource" />
+    <None Include="Properties\DataSources\SerialInterface.datasource" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -131,6 +134,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\sync0.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\en.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\fr.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

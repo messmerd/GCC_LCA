@@ -33,7 +33,7 @@
             this.tabControl = new System.Windows.Forms.TabControl();
             this.StatusPage = new System.Windows.Forms.TabPage();
             this.ConfigPage = new System.Windows.Forms.TabPage();
-            this.buttonConfigOpen = new System.Windows.Forms.Button();
+            this.labelSampleRate = new System.Windows.Forms.Label();
             this.panel1 = new System.Windows.Forms.Panel();
             this.radioButtonTempC = new System.Windows.Forms.RadioButton();
             this.radioButtonTempK = new System.Windows.Forms.RadioButton();
@@ -48,11 +48,22 @@
             this.buttonArduinoSync = new System.Windows.Forms.Button();
             this.mainBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.serialInterfaceBindingSource = new System.Windows.Forms.BindingSource(this.components);
+            this.numericUpDownSampleRate = new System.Windows.Forms.NumericUpDown();
+            this.labelTestDuration = new System.Windows.Forms.Label();
+            this.numericUpDownTestDurationHours = new System.Windows.Forms.NumericUpDown();
+            this.numericUpDownTestDurationMinutes = new System.Windows.Forms.NumericUpDown();
+            this.numericUpDownTestDurationSeconds = new System.Windows.Forms.NumericUpDown();
+            this.dateTimePicker1 = new System.Windows.Forms.DateTimePicker();
+            this.label2 = new System.Windows.Forms.Label();
             this.tabControl.SuspendLayout();
             this.ConfigPage.SuspendLayout();
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.mainBindingSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.serialInterfaceBindingSource)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownSampleRate)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationHours)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationMinutes)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationSeconds)).BeginInit();
             this.SuspendLayout();
             // 
             // buttonSync
@@ -89,7 +100,14 @@
             // 
             // ConfigPage
             // 
-            this.ConfigPage.Controls.Add(this.buttonConfigOpen);
+            this.ConfigPage.Controls.Add(this.label2);
+            this.ConfigPage.Controls.Add(this.dateTimePicker1);
+            this.ConfigPage.Controls.Add(this.numericUpDownTestDurationSeconds);
+            this.ConfigPage.Controls.Add(this.numericUpDownTestDurationMinutes);
+            this.ConfigPage.Controls.Add(this.numericUpDownTestDurationHours);
+            this.ConfigPage.Controls.Add(this.labelTestDuration);
+            this.ConfigPage.Controls.Add(this.numericUpDownSampleRate);
+            this.ConfigPage.Controls.Add(this.labelSampleRate);
             this.ConfigPage.Controls.Add(this.panel1);
             this.ConfigPage.Controls.Add(this.label1);
             this.ConfigPage.Location = new System.Drawing.Point(4, 22);
@@ -100,21 +118,22 @@
             this.ConfigPage.Text = "Config";
             this.ConfigPage.UseVisualStyleBackColor = true;
             // 
-            // buttonConfigOpen
+            // labelSampleRate
             // 
-            this.buttonConfigOpen.Location = new System.Drawing.Point(291, 252);
-            this.buttonConfigOpen.Name = "buttonConfigOpen";
-            this.buttonConfigOpen.Size = new System.Drawing.Size(130, 23);
-            this.buttonConfigOpen.TabIndex = 13;
-            this.buttonConfigOpen.Text = "Open in Text Editor";
-            this.buttonConfigOpen.UseVisualStyleBackColor = true;
+            this.labelSampleRate.AutoSize = true;
+            this.labelSampleRate.Location = new System.Drawing.Point(30, 17);
+            this.labelSampleRate.Name = "labelSampleRate";
+            this.labelSampleRate.Size = new System.Drawing.Size(82, 13);
+            this.labelSampleRate.TabIndex = 13;
+            this.labelSampleRate.Text = "Sample Rate (s)";
+            this.labelSampleRate.Click += new System.EventHandler(this.label2_Click);
             // 
             // panel1
             // 
             this.panel1.Controls.Add(this.radioButtonTempC);
             this.panel1.Controls.Add(this.radioButtonTempK);
             this.panel1.Controls.Add(this.radioButtonTempF);
-            this.panel1.Location = new System.Drawing.Point(33, 45);
+            this.panel1.Location = new System.Drawing.Point(55, 105);
             this.panel1.Name = "panel1";
             this.panel1.Size = new System.Drawing.Size(113, 24);
             this.panel1.TabIndex = 12;
@@ -154,7 +173,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(30, 29);
+            this.label1.Location = new System.Drawing.Point(52, 89);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(94, 13);
             this.label1.TabIndex = 11;
@@ -229,6 +248,7 @@
             this.buttonArduinoSync.Size = new System.Drawing.Size(31, 31);
             this.buttonArduinoSync.TabIndex = 5;
             this.buttonArduinoSync.UseVisualStyleBackColor = false;
+            this.buttonArduinoSync.Click += new System.EventHandler(this.buttonArduinoSync_Click);
             // 
             // mainBindingSource
             // 
@@ -236,7 +256,102 @@
             // 
             // serialInterfaceBindingSource
             // 
-            this.serialInterfaceBindingSource.DataSource = typeof(SerialInterface);
+            this.serialInterfaceBindingSource.DataSource = typeof(LCA_SYNC.SerialInterface);
+            // 
+            // numericUpDownSampleRate
+            // 
+            this.numericUpDownSampleRate.DecimalPlaces = 3;
+            this.numericUpDownSampleRate.Increment = new decimal(new int[] {
+            125,
+            0,
+            0,
+            196608});
+            this.numericUpDownSampleRate.Location = new System.Drawing.Point(33, 34);
+            this.numericUpDownSampleRate.Maximum = new decimal(new int[] {
+            600,
+            0,
+            0,
+            65536});
+            this.numericUpDownSampleRate.Minimum = new decimal(new int[] {
+            125,
+            0,
+            0,
+            196608});
+            this.numericUpDownSampleRate.Name = "numericUpDownSampleRate";
+            this.numericUpDownSampleRate.Size = new System.Drawing.Size(57, 20);
+            this.numericUpDownSampleRate.TabIndex = 14;
+            this.numericUpDownSampleRate.Value = new decimal(new int[] {
+            125,
+            0,
+            0,
+            196608});
+            // 
+            // labelTestDuration
+            // 
+            this.labelTestDuration.AutoSize = true;
+            this.labelTestDuration.Location = new System.Drawing.Point(137, 17);
+            this.labelTestDuration.Name = "labelTestDuration";
+            this.labelTestDuration.Size = new System.Drawing.Size(108, 26);
+            this.labelTestDuration.TabIndex = 15;
+            this.labelTestDuration.Text = "Test Duration\r\nHr.        Min.       Sec.";
+            // 
+            // numericUpDownTestDurationHours
+            // 
+            this.numericUpDownTestDurationHours.Location = new System.Drawing.Point(140, 45);
+            this.numericUpDownTestDurationHours.Maximum = new decimal(new int[] {
+            72,
+            0,
+            0,
+            0});
+            this.numericUpDownTestDurationHours.Name = "numericUpDownTestDurationHours";
+            this.numericUpDownTestDurationHours.Size = new System.Drawing.Size(33, 20);
+            this.numericUpDownTestDurationHours.TabIndex = 16;
+            // 
+            // numericUpDownTestDurationMinutes
+            // 
+            this.numericUpDownTestDurationMinutes.Location = new System.Drawing.Point(179, 45);
+            this.numericUpDownTestDurationMinutes.Maximum = new decimal(new int[] {
+            59,
+            0,
+            0,
+            0});
+            this.numericUpDownTestDurationMinutes.Name = "numericUpDownTestDurationMinutes";
+            this.numericUpDownTestDurationMinutes.Size = new System.Drawing.Size(33, 20);
+            this.numericUpDownTestDurationMinutes.TabIndex = 17;
+            // 
+            // numericUpDownTestDurationSeconds
+            // 
+            this.numericUpDownTestDurationSeconds.Location = new System.Drawing.Point(218, 46);
+            this.numericUpDownTestDurationSeconds.Maximum = new decimal(new int[] {
+            59,
+            0,
+            0,
+            0});
+            this.numericUpDownTestDurationSeconds.Name = "numericUpDownTestDurationSeconds";
+            this.numericUpDownTestDurationSeconds.Size = new System.Drawing.Size(33, 20);
+            this.numericUpDownTestDurationSeconds.TabIndex = 18;
+            this.numericUpDownTestDurationSeconds.Value = new decimal(new int[] {
+            30,
+            0,
+            0,
+            0});
+            // 
+            // dateTimePicker1
+            // 
+            this.dateTimePicker1.CustomFormat = "";
+            this.dateTimePicker1.Location = new System.Drawing.Point(51, 228);
+            this.dateTimePicker1.Name = "dateTimePicker1";
+            this.dateTimePicker1.Size = new System.Drawing.Size(200, 20);
+            this.dateTimePicker1.TabIndex = 19;
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(30, 199);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(215, 26);
+            this.label2.TabIndex = 20;
+            this.label2.Text = "Date/Time (in final product, \r\nprobably just sync system time automatically)";
             // 
             // Main
             // 
@@ -260,6 +375,10 @@
             this.panel1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.mainBindingSource)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.serialInterfaceBindingSource)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownSampleRate)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationHours)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationMinutes)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationSeconds)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -274,7 +393,6 @@
         private System.Windows.Forms.TabPage SensorsPage;
         private System.Windows.Forms.ProgressBar progressBar1;
         private System.Windows.Forms.Label labelApplicationLabel;
-        private System.Windows.Forms.Button buttonConfigOpen;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.RadioButton radioButtonTempC;
         private System.Windows.Forms.RadioButton radioButtonTempK;
@@ -286,6 +404,14 @@
         private System.Windows.Forms.ComboBox arduinoList;
         private System.Windows.Forms.BindingSource mainBindingSource;
         private System.Windows.Forms.BindingSource serialInterfaceBindingSource;
+        private System.Windows.Forms.Label labelSampleRate;
+        private System.Windows.Forms.NumericUpDown numericUpDownSampleRate;
+        private System.Windows.Forms.NumericUpDown numericUpDownTestDurationSeconds;
+        private System.Windows.Forms.NumericUpDown numericUpDownTestDurationMinutes;
+        private System.Windows.Forms.NumericUpDown numericUpDownTestDurationHours;
+        private System.Windows.Forms.Label labelTestDuration;
+        private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.DateTimePicker dateTimePicker1;
     }
 }
 

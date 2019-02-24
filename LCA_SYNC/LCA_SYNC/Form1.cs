@@ -47,7 +47,7 @@ namespace LCA_SYNC
             serial = SerialInterface.Create();
 
             //serial.Arduino.NewDataReceived += arduinoBoard_NewDataReceived;  // !!!!!!!!!!!!!!!!!!!!!!!!!!!  Will need to implement this somehow. (From the Arduino side?)
-            serial.USBPnPDeviceChanged += serial_USBPnPDeviceChanged;
+            //serial.USBPnPDeviceChanged += serial_USBPnPDeviceChanged;
             //serial.LCAArduinos_Changed += serial_LCAArduinos_Changed;
             //serial.LCAArduinos.OnAdd += serial_LCAArduinos_Changed;
             //serial.LCAArduinos.OnRemove += serial_LCAArduinos_Changed;
@@ -72,6 +72,7 @@ namespace LCA_SYNC
             arduinoListBinding = new BindingSource();
             arduinoListBinding.DataSource = serial.LCAArduinos;
             arduinoListBinding.ListChanged += serial_LCAArduinos_Changed;
+            serial.ArduinoDataChanged += serial_ArduinoDataChanged; 
             arduinoList.DataSource = arduinoListBinding;
             arduinoList.DisplayMember = "displayName";
             //arduinoList.ValueMember = "Self";   // What is the default value of this? Is it self? 
@@ -178,6 +179,12 @@ namespace LCA_SYNC
             */
         }
 
+        void serial_ArduinoDataChanged(object sender, ArduinoEventArgs e)
+        {
+            // Can do more here: 
+            // Use e.Reason for the reason the event was called 
+            arduinoListBinding.ResetBindings(false);
+        }
 
         /// <summary>
         /// USBDeviceChanged event is caught in
@@ -187,6 +194,7 @@ namespace LCA_SYNC
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
+        /*
         void serial_USBPnPDeviceChanged(object sender, EventArgs e)
         {
 
@@ -244,6 +252,8 @@ namespace LCA_SYNC
             //((ManagementEventWatcher)sender).
 
         }
+        */ 
+
 
         /// <summary>
         /// LCAArduinos_Changed event is caught in
@@ -367,6 +377,21 @@ namespace LCA_SYNC
         }
 
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        // Untested: 
+        private async void buttonArduinoSync_Click(object sender, EventArgs e)
+        {
+            foreach (var ard in serial.LCAArduinos)
+            {
+                await ard.RefreshInfo();
+            }
+            serial.LocateLCADevices(); 
+        }
+
+        private void label2_Click(object sender, EventArgs e)
         {
 
         }

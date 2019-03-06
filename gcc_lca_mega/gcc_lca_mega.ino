@@ -38,7 +38,7 @@ RTC_DS3231 rtc;         // Real-time clock (RTC) object
 #define MAXDO_0   48
 #define MAXCS_0   49
 #define MAXDO_1   46
-#define MAXCS_1   47
+#define MAXCS_1   32 //47  // !!!!!!!!!!!!!!!!!!!!! (Used by RTC)
 #define MAXDO_2   44
 #define MAXCS_2   45
 #define MAXDO_3   42
@@ -58,12 +58,12 @@ RTC_DS3231 rtc;         // Real-time clock (RTC) object
 #define LED_PIN2 10               // CD (card detect) pin? 
 #define PUSHBUTTON_PIN 11         // Start test pushbutton
 #define CD_PIN 13                 // Card detect pin 
+#define RTC_INT_PIN 47            // RTC interrupt pin 
 #define chipSelect 53             // For the SD card reader
 
 #define NUMSAMPLES 5              // This is a random sample amount
 
-unsigned int _timer = 0;
-unsigned int _timer_max = 1000; 
+#define SERIAL_COMM_TIME 300000   // The max time in microseconds needed for serial communications in one sample period (need to determine experimentally)
 
 unsigned long samples_elapsed = 0; 
 unsigned long last_sample = 0; 
@@ -75,9 +75,16 @@ byte dataIn[150];
 int dataInPos;
 byte sot, eot; 
 
+volatile bool testStarted;
+bool samplePeriodReached;
+volatile bool missedClock = 0;
+volatile bool inSerialSafeRegion;
+
 boolean led_value = 0;
 
 char dataFileName[16] = DATALOG_FILE_ROOT;  // There's a max length to this! "data9999.txt" is the last file because the SD library uses short 8.3 names for files. 10,000 total data files.   
+
+String dataString;
 
 //void initTimer0(double seconds);
 bool ProcessData();
@@ -95,7 +102,9 @@ Adafruit_MAX31855 digital_thermo_6(MAXCLK, MAXCS_6, MAXDO_6);
 Adafruit_MAX31855 digital_thermo_7(MAXCLK, MAXCS_7, MAXDO_7);
 
 void setup() {
-
+  Serial.print("TIFR1's interrupt flag is ");
+  Serial.println((TIFR1 & (1<<OCF1A))>>1);
+  
   pinMode(LED_PIN, OUTPUT);
   pinMode(LED_PIN2, OUTPUT);
   pinMode(PUSHBUTTON_PIN, INPUT); 
@@ -103,6 +112,14 @@ void setup() {
 
   // This is only used for analog thermocouples currently, but we are no longer using them: 
   analogReference(DEFAULT); // 5v on Uno and Mega. Note: Due uses 3.3 v reference which would cause analog thermocouples to not work (given the way things are currently set up)
+
+  samplePeriodReached = false; 
+  testStarted = false; 
+  missedClock = false;
+  inSerialSafeRegion = false;
+
+  dataString.reserve(15+1+115); // I'm not sure about the exact size needed.
+  dataString = ""; 
 
   //dataIn.reserve(200);
   //dataIn = "";
@@ -116,9 +133,6 @@ void setup() {
   dataReceived = false;
   sot = 0x02; //'\x02'; //'!';
   eot = 0x03; //'\x03'; //'.';
-
-  //sot = '(';
-  //eot = ')';
 
   digitalWrite(LED_PIN2, digitalRead(CD_PIN));  // LED is on when SD card is inserted and off when it is not.
 
@@ -143,12 +157,23 @@ void setup() {
   //Serial.println("Output data file: " + (String)dataFileName);
 
   // RTC init
-  /*
   if (!rtc.begin()) {
     Serial.println("Couldn't find RTC");
     while (1);
-  }*/
+  }
 
+  if (rtc.lostPower()) {
+    Serial.println("RTC lost power, lets set the time!");
+    // following line sets the RTC to the date & time this sketch was compiled
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    // This line sets the RTC with an explicit date & time, for example to set
+    // January 21, 2014 at 3am you would call:
+    // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
+  }
+
+  pinMode(RTC_INT_PIN, INPUT_PULLUP);
+  rtc.writeSqwPinMode(DS3231_SquareWave1kHz); // For sample interrupts 
+  
   conf.read(true);   // Read from config file, setting the date and time if needed
   //Serial.println();
 
@@ -163,28 +188,42 @@ void setup() {
   //Serial.println("Press pushbutton to start test.");
   while (!digitalRead(PUSHBUTTON_PIN)) {; };  // Start test when pushbutton is pressed. 
 
-
   delay(conf.start_delay*1000); // Start delay
-  
-  //initTimer0(conf.sample_rate); // Configure internal Timer 0 and _timer_max
 
-  _timer_max = 1000.0*conf.sample_rate; 
-  Timer1.initialize(1000); // set a timer of length 1000 microseconds (or 1 ms)
+  Timer1.initialize(10000); // set the timer. Needs to go off during or just after the sampling routine.  !!!!
   Timer1.attachInterrupt( Timer1_ISR ); // attach the service routine here
 
-  _timer = _timer_max; // The first sample will start right away
+  setRTCSQWInput(5.0/1024);  // Should make the counter event happen almost immediately 
+  //TIMSK5 |= (1<<OCIE5A);   //timer3 enable the interrupt (Output Compare A Match Interrupt Enable)
+  while (testStarted == false) // This will get changed in the interrupt once the clock pulse comes in. For synchronization purposes. 
+  {}
+  Serial.println("Test started.");
+
+  
 }
 
-void loop() {
-  if (_timer >= _timer_max) {  // One sample period has passed
+void loop() 
+{
+
+  if (samplePeriodReached) // (_timer >= _timer_max)   // One sample period has passed
+  {  
+    //TIMSK1 &= ~(1<<OCIE1A);   //timer1 disable the interrupt
+    Timer1.stop(); 
+    
+    // disable serial event interrupt? 
     //noInterrupts();                 //Disable interrupts  (!!!)
+    
+    unsigned long _time00 = micros(); 
+
     digitalWrite(LED_PIN, led_value); // Blink LED to signify the sample period being reached
     led_value=!led_value;
-    _timer = 0;
 
+    DateTime dt = rtc.now(); 
     
     // Read from sensors and put results into a string
-    String dataString = "#" + (String)samples_elapsed + "\t";
+    //dataString = "#" + (String)samples_elapsed + "\t";
+    
+    dataString = "#" + (String)dt.day() + (String)dt.month() + (String)(dt.year()-2000) + " " + (String)dt.hour() + ":" + (String)dt.minute() + ":" + (String)dt.second() + "\t";
     dataString += (String)digital_thermo_0.readCelsius() + "\t"; 
     dataString += (String)digital_thermo_1.readCelsius() + "\t"; 
     dataString += (String)digital_thermo_2.readCelsius() + "\t"; 
@@ -193,19 +232,34 @@ void loop() {
     dataString += (String)digital_thermo_5.readCelsius() + "\t"; 
     dataString += (String)digital_thermo_6.readCelsius() + "\t"; 
     dataString += (String)digital_thermo_7.readCelsius(); 
-
-    
     
     // Write the measurements to the data file on the SD card
-    //printToFile(dataFileName, dataString, true); // print to file
+    printToFile(dataFileName, dataString, true); // print to file
 
-    // The time on the ChronoDot real-time clock (RTC) wasn't working, so RTC timestamps are disabled for now. 
-    /*
-    DateTime right_now = rtc.now(); 
-    Serial.println("Year: " + String(right_now.year()) + ". Month: " + String(right_now.month()) + ". Day: " + String(right_now.day()));
-    Serial.println("Hour: " + String(right_now.hour()) + ". Minute: " + String(right_now.minute()) + ". Second: " + String(right_now.second()));
-    */
+    
+    Serial.println((String)(micros()-_time00));
+    //Serial.println((unsigned long)(conf.sample_rate*1000000) - SERIAL_COMM_TIME - (unsigned long)(1000000*TCNT5/1024));
+    Serial.println(conf.sample_rate); 
+    Serial.println(SERIAL_COMM_TIME);
+    Serial.println(TCNT5); 
+    //printToFile(dataFileName, datStr, true);
+
+    delay(100);  // needed for prints? 
+    
     samples_elapsed++;
+    
+    Timer1.setPeriod((unsigned long)(conf.sample_rate*1000000) - SERIAL_COMM_TIME - (unsigned long)(1000000*TCNT5/1024)); // Sample period - serial comm time - sampling routine time
+    missedClock = false; 
+    inSerialSafeRegion = true; 
+
+    samplePeriodReached = false;
+    //TIMSK1 |= (1<<OCIE1A);   //timer1 enable the interrupt  // This causes everything to stop working!
+
+    Serial.print("TIFR1's interrupt flag is ");
+    Serial.println((TIFR1 & (1<<OCF1A))>>1);
+
+    Timer1.restart(); 
+
     //interrupts();                 //Enable interrupts  (!!!)
   }
 
@@ -240,7 +294,26 @@ void loop() {
 
 void Timer1_ISR()
 {
-  _timer++;
+  
+  if (testStarted && !samplePeriodReached)
+  {
+    if (missedClock)
+    {
+      // Error! Clock signal not received after its sample period 
+      // isSerialSafeRegion = true;  // ?? (for sending error)
+      Serial.println("---sampling error!");
+    }
+    else if (inSerialSafeRegion)
+    {
+      // Set Timer1 to 2*SERIAL_COMM_TIME:
+      Timer1.setPeriod(2*SERIAL_COMM_TIME); // In microseconds 
+      inSerialSafeRegion = false; 
+      missedClock = true; // If the clock is not missed, sampling routine in the main loop will set this to false 
+    }
+    
+  }
+  
+  //_timer++;
 }
 
 /*
@@ -300,4 +373,59 @@ void serial_flush_buffer()
 {
   while (Serial.read() >= 0)
    ; // do nothing
+}
+
+
+void setRTCSQWInput(float seconds)
+{
+  // Using timer 5 (uses digital pin 47 for the external clock source) 
+  
+  cli();//stop interrupts
+
+  TCCR5A = 0; // set entire TCCR5A register to 0 (OCnA/OCnB/OCnC disconnected)
+  TCCR5B = 0; // same for TCCR5B (set to what I want later in this method)
+  TCNT5  = 0; // initialize counter value to 0
+
+  //Serial.println((uint16_t)(1024*seconds));
+  
+  OCR5A = (uint16_t)(1024*seconds);    // Set the value for the interrupt (Multiples of 1/8 seconds will be exact)
+  
+  TCCR5B |= (1<<WGM52); //timer5 - enable the CTC mode (this is necessary!)
+  
+  TCCR5B |= 0x6; // B00000110 (external clock with clock on the falling edge) 
+  //TCCR5B |= (1<<CS02);     // External clock source with clock on falling edge
+  //TCCR5B |= (1<<CS01);     // ^ 
+
+  TIMSK5 |= (1<<OCIE5A);   //timer3 enable the interrupt (Output Compare A Match Interrupt Enable)
+
+  sei();                 // Enable interrupts
+  
+}
+
+void setCounter5(float seconds)
+{
+  OCR5A = (uint16_t)(1024*seconds);    // Set the value for the interrupt (Multiples of 1/8 seconds will be exact)
+  
+  // From data sheet (about TCNTn, OCRnA/B/C, and ICRn registers): "To do a 16-bit write, the high byte must be written before the low byte." 
+  TCNT5 = 0; // Clear the counter 
+}
+
+ISR(TIMER5_COMPA_vect) // This is the interrupt request
+{    
+  noInterrupts();
+  Serial.println("In T5 ISR");
+  samplePeriodReached = true; 
+  if (testStarted == false) 
+  {
+    //Serial.print("--New sample period: ");
+    //Serial.println(samplePeriod);
+    //Serial.print("--Old OCR5A: ");
+    //Serial.println(OCR5A);
+    setCounter5(conf.sample_rate);
+    TIFR5 |= (1<<OCF5A);  // Needed (clears interrupt flag)
+    //Serial.print("--New OCR5A: ");
+    //Serial.println(OCR5A);
+    testStarted = true;
+  }
+  interrupts();
 }

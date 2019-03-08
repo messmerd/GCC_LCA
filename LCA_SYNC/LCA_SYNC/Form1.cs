@@ -5,6 +5,7 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.IO;
 using System.Windows.Forms;
 
 //using System.Runtime;
@@ -38,7 +39,14 @@ namespace LCA_SYNC
         SerialInterface serial;
         object[] deviceList;
         private BindingSource arduinoListBinding;
-
+        private Dictionary<string, string> LanguageText;
+        //private Dictionary<string, Image> LanguageIcons;
+        private ImageList LanguageIcons; 
+        private SortedSet<string> AvailableLanguages; 
+        private string CurrentLanguage = "";
+        private readonly string DefaultLanguage = "en";
+        
+        
         public Main()
         {
             AppDomain currentDomain = AppDomain.CurrentDomain;
@@ -52,13 +60,26 @@ namespace LCA_SYNC
             //serial.LCAArduinos.OnAdd += serial_LCAArduinos_Changed;
             //serial.LCAArduinos.OnRemove += serial_LCAArduinos_Changed;
 
-            
-
-            this.FormClosing += Main_FormClosing;  // Trying w/o this. B/c PnP watcher stopped working again for some reason
+            FormClosing += Main_FormClosing;  // Trying w/o this. B/c PnP watcher stopped working again for some reason
 
             InitializeComponent();
             //deviceList = (serial.LCAArduinos.Select(a => a.displayName).Cast<object>().ToArray());
 
+            imageComboLanguage.DropDownClosed += imageComboLanguage_DropDownClosed;  // To unhighlight the selection 
+            imageComboLanguage.KeyDown += imageComboLanguage_KeyDown;
+            imageComboLanguage.SelectedIndexChanged += imageComboLanguage_SelectedIndexChanged;
+
+            LanguageText = new Dictionary<string, string>();
+            AvailableLanguages = new SortedSet<string>();
+            LanguageIcons = new ImageList();
+            CurrentLanguage = ""; 
+            //imageComboLanguage.
+            LoadLanguages();
+
+            //RefreshLanguage(); 
+
+
+            Console.WriteLine("\n\n\n");
             deviceList = new object[] {"<No Device>"};
 
             //comboBox1.DataSource = serial.LCAArduinos;
@@ -72,7 +93,8 @@ namespace LCA_SYNC
             arduinoListBinding = new BindingSource();
             arduinoListBinding.DataSource = serial.LCAArduinos;
             arduinoListBinding.ListChanged += serial_LCAArduinos_Changed;
-            serial.ArduinoDataChanged += serial_ArduinoDataChanged; 
+            serial.ArduinoDataChanged += serial_ArduinoDataChanged;
+
             arduinoList.DataSource = arduinoListBinding;
             arduinoList.DisplayMember = "displayName";
             //arduinoList.ValueMember = "Self";   // What is the default value of this? Is it self? 
@@ -88,48 +110,7 @@ namespace LCA_SYNC
             // Probably should do all this differently: 
             //List<Tuple<String, UInt16>> result = serial.ArduinosConnected();
 
-            /*
-            if (result.Count > 1)
-            {
-                MessageBox.Show("There appears to be more than one Arduino connected.");
-
-                // Deal with this issue (Have drop-down menu of arduinos to pick from on main screen? )
-                // Also deal with fake arduinos 
-            }
-            else if (result.Count == 1)
-            {
-                switch (result.First().Item2)
-                {
-                    case 0x00:
-                        MessageBox.Show("You've connected a fake arduino on port " + result.First().Item1 + ", but it is not responding correctly.");
-                        
-                        break;
-                    case 0x01:
-                        MessageBox.Show("You've connected a fake arduino on port " + result.First().Item1 + ".");
-                        break;
-                    case 0x10:
-                        MessageBox.Show("You've connected an arduino on port " + result.First().Item1 + ", but it is not responding correctly.");
-                        break;
-                    case 0x11:
-                        MessageBox.Show("You've connected an arduino on port " + result.First().Item1 + ".");
-                        break;
-                    default:
-                        MessageBox.Show("Error.");
-                        break;
-                }
-            }
-            else
-            {
-                MessageBox.Show("No Arduino detected.");
-            }
-            */
-
-            
-
-            
-
         }
-
 
         private void Main_FormClosing(object sender, FormClosingEventArgs e)
         {
@@ -159,6 +140,151 @@ namespace LCA_SYNC
             }
         }
 
+        private void LoadLanguages()
+        {
+            string langShort;
+            string[] keyvalue = new string[2]; // keyvalue[0] = the key; keyvalue[1] = the value 
+
+            if (!Directory.Exists(Application.StartupPath + @"\lang\"))
+            {
+                Console.WriteLine("Error: The directory lang\\ does not exist.");
+                return; 
+            }
+
+            string[] filePaths = Directory.GetFiles(Application.StartupPath + @"\lang\", "*.dat").OrderBy(s => s).ToArray();
+            //Array.Sort(filePaths, (x, y) => String.Compare(x, y));
+
+            Console.WriteLine("Number of language files found: {0}", filePaths.Length);
+
+            ImageComboItem comboItem; 
+            int i = 0;
+            foreach (var file in filePaths)
+            {
+                langShort = file.Split('\\').Last().Split('.').First();
+
+                // Load language text
+                foreach (string line in File.ReadAllLines(file, Encoding.Unicode))
+                {
+                    line.Split('=').CopyTo(keyvalue, 0);
+
+                    if (keyvalue[0] == "") { continue; }
+                    if (keyvalue.Length != 2) { Console.WriteLine("Error: A line in the file {0} does not have only one '=' character.", file); return; }
+
+                    if (!LanguageText.ContainsKey(langShort + keyvalue[0]))
+                    {
+                        LanguageText.Add(langShort + keyvalue[0], keyvalue[1]);
+                    }
+                }
+
+                // Load language icon 
+                if (!LanguageIcons.Images.ContainsKey(langShort))
+                { 
+                    if (LanguageText.ContainsKey(langShort + "Icon"))
+                    {
+                        if (File.Exists(Application.StartupPath + @"\lang\" + LanguageText[langShort + "Icon"]))
+                        {
+                            LanguageIcons.Images.Add(langShort, Image.FromFile(Application.StartupPath + @"\lang\" + LanguageText[langShort + "Icon"]));
+                            //Console.WriteLine("Added language image file.");
+                        }
+                        else  // There was an error loading the language icon 
+                        {
+                            LanguageIcons.Images.Add(Properties.Resources.errorLang);
+                            Console.WriteLine("Error loading language icon for the language: {0}.", langShort);
+                        }
+                    }
+                    else  // No language icon was specified 
+                    {
+                        LanguageIcons.Images.Add(Properties.Resources.noLangIcon);
+                    }
+
+                    imageComboLanguage.ImageList = LanguageIcons;
+                    // Check if it's already in the list first? 
+                    comboItem = new ImageComboItem(LanguageText[langShort + "LangLong"], i);
+                    comboItem.Tag = langShort; 
+                    imageComboLanguage.Items.Add(comboItem);
+                } 
+
+                AvailableLanguages.Add(langShort);
+                i++; 
+            }
+
+            if (CurrentLanguage == "" && AvailableLanguages.Contains(DefaultLanguage))
+            {
+                CurrentLanguage = DefaultLanguage; 
+                foreach (ImageComboItem item in imageComboLanguage.Items)
+                {
+                    if (item.ItemText == LanguageText[CurrentLanguage + "LangLong"])
+                    {
+                        imageComboLanguage.SelectedIndex = item.ImageIndex; 
+                    }
+                }
+            }
+
+            RefreshLanguage();
+            imageComboLanguage.Refresh(); 
+        }
+
+        private string getLanguageText(string lang, string key)
+        {
+            // I think this method is unused 
+            if (LanguageText.ContainsKey(lang + key))
+            {
+                return LanguageText[lang + key]; 
+            }
+            else
+            {
+                return "Error: Text not found for language " + lang + " and key " + key + ".";
+            }
+        }
+
+        private void imageComboLanguage_DropDownClosed(object sender, EventArgs e)
+        {
+            // To unhighlight the selection 
+            this.ActiveControl = null; 
+
+            //imageComboLanguage.Refresh();
+            //imageComboLanguage.Invalidate();
+            //imageComboLanguage.Update();
+
+        }
+
+        private void imageComboLanguage_KeyDown(object sender, KeyEventArgs e)
+        {
+            // Prevents the arrowkeys from changing the selection except when it is dropped down
+            if (!((ImageCombo)sender).DroppedDown && (e.KeyCode == Keys.Right || e.KeyCode == Keys.Left || e.KeyCode == Keys.Up || e.KeyCode == Keys.Down))
+            {
+                //TxtPass.Focus();
+                this.ActiveControl = null; 
+                e.Handled = true;
+                return;
+            }
+        }
+        
+        private void imageComboLanguage_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            CurrentLanguage = (string)((ImageComboItem)imageComboLanguage.SelectedItem).Tag;
+            Console.WriteLine("Switched to the language: {0}.", LanguageText?[CurrentLanguage + "LangLong"]);
+            RefreshLanguage(); 
+        }
+
+        private void RefreshLanguage()
+        {
+            menuStrip1.Items[0].Text = LanguageText?[CurrentLanguage + "File"];
+            menuStrip1.Items[1].Text = LanguageText?[CurrentLanguage + "Options"];
+            menuStrip1.Items[2].Text = LanguageText?[CurrentLanguage + "About"];
+            // Change inner menustrip items here 
+            //menuStrip1.Refresh();
+
+            tabControl.TabPages[0].Text = LanguageText?[CurrentLanguage + "Status"];
+            tabControl.TabPages[1].Text = LanguageText?[CurrentLanguage + "Config"];
+            tabControl.TabPages[2].Text = LanguageText?[CurrentLanguage + "Sensors"];
+            tabControl.TabPages[3].Text = LanguageText?[CurrentLanguage + "Data"];
+            // !!!! The tab pages are too big when in French!!!!!
+
+            // Add the rest of the language support in the same way as above or by calling LanguageText when needed. 
+        }
+
+
         /// <summary>
         /// OnWeatherDataReceived event is catched in
         /// order to update the weather data display on the form
@@ -168,8 +294,7 @@ namespace LCA_SYNC
         void arduinoBoard_NewDataReceived(object sender, EventArgs e)
         {
             // Hasn't been tested: 
-            Console.WriteLine("Message from {0}:\n{1}",((ArduinoBoard)sender).displayName, ((ArduinoBoard)sender).ReceivedData);
-            
+            Console.WriteLine("Message received from {0}.",((ArduinoBoard)sender).DisplayName /*, ((ArduinoBoard)sender).ReceivedData*/);
             
 
             /*
@@ -395,6 +520,14 @@ namespace LCA_SYNC
         {
 
         }
+
+        private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
+        {
+
+        }
+
+
+
     }
 
     

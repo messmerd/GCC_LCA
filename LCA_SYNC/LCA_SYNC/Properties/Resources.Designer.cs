@@ -73,9 +73,29 @@ namespace LCA_SYNC.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap errorLang {
+            get {
+                object obj = ResourceManager.GetObject("errorLang", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap fr {
             get {
                 object obj = ResourceManager.GetObject("fr", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap noLangIcon {
+            get {
+                object obj = ResourceManager.GetObject("noLangIcon", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

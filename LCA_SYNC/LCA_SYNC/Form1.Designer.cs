@@ -33,6 +33,13 @@
             this.tabControl = new System.Windows.Forms.TabControl();
             this.StatusPage = new System.Windows.Forms.TabPage();
             this.ConfigPage = new System.Windows.Forms.TabPage();
+            this.label2 = new System.Windows.Forms.Label();
+            this.dateTimePicker1 = new System.Windows.Forms.DateTimePicker();
+            this.numericUpDownTestDurationSeconds = new System.Windows.Forms.NumericUpDown();
+            this.numericUpDownTestDurationMinutes = new System.Windows.Forms.NumericUpDown();
+            this.numericUpDownTestDurationHours = new System.Windows.Forms.NumericUpDown();
+            this.labelTestDuration = new System.Windows.Forms.Label();
+            this.numericUpDownSampleRate = new System.Windows.Forms.NumericUpDown();
             this.labelSampleRate = new System.Windows.Forms.Label();
             this.panel1 = new System.Windows.Forms.Panel();
             this.radioButtonTempC = new System.Windows.Forms.RadioButton();
@@ -42,28 +49,33 @@
             this.SensorsPage = new System.Windows.Forms.TabPage();
             this.DataPage = new System.Windows.Forms.TabPage();
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
-            this.labelApplicationLabel = new System.Windows.Forms.Label();
             this.buttonConnectDisconnect = new System.Windows.Forms.Button();
             this.arduinoList = new System.Windows.Forms.ComboBox();
             this.buttonArduinoSync = new System.Windows.Forms.Button();
+            this.menuStrip1 = new System.Windows.Forms.MenuStrip();
+            this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            this.loadConfigurationToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.saveConfigurationToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.optionsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.temperatureUnitsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.dateFormatToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.timeFormatToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.LanguageIcons = new System.Windows.Forms.ImageList(this.components);
+            this.imageList1 = new System.Windows.Forms.ImageList(this.components);
+            this.imageComboLanguage = new System.Windows.Forms.ImageCombo();
             this.mainBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.serialInterfaceBindingSource = new System.Windows.Forms.BindingSource(this.components);
-            this.numericUpDownSampleRate = new System.Windows.Forms.NumericUpDown();
-            this.labelTestDuration = new System.Windows.Forms.Label();
-            this.numericUpDownTestDurationHours = new System.Windows.Forms.NumericUpDown();
-            this.numericUpDownTestDurationMinutes = new System.Windows.Forms.NumericUpDown();
-            this.numericUpDownTestDurationSeconds = new System.Windows.Forms.NumericUpDown();
-            this.dateTimePicker1 = new System.Windows.Forms.DateTimePicker();
-            this.label2 = new System.Windows.Forms.Label();
             this.tabControl.SuspendLayout();
             this.ConfigPage.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationSeconds)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationMinutes)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationHours)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownSampleRate)).BeginInit();
             this.panel1.SuspendLayout();
+            this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.mainBindingSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.serialInterfaceBindingSource)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownSampleRate)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationHours)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationMinutes)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationSeconds)).BeginInit();
             this.SuspendLayout();
             // 
             // buttonSync
@@ -72,6 +84,7 @@
             this.buttonSync.Name = "buttonSync";
             this.buttonSync.Size = new System.Drawing.Size(75, 23);
             this.buttonSync.TabIndex = 0;
+            this.buttonSync.TabStop = false;
             this.buttonSync.Text = "Sync";
             this.buttonSync.UseVisualStyleBackColor = true;
             this.buttonSync.Click += new System.EventHandler(this.button1_Click);
@@ -86,7 +99,7 @@
             this.tabControl.Name = "tabControl";
             this.tabControl.SelectedIndex = 0;
             this.tabControl.Size = new System.Drawing.Size(435, 307);
-            this.tabControl.TabIndex = 1;
+            this.tabControl.TabIndex = 2;
             // 
             // StatusPage
             // 
@@ -118,14 +131,109 @@
             this.ConfigPage.Text = "Config";
             this.ConfigPage.UseVisualStyleBackColor = true;
             // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(30, 199);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(215, 26);
+            this.label2.TabIndex = 20;
+            this.label2.Text = "Date/Time (in final product, \r\nprobably just sync system time automatically)";
+            // 
+            // dateTimePicker1
+            // 
+            this.dateTimePicker1.CustomFormat = "";
+            this.dateTimePicker1.Location = new System.Drawing.Point(51, 228);
+            this.dateTimePicker1.Name = "dateTimePicker1";
+            this.dateTimePicker1.Size = new System.Drawing.Size(200, 20);
+            this.dateTimePicker1.TabIndex = 19;
+            // 
+            // numericUpDownTestDurationSeconds
+            // 
+            this.numericUpDownTestDurationSeconds.Location = new System.Drawing.Point(218, 46);
+            this.numericUpDownTestDurationSeconds.Maximum = new decimal(new int[] {
+            59,
+            0,
+            0,
+            0});
+            this.numericUpDownTestDurationSeconds.Name = "numericUpDownTestDurationSeconds";
+            this.numericUpDownTestDurationSeconds.Size = new System.Drawing.Size(33, 20);
+            this.numericUpDownTestDurationSeconds.TabIndex = 18;
+            this.numericUpDownTestDurationSeconds.Value = new decimal(new int[] {
+            30,
+            0,
+            0,
+            0});
+            // 
+            // numericUpDownTestDurationMinutes
+            // 
+            this.numericUpDownTestDurationMinutes.Location = new System.Drawing.Point(179, 45);
+            this.numericUpDownTestDurationMinutes.Maximum = new decimal(new int[] {
+            59,
+            0,
+            0,
+            0});
+            this.numericUpDownTestDurationMinutes.Name = "numericUpDownTestDurationMinutes";
+            this.numericUpDownTestDurationMinutes.Size = new System.Drawing.Size(33, 20);
+            this.numericUpDownTestDurationMinutes.TabIndex = 17;
+            // 
+            // numericUpDownTestDurationHours
+            // 
+            this.numericUpDownTestDurationHours.Location = new System.Drawing.Point(140, 45);
+            this.numericUpDownTestDurationHours.Maximum = new decimal(new int[] {
+            72,
+            0,
+            0,
+            0});
+            this.numericUpDownTestDurationHours.Name = "numericUpDownTestDurationHours";
+            this.numericUpDownTestDurationHours.Size = new System.Drawing.Size(33, 20);
+            this.numericUpDownTestDurationHours.TabIndex = 16;
+            // 
+            // labelTestDuration
+            // 
+            this.labelTestDuration.AutoSize = true;
+            this.labelTestDuration.Location = new System.Drawing.Point(137, 17);
+            this.labelTestDuration.Name = "labelTestDuration";
+            this.labelTestDuration.Size = new System.Drawing.Size(108, 26);
+            this.labelTestDuration.TabIndex = 15;
+            this.labelTestDuration.Text = "Test Duration\r\nHr.        Min.       Sec.";
+            // 
+            // numericUpDownSampleRate
+            // 
+            this.numericUpDownSampleRate.DecimalPlaces = 3;
+            this.numericUpDownSampleRate.Increment = new decimal(new int[] {
+            125,
+            0,
+            0,
+            196608});
+            this.numericUpDownSampleRate.Location = new System.Drawing.Point(33, 34);
+            this.numericUpDownSampleRate.Maximum = new decimal(new int[] {
+            600,
+            0,
+            0,
+            65536});
+            this.numericUpDownSampleRate.Minimum = new decimal(new int[] {
+            125,
+            0,
+            0,
+            196608});
+            this.numericUpDownSampleRate.Name = "numericUpDownSampleRate";
+            this.numericUpDownSampleRate.Size = new System.Drawing.Size(57, 20);
+            this.numericUpDownSampleRate.TabIndex = 14;
+            this.numericUpDownSampleRate.Value = new decimal(new int[] {
+            125,
+            0,
+            0,
+            196608});
+            // 
             // labelSampleRate
             // 
             this.labelSampleRate.AutoSize = true;
             this.labelSampleRate.Location = new System.Drawing.Point(30, 17);
             this.labelSampleRate.Name = "labelSampleRate";
-            this.labelSampleRate.Size = new System.Drawing.Size(82, 13);
+            this.labelSampleRate.Size = new System.Drawing.Size(89, 13);
             this.labelSampleRate.TabIndex = 13;
-            this.labelSampleRate.Text = "Sample Rate (s)";
+            this.labelSampleRate.Text = "Sample Period (s)";
             this.labelSampleRate.Click += new System.EventHandler(this.label2_Click);
             // 
             // panel1
@@ -206,22 +314,13 @@
             this.progressBar1.Size = new System.Drawing.Size(435, 23);
             this.progressBar1.TabIndex = 3;
             // 
-            // labelApplicationLabel
-            // 
-            this.labelApplicationLabel.AutoSize = true;
-            this.labelApplicationLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.labelApplicationLabel.Location = new System.Drawing.Point(88, 9);
-            this.labelApplicationLabel.Name = "labelApplicationLabel";
-            this.labelApplicationLabel.Size = new System.Drawing.Size(316, 20);
-            this.labelApplicationLabel.TabIndex = 4;
-            this.labelApplicationLabel.Text = "Low-Cost Array Synchronization Application";
-            // 
             // buttonConnectDisconnect
             // 
             this.buttonConnectDisconnect.Location = new System.Drawing.Point(27, 358);
             this.buttonConnectDisconnect.Name = "buttonConnectDisconnect";
             this.buttonConnectDisconnect.Size = new System.Drawing.Size(124, 23);
             this.buttonConnectDisconnect.TabIndex = 2;
+            this.buttonConnectDisconnect.TabStop = false;
             this.buttonConnectDisconnect.Text = "Connect/Disconnect";
             this.buttonConnectDisconnect.UseVisualStyleBackColor = true;
             // 
@@ -231,10 +330,11 @@
             this.arduinoList.DropDownStyle = global::LCA_SYNC.Properties.Settings.Default.DropDownList;
             this.arduinoList.FormattingEnabled = true;
             this.arduinoList.ImeMode = System.Windows.Forms.ImeMode.NoControl;
-            this.arduinoList.Location = new System.Drawing.Point(211, 42);
+            this.arduinoList.Location = new System.Drawing.Point(237, 42);
             this.arduinoList.Name = "arduinoList";
-            this.arduinoList.Size = new System.Drawing.Size(210, 21);
+            this.arduinoList.Size = new System.Drawing.Size(184, 21);
             this.arduinoList.TabIndex = 0;
+            this.arduinoList.TabStop = false;
             this.arduinoList.SelectedIndexChanged += new System.EventHandler(this.comboBox1_SelectedIndexChanged);
             // 
             // buttonArduinoSync
@@ -247,8 +347,103 @@
             this.buttonArduinoSync.Name = "buttonArduinoSync";
             this.buttonArduinoSync.Size = new System.Drawing.Size(31, 31);
             this.buttonArduinoSync.TabIndex = 5;
+            this.buttonArduinoSync.TabStop = false;
             this.buttonArduinoSync.UseVisualStyleBackColor = false;
             this.buttonArduinoSync.Click += new System.EventHandler(this.buttonArduinoSync_Click);
+            // 
+            // menuStrip1
+            // 
+            this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripMenuItem1,
+            this.optionsToolStripMenuItem,
+            this.aboutToolStripMenuItem});
+            this.menuStrip1.Location = new System.Drawing.Point(0, 0);
+            this.menuStrip1.Name = "menuStrip1";
+            this.menuStrip1.Size = new System.Drawing.Size(484, 24);
+            this.menuStrip1.TabIndex = 0;
+            this.menuStrip1.Text = "menuStrip1";
+            // 
+            // toolStripMenuItem1
+            // 
+            this.toolStripMenuItem1.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.loadConfigurationToolStripMenuItem,
+            this.saveConfigurationToolStripMenuItem});
+            this.toolStripMenuItem1.Name = "toolStripMenuItem1";
+            this.toolStripMenuItem1.Size = new System.Drawing.Size(37, 20);
+            this.toolStripMenuItem1.Text = "File";
+            // 
+            // loadConfigurationToolStripMenuItem
+            // 
+            this.loadConfigurationToolStripMenuItem.Name = "loadConfigurationToolStripMenuItem";
+            this.loadConfigurationToolStripMenuItem.Size = new System.Drawing.Size(177, 22);
+            this.loadConfigurationToolStripMenuItem.Text = "Load Configuration";
+            // 
+            // saveConfigurationToolStripMenuItem
+            // 
+            this.saveConfigurationToolStripMenuItem.Name = "saveConfigurationToolStripMenuItem";
+            this.saveConfigurationToolStripMenuItem.Size = new System.Drawing.Size(177, 22);
+            this.saveConfigurationToolStripMenuItem.Text = "Save Configuration";
+            // 
+            // optionsToolStripMenuItem
+            // 
+            this.optionsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.temperatureUnitsToolStripMenuItem,
+            this.dateFormatToolStripMenuItem,
+            this.timeFormatToolStripMenuItem});
+            this.optionsToolStripMenuItem.Name = "optionsToolStripMenuItem";
+            this.optionsToolStripMenuItem.Size = new System.Drawing.Size(61, 20);
+            this.optionsToolStripMenuItem.Text = "Options";
+            // 
+            // temperatureUnitsToolStripMenuItem
+            // 
+            this.temperatureUnitsToolStripMenuItem.Name = "temperatureUnitsToolStripMenuItem";
+            this.temperatureUnitsToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
+            this.temperatureUnitsToolStripMenuItem.Text = "Temperature Units";
+            // 
+            // dateFormatToolStripMenuItem
+            // 
+            this.dateFormatToolStripMenuItem.Name = "dateFormatToolStripMenuItem";
+            this.dateFormatToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
+            this.dateFormatToolStripMenuItem.Text = "Date Format";
+            // 
+            // timeFormatToolStripMenuItem
+            // 
+            this.timeFormatToolStripMenuItem.Name = "timeFormatToolStripMenuItem";
+            this.timeFormatToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
+            this.timeFormatToolStripMenuItem.Text = "Time Format";
+            // 
+            // aboutToolStripMenuItem
+            // 
+            this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
+            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(52, 20);
+            this.aboutToolStripMenuItem.Text = "About";
+            // 
+            // LanguageIcons
+            // 
+            this.LanguageIcons.ColorDepth = System.Windows.Forms.ColorDepth.Depth8Bit;
+            this.LanguageIcons.ImageSize = new System.Drawing.Size(16, 16);
+            this.LanguageIcons.TransparentColor = System.Drawing.Color.Transparent;
+            // 
+            // imageList1
+            // 
+            this.imageList1.ColorDepth = System.Windows.Forms.ColorDepth.Depth8Bit;
+            this.imageList1.ImageSize = new System.Drawing.Size(16, 16);
+            this.imageList1.TransparentColor = System.Drawing.Color.Transparent;
+            // 
+            // imageComboLanguage
+            // 
+            this.imageComboLanguage.CausesValidation = false;
+            this.imageComboLanguage.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawFixed;
+            this.imageComboLanguage.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.imageComboLanguage.FormattingEnabled = true;
+            this.imageComboLanguage.ImageList = this.LanguageIcons;
+            this.imageComboLanguage.ImageSide = System.Windows.Forms.ImageCombo.IMAGESIDE.Right;
+            this.imageComboLanguage.ImeMode = System.Windows.Forms.ImeMode.NoControl;
+            this.imageComboLanguage.Location = new System.Drawing.Point(363, 0);
+            this.imageComboLanguage.Name = "imageComboLanguage";
+            this.imageComboLanguage.Size = new System.Drawing.Size(121, 21);
+            this.imageComboLanguage.TabIndex = 2;
+            this.imageComboLanguage.TabStop = false;
             // 
             // mainBindingSource
             // 
@@ -258,127 +453,36 @@
             // 
             this.serialInterfaceBindingSource.DataSource = typeof(LCA_SYNC.SerialInterface);
             // 
-            // numericUpDownSampleRate
-            // 
-            this.numericUpDownSampleRate.DecimalPlaces = 3;
-            this.numericUpDownSampleRate.Increment = new decimal(new int[] {
-            125,
-            0,
-            0,
-            196608});
-            this.numericUpDownSampleRate.Location = new System.Drawing.Point(33, 34);
-            this.numericUpDownSampleRate.Maximum = new decimal(new int[] {
-            600,
-            0,
-            0,
-            65536});
-            this.numericUpDownSampleRate.Minimum = new decimal(new int[] {
-            125,
-            0,
-            0,
-            196608});
-            this.numericUpDownSampleRate.Name = "numericUpDownSampleRate";
-            this.numericUpDownSampleRate.Size = new System.Drawing.Size(57, 20);
-            this.numericUpDownSampleRate.TabIndex = 14;
-            this.numericUpDownSampleRate.Value = new decimal(new int[] {
-            125,
-            0,
-            0,
-            196608});
-            // 
-            // labelTestDuration
-            // 
-            this.labelTestDuration.AutoSize = true;
-            this.labelTestDuration.Location = new System.Drawing.Point(137, 17);
-            this.labelTestDuration.Name = "labelTestDuration";
-            this.labelTestDuration.Size = new System.Drawing.Size(108, 26);
-            this.labelTestDuration.TabIndex = 15;
-            this.labelTestDuration.Text = "Test Duration\r\nHr.        Min.       Sec.";
-            // 
-            // numericUpDownTestDurationHours
-            // 
-            this.numericUpDownTestDurationHours.Location = new System.Drawing.Point(140, 45);
-            this.numericUpDownTestDurationHours.Maximum = new decimal(new int[] {
-            72,
-            0,
-            0,
-            0});
-            this.numericUpDownTestDurationHours.Name = "numericUpDownTestDurationHours";
-            this.numericUpDownTestDurationHours.Size = new System.Drawing.Size(33, 20);
-            this.numericUpDownTestDurationHours.TabIndex = 16;
-            // 
-            // numericUpDownTestDurationMinutes
-            // 
-            this.numericUpDownTestDurationMinutes.Location = new System.Drawing.Point(179, 45);
-            this.numericUpDownTestDurationMinutes.Maximum = new decimal(new int[] {
-            59,
-            0,
-            0,
-            0});
-            this.numericUpDownTestDurationMinutes.Name = "numericUpDownTestDurationMinutes";
-            this.numericUpDownTestDurationMinutes.Size = new System.Drawing.Size(33, 20);
-            this.numericUpDownTestDurationMinutes.TabIndex = 17;
-            // 
-            // numericUpDownTestDurationSeconds
-            // 
-            this.numericUpDownTestDurationSeconds.Location = new System.Drawing.Point(218, 46);
-            this.numericUpDownTestDurationSeconds.Maximum = new decimal(new int[] {
-            59,
-            0,
-            0,
-            0});
-            this.numericUpDownTestDurationSeconds.Name = "numericUpDownTestDurationSeconds";
-            this.numericUpDownTestDurationSeconds.Size = new System.Drawing.Size(33, 20);
-            this.numericUpDownTestDurationSeconds.TabIndex = 18;
-            this.numericUpDownTestDurationSeconds.Value = new decimal(new int[] {
-            30,
-            0,
-            0,
-            0});
-            // 
-            // dateTimePicker1
-            // 
-            this.dateTimePicker1.CustomFormat = "";
-            this.dateTimePicker1.Location = new System.Drawing.Point(51, 228);
-            this.dateTimePicker1.Name = "dateTimePicker1";
-            this.dateTimePicker1.Size = new System.Drawing.Size(200, 20);
-            this.dateTimePicker1.TabIndex = 19;
-            // 
-            // label2
-            // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(30, 199);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(215, 26);
-            this.label2.TabIndex = 20;
-            this.label2.Text = "Date/Time (in final product, \r\nprobably just sync system time automatically)";
-            // 
             // Main
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(484, 461);
+            this.Controls.Add(this.imageComboLanguage);
             this.Controls.Add(this.buttonArduinoSync);
             this.Controls.Add(this.arduinoList);
-            this.Controls.Add(this.labelApplicationLabel);
             this.Controls.Add(this.progressBar1);
             this.Controls.Add(this.buttonConnectDisconnect);
             this.Controls.Add(this.tabControl);
             this.Controls.Add(this.buttonSync);
+            this.Controls.Add(this.menuStrip1);
+            this.MainMenuStrip = this.menuStrip1;
             this.Name = "Main";
             this.Text = "Low-Cost Array Sync";
             this.Load += new System.EventHandler(this.Form1_Load);
             this.tabControl.ResumeLayout(false);
             this.ConfigPage.ResumeLayout(false);
             this.ConfigPage.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationSeconds)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationMinutes)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationHours)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownSampleRate)).EndInit();
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
+            this.menuStrip1.ResumeLayout(false);
+            this.menuStrip1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.mainBindingSource)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.serialInterfaceBindingSource)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownSampleRate)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationHours)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationMinutes)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationSeconds)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -392,7 +496,6 @@
         private System.Windows.Forms.TabPage ConfigPage;
         private System.Windows.Forms.TabPage SensorsPage;
         private System.Windows.Forms.ProgressBar progressBar1;
-        private System.Windows.Forms.Label labelApplicationLabel;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.RadioButton radioButtonTempC;
         private System.Windows.Forms.RadioButton radioButtonTempK;
@@ -412,6 +515,17 @@
         private System.Windows.Forms.Label labelTestDuration;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.DateTimePicker dateTimePicker1;
+        private System.Windows.Forms.MenuStrip menuStrip1;
+        private System.Windows.Forms.ToolStripMenuItem toolStripMenuItem1;
+        private System.Windows.Forms.ToolStripMenuItem loadConfigurationToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem saveConfigurationToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem optionsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem temperatureUnitsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem dateFormatToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem timeFormatToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem aboutToolStripMenuItem;
+        private System.Windows.Forms.ImageList imageList1;
+        private System.Windows.Forms.ImageCombo imageComboLanguage;
     }
 }
 

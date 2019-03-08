@@ -65,22 +65,35 @@ namespace LCA_SYNC
         private DATACATEGORY _ExpectedResponseType { get; set; }
         private System.Threading.CancellationTokenSource _ExpectedResponseCancellation { get; set; }
 
-        private String _ReceivedData;   // Stores last data received via Serial
-        public String ReceivedData
+        private string _ReceivedData;   // Stores last data received via Serial
+        public string ReceivedData
         {
             get { return _ReceivedData; }
         }
 
         private List<byte> _ReceivedBytes;
 
-        public String packageName { get; set; }
-        public String displayName { get; set; }
-        private UInt32 testDuration { get; set; }
-        private byte startDelay { get; set; }
-        private byte sampleRate { get; set; }
+        public string PackageName { get; private set; }       
+        public string DisplayName
+        {
+            get
+            {
+                if (Port != null && Port.PortName != "")
+                {
+                    return PackageName + " (" + Port.PortName + ")";
+                }
+                else
+                {
+                    return PackageName + " (ERROR)";
+                }
+            }
+        }
+        public byte StartDelay { get; private set; }
+        public uint TestDuration { get; private set; }
+        public float SamplePeriod { get; private set; }
 
         //public static String PINGVALUE = "10" + "qlc9KNMKi0mAyT4oKlVky6w7gtHympiyzpdJhE8gj2PPgvO0am5zoSeqkOanME";  // "1" (PING) + 62-character random string from random.org + eot
-        public static String PINGVALUE = "\x02\x01\xF0qlc9KNMKi0mAyT4o\x03";  // Includes sot and eot.
+        private readonly string PINGVALUE = "\x02\x01\xF0qlc9KNMKi0mAyT4o\x03";  // Includes sot and eot.
         //('\x01').ToString() + ('\xF0').ToString() + "qlc9KNMKi0mAyT4o";  // "10" (PING) + 62-character random string from random.org + eot
                                                                             // !10qlc9KNMKi0mAyT4o.
 
@@ -88,7 +101,7 @@ namespace LCA_SYNC
         public bool syncNeeded
         {
             get { return _syncNeeded; }
-        }
+        } 
 
         private bool _Busy;
 
@@ -114,8 +127,7 @@ namespace LCA_SYNC
             vid = SerialInterface.GetVID(device);
             pid = SerialInterface.GetPID(device);
             type = SerialInterface.GetArduinoType(vid, pid);
-            packageName = "NULL";                   // to be found
-            displayName = "NULL";                   // to be found
+            PackageName = "NULL";                   // to be found
             _ReceivedData = "";
             //_SendData = "";
             _syncNeeded = true;
@@ -127,9 +139,9 @@ namespace LCA_SYNC
 
             _ResponseValidity = COMMERROR.NULL;
             //_Busy = true;   // Assuming ping happens at start 
-            testDuration = 0;
-            startDelay = 0;
-            sampleRate = 0;
+            TestDuration = 0;
+            StartDelay = 0;
+            SamplePeriod = 0;
 
             _ReceivedBytes = new List<byte>();
             
@@ -298,19 +310,19 @@ namespace LCA_SYNC
 
                     Console.WriteLine(results2[1]);
                     //Console.WriteLine("I am here0.");
-                    testDuration = (uint)results2[1];
+                    TestDuration = (uint)results2[1];
                     //Console.WriteLine("I am here1.");
-                    startDelay = (byte)results2[2];
-                    sampleRate = (byte)results2[3];
+                    StartDelay = (byte)results2[2];
+                    SamplePeriod = (byte)results2[3] / 4.0f;
                     //Console.WriteLine("I am here2.");
-                    packageName = results2[0].ToString();
+                    PackageName = results2[0].ToString();
                     //Console.WriteLine("I am here3.");
-                    displayName = packageName + " (" + Port.PortName + ")";
+                    //_displayName = _packageName + " (" + Port.PortName + ")";
 
                     ;
 
                     ArduinoDataChanged.Invoke(this, new ArduinoEventArgs("RefreshInfo"));
-                    Console.WriteLine("The RefreshInfo results are in. packageName = {0}, testDuration = {1}, startDelay = {2}, sampleRate = {3}.", packageName, testDuration, startDelay, sampleRate);
+                    Console.WriteLine("The RefreshInfo results are in. PackageName = {0}, TestDuration = {1}, StartDelay = {2}, SamplePeriod = {3}.", PackageName, TestDuration, StartDelay, SamplePeriod);
                 }
 
                 Console.WriteLine("At end of RefreshInfo.");
@@ -327,7 +339,7 @@ namespace LCA_SYNC
         }
 
 
-        double _GetTimeoutLength(DATACATEGORY cat, CONFIGCATEGORY subcat, ACTION action, String data = null)
+        private double _GetTimeoutLength(DATACATEGORY cat, CONFIGCATEGORY subcat, ACTION action, String data = null)
         {
             return 100.0; // Implement this later. 
         }

@@ -48,6 +48,9 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>.\ButtonRoundCustom.dll</HintPath>
     </Reference>
+    <Reference Include="HTG_ImageCombo">
+      <HintPath>..\..\..\..\..\Desktop\HTG_ImageCombo_Demo\HTG_ImageCombo_Demo\HTG_ImageCombo.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core" />
@@ -140,6 +143,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\fr.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\errorLang.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\noLangIcon.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

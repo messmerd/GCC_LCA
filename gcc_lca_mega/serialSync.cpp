@@ -99,7 +99,7 @@ bool ProcessConfigRequest()
         Serial.print(conf.test_duration, HEX);
         Serial.write(0x00);
         Serial.write((byte)(conf.start_delay+0x4));
-        Serial.write((byte)(conf.sample_rate+0x4));
+        Serial.write((byte)(conf.sample_rate/0.25+0x4));
         Serial.write(eot);
         
         return true;

@@ -102,9 +102,6 @@ Adafruit_MAX31855 digital_thermo_6(MAXCLK, MAXCS_6, MAXDO_6);
 Adafruit_MAX31855 digital_thermo_7(MAXCLK, MAXCS_7, MAXDO_7);
 
 void setup() {
-  Serial.print("TIFR1's interrupt flag is ");
-  Serial.println((TIFR1 & (1<<OCF1A))>>1);
-  
   pinMode(LED_PIN, OUTPUT);
   pinMode(LED_PIN2, OUTPUT);
   pinMode(PUSHBUTTON_PIN, INPUT); 
@@ -158,12 +155,12 @@ void setup() {
 
   // RTC init
   if (!rtc.begin()) {
-    Serial.println("Couldn't find RTC");
+    //Serial.println("Couldn't find RTC");
     while (1);
   }
 
   if (rtc.lostPower()) {
-    Serial.println("RTC lost power, lets set the time!");
+    //Serial.println("RTC lost power, lets set the time!");
     // following line sets the RTC to the date & time this sketch was compiled
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
     // This line sets the RTC with an explicit date & time, for example to set
@@ -197,7 +194,7 @@ void setup() {
   //TIMSK5 |= (1<<OCIE5A);   //timer3 enable the interrupt (Output Compare A Match Interrupt Enable)
   while (testStarted == false) // This will get changed in the interrupt once the clock pulse comes in. For synchronization purposes. 
   {}
-  Serial.println("Test started.");
+  //Serial.println("Test started.");
 
   
 }
@@ -237,14 +234,14 @@ void loop()
     printToFile(dataFileName, dataString, true); // print to file
 
     
-    Serial.println((String)(micros()-_time00));
+    //Serial.println((String)(micros()-_time00));
     //Serial.println((unsigned long)(conf.sample_rate*1000000) - SERIAL_COMM_TIME - (unsigned long)(1000000*TCNT5/1024));
-    Serial.println(conf.sample_rate); 
-    Serial.println(SERIAL_COMM_TIME);
-    Serial.println(TCNT5); 
+    //Serial.println(conf.sample_rate); 
+    //Serial.println(SERIAL_COMM_TIME);
+    //Serial.println(TCNT5); 
     //printToFile(dataFileName, datStr, true);
 
-    delay(100);  // needed for prints? 
+    //delay(100);  // needed for prints? 
     
     samples_elapsed++;
     
@@ -255,8 +252,8 @@ void loop()
     samplePeriodReached = false;
     //TIMSK1 |= (1<<OCIE1A);   //timer1 enable the interrupt  // This causes everything to stop working!
 
-    Serial.print("TIFR1's interrupt flag is ");
-    Serial.println((TIFR1 & (1<<OCF1A))>>1);
+    //Serial.print("TIFR1's interrupt flag is ");
+    //Serial.println((TIFR1 & (1<<OCF1A))>>1);
 
     Timer1.restart(); 
 
@@ -301,7 +298,7 @@ void Timer1_ISR()
     {
       // Error! Clock signal not received after its sample period 
       // isSerialSafeRegion = true;  // ?? (for sending error)
-      Serial.println("---sampling error!");
+      //Serial.println("---sampling error!");
     }
     else if (inSerialSafeRegion)
     {
@@ -413,7 +410,7 @@ void setCounter5(float seconds)
 ISR(TIMER5_COMPA_vect) // This is the interrupt request
 {    
   noInterrupts();
-  Serial.println("In T5 ISR");
+  //Serial.println("In T5 ISR");
   samplePeriodReached = true; 
   if (testStarted == false) 
   {

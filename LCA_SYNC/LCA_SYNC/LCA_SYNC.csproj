@@ -139,7 +139,7 @@
     <None Include="Resources\sync0.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\en.png" />
+    <None Include="Resources\defaultLangIcon.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\fr.png" />

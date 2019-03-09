@@ -51,9 +51,8 @@
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
             this.buttonConnectDisconnect = new System.Windows.Forms.Button();
             this.arduinoList = new System.Windows.Forms.ComboBox();
-            this.buttonArduinoSync = new System.Windows.Forms.Button();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
-            this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.loadConfigurationToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.saveConfigurationToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.optionsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -64,6 +63,14 @@
             this.LanguageIcons = new System.Windows.Forms.ImageList(this.components);
             this.imageList1 = new System.Windows.Forms.ImageList(this.components);
             this.imageComboLanguage = new System.Windows.Forms.ImageCombo();
+            this.buttonArduinoSync = new System.Windows.Forms.Button();
+            this.cToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.fToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.kToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.mMDDYYYYToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.dDMMYYYYToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.TwelveHourToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.TwentyFourHourToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mainBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.serialInterfaceBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.tabControl.SuspendLayout();
@@ -337,24 +344,10 @@
             this.arduinoList.TabStop = false;
             this.arduinoList.SelectedIndexChanged += new System.EventHandler(this.comboBox1_SelectedIndexChanged);
             // 
-            // buttonArduinoSync
-            // 
-            this.buttonArduinoSync.BackColor = System.Drawing.SystemColors.ButtonFace;
-            this.buttonArduinoSync.BackgroundImage = global::LCA_SYNC.Properties.Resources.sync;
-            this.buttonArduinoSync.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-            this.buttonArduinoSync.FlatAppearance.BorderColor = System.Drawing.Color.Black;
-            this.buttonArduinoSync.Location = new System.Drawing.Point(424, 33);
-            this.buttonArduinoSync.Name = "buttonArduinoSync";
-            this.buttonArduinoSync.Size = new System.Drawing.Size(31, 31);
-            this.buttonArduinoSync.TabIndex = 5;
-            this.buttonArduinoSync.TabStop = false;
-            this.buttonArduinoSync.UseVisualStyleBackColor = false;
-            this.buttonArduinoSync.Click += new System.EventHandler(this.buttonArduinoSync_Click);
-            // 
             // menuStrip1
             // 
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripMenuItem1,
+            this.fileToolStripMenuItem,
             this.optionsToolStripMenuItem,
             this.aboutToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
@@ -363,14 +356,14 @@
             this.menuStrip1.TabIndex = 0;
             this.menuStrip1.Text = "menuStrip1";
             // 
-            // toolStripMenuItem1
+            // fileToolStripMenuItem
             // 
-            this.toolStripMenuItem1.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.fileToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.loadConfigurationToolStripMenuItem,
             this.saveConfigurationToolStripMenuItem});
-            this.toolStripMenuItem1.Name = "toolStripMenuItem1";
-            this.toolStripMenuItem1.Size = new System.Drawing.Size(37, 20);
-            this.toolStripMenuItem1.Text = "File";
+            this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
+            this.fileToolStripMenuItem.Size = new System.Drawing.Size(37, 20);
+            this.fileToolStripMenuItem.Text = "File";
             // 
             // loadConfigurationToolStripMenuItem
             // 
@@ -396,20 +389,30 @@
             // 
             // temperatureUnitsToolStripMenuItem
             // 
+            this.temperatureUnitsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.cToolStripMenuItem,
+            this.fToolStripMenuItem,
+            this.kToolStripMenuItem});
             this.temperatureUnitsToolStripMenuItem.Name = "temperatureUnitsToolStripMenuItem";
-            this.temperatureUnitsToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
+            this.temperatureUnitsToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.temperatureUnitsToolStripMenuItem.Text = "Temperature Units";
             // 
             // dateFormatToolStripMenuItem
             // 
+            this.dateFormatToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.mMDDYYYYToolStripMenuItem,
+            this.dDMMYYYYToolStripMenuItem});
             this.dateFormatToolStripMenuItem.Name = "dateFormatToolStripMenuItem";
-            this.dateFormatToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
+            this.dateFormatToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.dateFormatToolStripMenuItem.Text = "Date Format";
             // 
             // timeFormatToolStripMenuItem
             // 
+            this.timeFormatToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.TwelveHourToolStripMenuItem,
+            this.TwentyFourHourToolStripMenuItem});
             this.timeFormatToolStripMenuItem.Name = "timeFormatToolStripMenuItem";
-            this.timeFormatToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
+            this.timeFormatToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.timeFormatToolStripMenuItem.Text = "Time Format";
             // 
             // aboutToolStripMenuItem
@@ -421,7 +424,7 @@
             // LanguageIcons
             // 
             this.LanguageIcons.ColorDepth = System.Windows.Forms.ColorDepth.Depth8Bit;
-            this.LanguageIcons.ImageSize = new System.Drawing.Size(16, 16);
+            this.LanguageIcons.ImageSize = new System.Drawing.Size(24, 24);
             this.LanguageIcons.TransparentColor = System.Drawing.Color.Transparent;
             // 
             // imageList1
@@ -435,15 +438,73 @@
             this.imageComboLanguage.CausesValidation = false;
             this.imageComboLanguage.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawFixed;
             this.imageComboLanguage.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.imageComboLanguage.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.imageComboLanguage.FormattingEnabled = true;
             this.imageComboLanguage.ImageList = this.LanguageIcons;
             this.imageComboLanguage.ImageSide = System.Windows.Forms.ImageCombo.IMAGESIDE.Right;
             this.imageComboLanguage.ImeMode = System.Windows.Forms.ImeMode.NoControl;
+            this.imageComboLanguage.ItemHeight = 23;
             this.imageComboLanguage.Location = new System.Drawing.Point(363, 0);
             this.imageComboLanguage.Name = "imageComboLanguage";
-            this.imageComboLanguage.Size = new System.Drawing.Size(121, 21);
+            this.imageComboLanguage.Size = new System.Drawing.Size(121, 29);
             this.imageComboLanguage.TabIndex = 2;
             this.imageComboLanguage.TabStop = false;
+            // 
+            // buttonArduinoSync
+            // 
+            this.buttonArduinoSync.BackColor = System.Drawing.SystemColors.ButtonFace;
+            this.buttonArduinoSync.BackgroundImage = global::LCA_SYNC.Properties.Resources.sync;
+            this.buttonArduinoSync.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            this.buttonArduinoSync.FlatAppearance.BorderColor = System.Drawing.Color.Black;
+            this.buttonArduinoSync.Location = new System.Drawing.Point(424, 33);
+            this.buttonArduinoSync.Name = "buttonArduinoSync";
+            this.buttonArduinoSync.Size = new System.Drawing.Size(31, 31);
+            this.buttonArduinoSync.TabIndex = 5;
+            this.buttonArduinoSync.TabStop = false;
+            this.buttonArduinoSync.UseVisualStyleBackColor = false;
+            this.buttonArduinoSync.Click += new System.EventHandler(this.buttonArduinoSync_Click);
+            // 
+            // cToolStripMenuItem
+            // 
+            this.cToolStripMenuItem.Name = "cToolStripMenuItem";
+            this.cToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.cToolStripMenuItem.Text = "C";
+            // 
+            // fToolStripMenuItem
+            // 
+            this.fToolStripMenuItem.Name = "fToolStripMenuItem";
+            this.fToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.fToolStripMenuItem.Text = "F";
+            // 
+            // kToolStripMenuItem
+            // 
+            this.kToolStripMenuItem.Name = "kToolStripMenuItem";
+            this.kToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.kToolStripMenuItem.Text = "K";
+            // 
+            // mMDDYYYYToolStripMenuItem
+            // 
+            this.mMDDYYYYToolStripMenuItem.Name = "mMDDYYYYToolStripMenuItem";
+            this.mMDDYYYYToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.mMDDYYYYToolStripMenuItem.Text = "mm/dd/yyyy";
+            // 
+            // dDMMYYYYToolStripMenuItem
+            // 
+            this.dDMMYYYYToolStripMenuItem.Name = "dDMMYYYYToolStripMenuItem";
+            this.dDMMYYYYToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.dDMMYYYYToolStripMenuItem.Text = "dd/mm/yyyy";
+            // 
+            // TwelveHourToolStripMenuItem
+            // 
+            this.TwelveHourToolStripMenuItem.Name = "TwelveHourToolStripMenuItem";
+            this.TwelveHourToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.TwelveHourToolStripMenuItem.Text = "12-hour";
+            // 
+            // TwentyFourHourToolStripMenuItem
+            // 
+            this.TwentyFourHourToolStripMenuItem.Name = "TwentyFourHourToolStripMenuItem";
+            this.TwentyFourHourToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.TwentyFourHourToolStripMenuItem.Text = "24-hour";
             // 
             // mainBindingSource
             // 
@@ -516,7 +577,7 @@
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.DateTimePicker dateTimePicker1;
         private System.Windows.Forms.MenuStrip menuStrip1;
-        private System.Windows.Forms.ToolStripMenuItem toolStripMenuItem1;
+        private System.Windows.Forms.ToolStripMenuItem fileToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem loadConfigurationToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem saveConfigurationToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem optionsToolStripMenuItem;
@@ -526,6 +587,13 @@
         private System.Windows.Forms.ToolStripMenuItem aboutToolStripMenuItem;
         private System.Windows.Forms.ImageList imageList1;
         private System.Windows.Forms.ImageCombo imageComboLanguage;
+        private System.Windows.Forms.ToolStripMenuItem cToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem fToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem kToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem mMDDYYYYToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem dDMMYYYYToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem TwelveHourToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem TwentyFourHourToolStripMenuItem;
     }
 }
 

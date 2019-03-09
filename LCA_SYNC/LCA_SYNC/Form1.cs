@@ -44,7 +44,9 @@ namespace LCA_SYNC
         private ImageList LanguageIcons; 
         private SortedSet<string> AvailableLanguages; 
         private string CurrentLanguage = "";
-        private readonly string DefaultLanguage = "en";
+        private readonly string DefaultLanguage = "en";             // The hard-coded language of the program 
+        private readonly string DefaultLanguageLong = "English";    // The hard-coded language of the program 
+        private string UserDefaultLanguage = "en";                  // The language the user chose to use as a default 
         
         
         public Main()
@@ -72,8 +74,8 @@ namespace LCA_SYNC
             LanguageText = new Dictionary<string, string>();
             AvailableLanguages = new SortedSet<string>();
             LanguageIcons = new ImageList();
+            LanguageIcons.ImageSize = new Size(imageComboLanguage.ImageList.ImageSize.Height, imageComboLanguage.ImageList.ImageSize.Height);
             CurrentLanguage = ""; 
-            //imageComboLanguage.
             LoadLanguages();
 
             //RefreshLanguage(); 
@@ -142,12 +144,36 @@ namespace LCA_SYNC
 
         private void LoadLanguages()
         {
+            // The one weird thing about this whole language thing is that if the en.dat file is missing, you cannot have English
+            //     unless you delete the other language files or the lang folder, and then all you can have is English. 
+            //     Maybe to be less weird, a copy of the English language files can be stored in the resources and if the lang 
+            //     directory or English language files don't exist, then it can create them before loading the languages. 
+            //     But what if the files fail to save for some reason and there are other languages that exist? Then the weird 
+            //     situation would still exist. So I would have to add the English language in a special way that does not involve 
+            //     files. It shouldn't be too hard, and it would be the best course of action probably. I'd have to get the 
+            //     alphabetical ordering right which would be the hardest part. I'd just use defaultLangIcon in the resources and 
+            //     DefaultLanguage and DefaultLanguageLong and RefreshLanguages would handle the rest. So if both the files for the 
+            //     UserDefaultLanguage and DefaultLanguage do not exist, there will still be English as an option regardless. 
+            //     No disabling of the imageComboLanguage would be needed ever since there will always be at least one option. 
+
             string langShort;
             string[] keyvalue = new string[2]; // keyvalue[0] = the key; keyvalue[1] = the value 
+            ImageComboItem comboItem;
 
-            if (!Directory.Exists(Application.StartupPath + @"\lang\"))
+            if (!Directory.Exists(Application.StartupPath + @"\lang\"))  // If lang directory is missing, disable language selection
             {
                 Console.WriteLine("Error: The directory lang\\ does not exist.");
+                LanguageIcons.Images.Add("error", Properties.Resources.errorLang);
+                imageComboLanguage.ImageList = LanguageIcons;
+                LanguageText["errorLang"] = "error";
+                LanguageText["errorLangLong"] = "Lang. error";
+                comboItem = new ImageComboItem("Lang. error", 0);
+                comboItem.Tag = "error";
+                imageComboLanguage.Items.Add(comboItem);
+                imageComboLanguage.SelectedIndex = 0; 
+                imageComboLanguage.Enabled = false;
+                AvailableLanguages.Clear();
+                CurrentLanguage = "error";
                 return; 
             }
 
@@ -156,7 +182,23 @@ namespace LCA_SYNC
 
             Console.WriteLine("Number of language files found: {0}", filePaths.Length);
 
-            ImageComboItem comboItem; 
+            if (filePaths.Length == 0)  // If no language files exist, disable language selection
+            {
+                Console.WriteLine("Error: Could not locate any language files.");
+                LanguageIcons.Images.Add("error", Properties.Resources.errorLang);
+                imageComboLanguage.ImageList = LanguageIcons;
+                LanguageText["errorLang"] = "error";
+                LanguageText["errorLangLong"] = "Lang. error";
+                comboItem = new ImageComboItem("Lang. error", 0);
+                comboItem.Tag = "error";
+                imageComboLanguage.Items.Add(comboItem);
+                imageComboLanguage.SelectedIndex = 0;
+                imageComboLanguage.Enabled = false; 
+                AvailableLanguages.Clear();
+                CurrentLanguage = "error"; 
+                return;
+            }
+
             int i = 0;
             foreach (var file in filePaths)
             {
@@ -188,13 +230,13 @@ namespace LCA_SYNC
                         }
                         else  // There was an error loading the language icon 
                         {
-                            LanguageIcons.Images.Add(Properties.Resources.errorLang);
+                            LanguageIcons.Images.Add(langShort, Properties.Resources.errorLang);
                             Console.WriteLine("Error loading language icon for the language: {0}.", langShort);
                         }
                     }
                     else  // No language icon was specified 
                     {
-                        LanguageIcons.Images.Add(Properties.Resources.noLangIcon);
+                        LanguageIcons.Images.Add(langShort, Properties.Resources.noLangIcon);
                     }
 
                     imageComboLanguage.ImageList = LanguageIcons;
@@ -208,16 +250,35 @@ namespace LCA_SYNC
                 i++; 
             }
 
-            if (CurrentLanguage == "" && AvailableLanguages.Contains(DefaultLanguage))
+            if (CurrentLanguage == "")  // If the CurrentLanguage has not been set, then set it 
             {
-                CurrentLanguage = DefaultLanguage; 
+                if (AvailableLanguages.Contains(UserDefaultLanguage))  // 1st priority is the user's default language if it exists in the lang folder
+                {
+                    CurrentLanguage = UserDefaultLanguage;
+                }
+                else if (AvailableLanguages.Contains(DefaultLanguage)) // 2nd priority is the program's default language if it exists in the lang folder
+                {
+                    CurrentLanguage = DefaultLanguage; 
+                }
+                else if (AvailableLanguages.Count > 0) // 3rd priority is whatever other language exists in the lang folder 
+                {
+                    CurrentLanguage = AvailableLanguages.First(); 
+                }
+                else // Last is the error state where no languages exist. 
+                {
+                    // This case should be caught previously by previous error checks and should never occur. 
+                    return;
+                }
+
+                // Select the current language in the ImageCombo drop-down list: 
                 foreach (ImageComboItem item in imageComboLanguage.Items)
                 {
                     if (item.ItemText == LanguageText[CurrentLanguage + "LangLong"])
                     {
-                        imageComboLanguage.SelectedIndex = item.ImageIndex; 
+                        imageComboLanguage.SelectedIndex = item.ImageIndex;
                     }
                 }
+
             }
 
             RefreshLanguage();
@@ -269,17 +330,33 @@ namespace LCA_SYNC
 
         private void RefreshLanguage()
         {
-            menuStrip1.Items[0].Text = LanguageText?[CurrentLanguage + "File"];
-            menuStrip1.Items[1].Text = LanguageText?[CurrentLanguage + "Options"];
-            menuStrip1.Items[2].Text = LanguageText?[CurrentLanguage + "About"];
-            // Change inner menustrip items here 
-            //menuStrip1.Refresh();
+            // This method refreshes the text in GUI controls to match the CurrentLanguage. 
+            // All other language changes are made through calling LanguageText on the fly by the controls that need it. 
+            // English is the default language and can be loaded even if the English language file does not exist. 
 
-            tabControl.TabPages[0].Text = LanguageText?[CurrentLanguage + "Status"];
-            tabControl.TabPages[1].Text = LanguageText?[CurrentLanguage + "Config"];
-            tabControl.TabPages[2].Text = LanguageText?[CurrentLanguage + "Sensors"];
-            tabControl.TabPages[3].Text = LanguageText?[CurrentLanguage + "Data"];
-            // !!!! The tab pages are too big when in French!!!!!
+            // Menu Items //////////////////// 
+            // The English "File" is default if the language cannot be loaded:  
+            menuStrip1.Items[0].Text = LanguageText.ContainsKey(CurrentLanguage + "File") ? LanguageText[CurrentLanguage + "File"] : "File"; 
+            menuStrip1.Items[1].Text = LanguageText.ContainsKey(CurrentLanguage + "Options") ? LanguageText[CurrentLanguage + "Options"] : "Options";
+            menuStrip1.Items[2].Text = LanguageText.ContainsKey(CurrentLanguage + "About") ? LanguageText[CurrentLanguage + "About"] : "About";
+
+            loadConfigurationToolStripMenuItem.Text = LanguageText.ContainsKey(CurrentLanguage + "LoadConfig") ? LanguageText[CurrentLanguage + "LoadConfig"] : "Load Configuration";
+            saveConfigurationToolStripMenuItem.Text = LanguageText.ContainsKey(CurrentLanguage + "SaveConfig") ? LanguageText[CurrentLanguage + "SaveConfig"] : "Save Configuration";
+
+            temperatureUnitsToolStripMenuItem.Text = LanguageText.ContainsKey(CurrentLanguage + "TempUnits") ? LanguageText[CurrentLanguage + "TempUnits"] : "Temperature Units";
+            dateFormatToolStripMenuItem.Text = LanguageText.ContainsKey(CurrentLanguage + "DateFormat") ? LanguageText[CurrentLanguage + "DateFormat"] : "Date Format";
+            timeFormatToolStripMenuItem.Text = LanguageText.ContainsKey(CurrentLanguage + "TimeFormat") ? LanguageText[CurrentLanguage + "TimeFormat"] : "Time Format";
+            mMDDYYYYToolStripMenuItem.Text = LanguageText.ContainsKey(CurrentLanguage + "DateFormatMDY") ? LanguageText[CurrentLanguage + "DateFormatMDY"] : "mm/dd/yyyy";
+            dDMMYYYYToolStripMenuItem.Text = LanguageText.ContainsKey(CurrentLanguage + "DateFormatDMY") ? LanguageText[CurrentLanguage + "DateFormatDMY"] : "dd/mm/yyyy";
+            TwelveHourToolStripMenuItem.Text = LanguageText.ContainsKey(CurrentLanguage + "12Hour") ? LanguageText[CurrentLanguage + "12Hour"] : "12-hour";
+            TwentyFourHourToolStripMenuItem.Text = LanguageText.ContainsKey(CurrentLanguage + "24Hour") ? LanguageText[CurrentLanguage + "24Hour"] : "24-hour";
+
+            // Tab Control Items //////////////////// 
+            tabControl.TabPages[0].Text = LanguageText.ContainsKey(CurrentLanguage + "Status") ? LanguageText[CurrentLanguage + "Status"] : "Status";
+            tabControl.TabPages[1].Text = LanguageText.ContainsKey(CurrentLanguage + "Config") ? LanguageText[CurrentLanguage + "Config"] : "Config";
+            tabControl.TabPages[2].Text = LanguageText.ContainsKey(CurrentLanguage + "Sensors") ? LanguageText[CurrentLanguage + "Sensors"] : "Sensors";
+            tabControl.TabPages[3].Text = LanguageText.ContainsKey(CurrentLanguage + "Data") ? LanguageText[CurrentLanguage + "Data"] : "Data";
+
 
             // Add the rest of the language support in the same way as above or by calling LanguageText when needed. 
         }

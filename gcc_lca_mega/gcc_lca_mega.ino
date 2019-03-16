@@ -56,7 +56,7 @@ RTC_DS3231 rtc;         // Real-time clock (RTC) object
 
 #define LED_PIN 12                // Sample period LED 
 #define LED_PIN2 10               // CD (card detect) pin? 
-#define PUSHBUTTON_PIN 11         // Start test pushbutton
+#define PUSHBUTTON_PIN 2          // Start test pushbutton
 #define CD_PIN 13                 // Card detect pin 
 #define RTC_INT_PIN 47            // RTC interrupt pin 
 #define chipSelect 53             // For the SD card reader
@@ -101,11 +101,14 @@ Adafruit_MAX31855 digital_thermo_5(MAXCLK, MAXCS_5, MAXDO_5);
 Adafruit_MAX31855 digital_thermo_6(MAXCLK, MAXCS_6, MAXDO_6);
 Adafruit_MAX31855 digital_thermo_7(MAXCLK, MAXCS_7, MAXDO_7);
 
-void setup() {
+void setup() 
+{
   pinMode(LED_PIN, OUTPUT);
   pinMode(LED_PIN2, OUTPUT);
   pinMode(PUSHBUTTON_PIN, INPUT); 
   pinMode(CD_PIN, INPUT); 
+
+  attachInterrupt(digitalPinToInterrupt(PUSHBUTTON_PIN), pushbuttonPress, RISING);
 
   // This is only used for analog thermocouples currently, but we are no longer using them: 
   analogReference(DEFAULT); // 5v on Uno and Mega. Note: Due uses 3.3 v reference which would cause analog thermocouples to not work (given the way things are currently set up)
@@ -181,8 +184,12 @@ void setup() {
   last_sample = conf.test_duration/conf.sample_rate; // The last sample before the test ends. 
 
   digitalWrite(LED_PIN2,LOW);
+  Timer1.attachInterrupt( Timer1_ISR ); // attach the service routine here
 
-  //Serial.println("Press pushbutton to start test.");
+  testStarted = false;
+
+  // Old code: 
+  /*
   while (!digitalRead(PUSHBUTTON_PIN)) {; };  // Start test when pushbutton is pressed. 
 
   delay(conf.start_delay*1000); // Start delay
@@ -191,94 +198,121 @@ void setup() {
   Timer1.attachInterrupt( Timer1_ISR ); // attach the service routine here
 
   setRTCSQWInput(5.0/1024);  // Should make the counter event happen almost immediately 
-  //TIMSK5 |= (1<<OCIE5A);   //timer3 enable the interrupt (Output Compare A Match Interrupt Enable)
+
   while (testStarted == false) // This will get changed in the interrupt once the clock pulse comes in. For synchronization purposes. 
   {}
-  //Serial.println("Test started.");
+  */
 
-  
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void loop() 
 {
-
-  if (samplePeriodReached) // (_timer >= _timer_max)   // One sample period has passed
-  {  
-    //TIMSK1 &= ~(1<<OCIE1A);   //timer1 disable the interrupt
-    Timer1.stop(); 
+  
+  if (testStarted)
+  {
+    if (samplePeriodReached) // (_timer >= _timer_max)   // One sample period has passed
+    {  
+      EIMSK &= ~(1 << INT0);  // Disable pushbutton interrupt 
+      //TIMSK1 &= ~(1<<OCIE1A);   //timer1 disable the interrupt
+      Timer1.stop(); 
+      
+      // disable serial event interrupt? 
+      //noInterrupts();                 //Disable interrupts  (!!!)
     
-    // disable serial event interrupt? 
-    //noInterrupts();                 //Disable interrupts  (!!!)
-    
-    unsigned long _time00 = micros(); 
+      unsigned long _time00 = micros(); 
 
-    digitalWrite(LED_PIN, led_value); // Blink LED to signify the sample period being reached
-    led_value=!led_value;
+      digitalWrite(LED_PIN, led_value); // Blink LED to signify the sample period being reached
+      led_value=!led_value;
 
-    DateTime dt = rtc.now(); 
+      DateTime dt = rtc.now(); 
     
-    // Read from sensors and put results into a string
-    //dataString = "#" + (String)samples_elapsed + "\t";
+      // Read from sensors and put results into a string
+      //dataString = "#" + (String)samples_elapsed + "\t";
     
-    dataString = "#" + (String)dt.day() + (String)dt.month() + (String)(dt.year()-2000) + " " + (String)dt.hour() + ":" + (String)dt.minute() + ":" + (String)dt.second() + "\t";
-    dataString += (String)digital_thermo_0.readCelsius() + "\t"; 
-    dataString += (String)digital_thermo_1.readCelsius() + "\t"; 
-    dataString += (String)digital_thermo_2.readCelsius() + "\t"; 
-    dataString += (String)digital_thermo_3.readCelsius() + "\t"; 
-    dataString += (String)digital_thermo_4.readCelsius() + "\t"; 
-    dataString += (String)digital_thermo_5.readCelsius() + "\t"; 
-    dataString += (String)digital_thermo_6.readCelsius() + "\t"; 
-    dataString += (String)digital_thermo_7.readCelsius(); 
+      dataString = "#" + (String)dt.day() + (String)dt.month() + (String)(dt.year()-2000) + " " + (String)dt.hour() + ":" + (String)dt.minute() + ":" + (String)dt.second() + "\t";
+      dataString += (String)digital_thermo_0.readCelsius() + "\t"; 
+      dataString += (String)digital_thermo_1.readCelsius() + "\t"; 
+      dataString += (String)digital_thermo_2.readCelsius() + "\t"; 
+      dataString += (String)digital_thermo_3.readCelsius() + "\t"; 
+      dataString += (String)digital_thermo_4.readCelsius() + "\t"; 
+      dataString += (String)digital_thermo_5.readCelsius() + "\t"; 
+      dataString += (String)digital_thermo_6.readCelsius() + "\t"; 
+      dataString += (String)digital_thermo_7.readCelsius(); 
     
-    // Write the measurements to the data file on the SD card
-    printToFile(dataFileName, dataString, true); // print to file
+      // Write the measurements to the data file on the SD card
+      printToFile(dataFileName, dataString, true); // print to file
 
     
-    //Serial.println((String)(micros()-_time00));
-    //Serial.println((unsigned long)(conf.sample_rate*1000000) - SERIAL_COMM_TIME - (unsigned long)(1000000*TCNT5/1024));
-    //Serial.println(conf.sample_rate); 
-    //Serial.println(SERIAL_COMM_TIME);
-    //Serial.println(TCNT5); 
-    //printToFile(dataFileName, datStr, true);
+      //Serial.println((String)(micros()-_time00));
+      //Serial.println((unsigned long)(conf.sample_rate*1000000) - SERIAL_COMM_TIME - (unsigned long)(1000000*TCNT5/1024));
+      //Serial.println(conf.sample_rate); 
+      //Serial.println(SERIAL_COMM_TIME);
+      //Serial.println(TCNT5); 
+      //printToFile(dataFileName, datStr, true);
 
-    //delay(100);  // needed for prints? 
+      //delay(100);  // needed for prints? 
     
-    samples_elapsed++;
+      samples_elapsed++;
     
-    Timer1.setPeriod((unsigned long)(conf.sample_rate*1000000) - SERIAL_COMM_TIME - (unsigned long)(1000000*TCNT5/1024)); // Sample period - serial comm time - sampling routine time
-    missedClock = false; 
-    inSerialSafeRegion = true; 
+      missedClock = false; 
+      inSerialSafeRegion = true; 
 
-    samplePeriodReached = false;
-    //TIMSK1 |= (1<<OCIE1A);   //timer1 enable the interrupt  // This causes everything to stop working!
+      samplePeriodReached = false;
+      //TIMSK1 |= (1<<OCIE1A);   //timer1 enable the interrupt  // This causes everything to stop working!
 
-    //Serial.print("TIFR1's interrupt flag is ");
-    //Serial.println((TIFR1 & (1<<OCF1A))>>1);
+      //Serial.print("TIFR1's interrupt flag is ");
+      //Serial.println((TIFR1 & (1<<OCF1A))>>1);
 
-    Timer1.restart(); 
+      Timer1.setPeriod((unsigned long)(conf.sample_rate*1000000) - SERIAL_COMM_TIME - (unsigned long)(1000000*TCNT5/1024)); // Sample period - serial comm time - sampling routine time
+      Timer1.restart(); 
 
-    //interrupts();                 //Enable interrupts  (!!!)
-  }
-
-  if (dataReceived) {
-    //digitalWrite(LED_PIN2,HIGH);
-    //noInterrupts();
-    if (Serial)  // Problem with this line? Maybe remove the Serial condition? 
-    {
-      if (ProcessData())
-      {
-
-      }
-      //dataIn.clear();  // Not needed if you set dataInPos to 0. Will be overwritten.
-      dataInPos = 0; 
-      dataReceived = false;
+      //interrupts();                 //Enable interrupts  (!!!)
+      EIMSK |= (1 << INT0);  // Enable pushbutton interrupt 
     }
-    //interrupts();
+
+    if (dataReceived) 
+    {
+      //digitalWrite(LED_PIN2,HIGH);
+      //noInterrupts();
+      if (Serial)  // Problem with this line? Maybe remove the Serial condition? 
+      {
+        if (ProcessData())
+        {
+  
+        }
+        //dataIn.clear();  // Not needed if you set dataInPos to 0. Will be overwritten.
+        dataInPos = 0; 
+        dataReceived = false;
+      }
+      //interrupts();
+    }
+
+    //digitalWrite(LED_PIN2, digitalRead(CD_PIN));
+
+    //while (samples_elapsed >= last_sample) {}; // Ends the test by going into an infinite loop. It works for now, but we should probably change it later. 
+    if (samples_elapsed >= last_sample)  // Stop the test once it reaches the test duration
+    {
+      stopTest(); 
+    }
+    
   }
-
-  //digitalWrite(LED_PIN2, digitalRead(CD_PIN));
-
-  while (samples_elapsed >= last_sample) {}; // Ends the test by going into an infinite loop. It works for now, but we should probably change it later. 
+  else  // Test has not started  
+  {
+    // Communicate with computer here. Outside of the test here, there are no strict requirements for how much time serial communication can take
+    if (dataReceived) 
+    {
+      if (Serial)  // Problem with this line? Maybe remove the Serial condition? 
+      {
+        if (ProcessData())
+        {}
+        //dataIn.clear();  // Not needed if you set dataInPos to 0. Will be overwritten.
+        dataInPos = 0; 
+        dataReceived = false;
+      }
+    }
+  }
   
 }
 
@@ -313,33 +347,6 @@ void Timer1_ISR()
   //_timer++;
 }
 
-/*
-// Sets internal Timer 1 to 1 ms, starts it, and finds value of _timer_max needed for the current sample period (seconds). 
-void initTimer1(double seconds) {
-  // 1 ms minimum (0.001 seconds)
-  //OCR0A=(250000*seconds)-1;
-  _timer = 0;
-  _timer_max = 1000.0*seconds; 
-  
-  //TCCR0A|=(1<<WGM01);    // Set the CTC mode
-  TCCR1B |= (1<<WGM12); //timer1 - enable the CTC mode
-  
-  OCR1A=0xF9;            // Set the value for 1ms
-  
-  //TIMSK0|=(1<<OCIE0A);   // Set the interrupt request
-  TIMSK1 |= (1<<OCIE1A);   //timer1 enable the interrupt
-  
-  sei();                 // Enable interrupt
-  
-  TCCR1B|=(1<<CS01);     // Set the prescale 1/64 clock
-  TCCR1B|=(1<<CS00);
-
-  TCCR1A = 0;
-  TCCR1B = 0;
-  
-}
-*/ 
-
 void serialEvent(){   // Note: serialEvent() doesn't work on Arduino Due!!!
   //delay(100); 
 
@@ -360,7 +367,7 @@ void serialEvent(){   // Note: serialEvent() doesn't work on Arduino Due!!!
     if (inByte == 0x03) {
       dataReceived = true;
       //Serial.clear();
-      serial_flush_buffer();
+      serial_flush_buffer();  
       break;
     }
   }
@@ -393,7 +400,7 @@ void setRTCSQWInput(float seconds)
   //TCCR5B |= (1<<CS02);     // External clock source with clock on falling edge
   //TCCR5B |= (1<<CS01);     // ^ 
 
-  TIMSK5 |= (1<<OCIE5A);   //timer3 enable the interrupt (Output Compare A Match Interrupt Enable)
+  TIMSK5 |= (1<<OCIE5A);   //timer5 enable the interrupt (Output Compare A Match Interrupt Enable)
 
   sei();                 // Enable interrupts
   
@@ -425,4 +432,51 @@ ISR(TIMER5_COMPA_vect) // This is the interrupt request
     testStarted = true;
   }
   interrupts();
+}
+
+
+void pushbuttonPress()
+{
+  //stopTestWhenPossible = true; 
+  if (!testStarted) 
+  {
+    startTest(); 
+  }
+  else
+  {
+    stopTest(); 
+  }
+  
+}
+
+void startTest()
+{
+  testStarted = false; 
+  samples_elapsed = 0;
+  delay(conf.start_delay*1000); // Start delay
+
+  Timer1.initialize(10000); // set the timer. Needs to go off during or just after the sampling routine.  !!!!
+  Timer1.start(); 
+    
+  //TIMSK5 |= (1<<OCIE5A);   //timer3 enable the interrupt (Output Compare A Match Interrupt Enable)
+  TIMSK5 &= ~(1<<OCIE5A);   //timer5 disable the interrupt (Output Compare A Match Interrupt disable)
+
+  setRTCSQWInput(5.0/1024);  // Should make the counter event happen almost immediately 
+  TIFR5 |= (1<<OCF5A);       // clears RTC interrupt flag
+  TIMSK5 |= (1<<OCIE5A);     // timer5 enable the interrupt (Output Compare A Match Interrupt Enable)
+  interrupts(); // There should be an interrupt routine entered from within this interrupt routine
+
+  while (!testStarted) {}  // Wait for program to sync with RTC pulse so that the first sample is not off by much 
+
+}
+
+void stopTest()
+{
+  TIMSK5 &= ~(1<<OCIE5A);   //timer5 disable the interrupt (Output Compare A Match Interrupt disable)
+  Timer1.stop(); 
+  testStarted = false; 
+  data_file_number++;
+  strcat(dataFileName, String(data_file_number).c_str());
+  strcat(dataFileName, ".txt");  // THERE IS A MAX LENGTH TO THIS, SO THERE'S A MAX NUMBER OF DATA FILES
+
 }

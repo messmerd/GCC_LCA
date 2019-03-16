@@ -16,7 +16,7 @@ public:
 
   String package_name;        // Package name
   unsigned long test_duration;// Test duration
-  unsigned int start_delay;   // Selay in seconds between the button push and the test start
+  unsigned int start_delay;   // Delay in seconds between the button push and the test start
   float sample_rate;          // Sample rate
   char temp_units;            // C, F, or K
   String initial_date;        // Initial date

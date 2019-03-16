@@ -313,13 +313,13 @@ namespace LCA_SYNC
                     TestDuration = (uint)results2[1];
                     //Console.WriteLine("I am here1.");
                     StartDelay = (byte)results2[2];
-                    SamplePeriod = (byte)results2[3] / 4.0f;
+                    SamplePeriod = (float)results2[3];
                     //Console.WriteLine("I am here2.");
                     PackageName = results2[0].ToString();
                     //Console.WriteLine("I am here3.");
                     //_displayName = _packageName + " (" + Port.PortName + ")";
 
-                    ;
+                    //;
 
                     ArduinoDataChanged.Invoke(this, new ArduinoEventArgs("RefreshInfo"));
                     Console.WriteLine("The RefreshInfo results are in. PackageName = {0}, TestDuration = {1}, StartDelay = {2}, SamplePeriod = {3}.", PackageName, TestDuration, StartDelay, SamplePeriod);
@@ -507,7 +507,7 @@ namespace LCA_SYNC
                         //List<byte> resp_data = (List<byte>)resp.data;
                         // Check for sot and eot ? When should that be done ?
                         if (resp.Count > 46 || resp.Count < 9) { throw new ArduinoCommunicationException("The response string is of the wrong length."); }
-                        if ((byte)resp[1] != 0xF2 && (byte)resp[2] != (byte)((byte)action | (byte)subcat)) { throw new ArduinoCommunicationException("The response string contains the wrong request code."); }
+                        if (resp[1] != 0xF2 && resp[2] != (byte)((byte)action | (byte)subcat)) { throw new ArduinoCommunicationException("The response string contains the wrong request code."); }
 
                         List<object> results = new List<object>();
 
@@ -539,8 +539,8 @@ namespace LCA_SYNC
                         if (resp.Count < nullterm2 + 4) { throw new ArduinoCommunicationException("The response string is of the wrong length."); }
 
                         //results.Add(new byte[] { 0x00, resp[nullterm + 1], resp[nullterm + 2], resp[nullterm + 3] }); //;.AddRange(resp.GetRange(nullterm + 1, 3))); // The test duration 
-                        results.Add((byte)(resp[nullterm2 + 1] - 0x4)); // The start delay  (the 0x4 is to correct for avoiding sending sot or eot over serial)
-                        results.Add((byte)(resp[nullterm2 + 2] - 0x4)); // The sample rate  
+                        results.Add((byte)(resp[nullterm2 + 1] - 0x4)); // The start delay in seconds as a byte (the 0x4 is to correct for avoiding sending sot or eot over serial)
+                        results.Add(((byte)(resp[nullterm2 + 2] - 0x4))/8.0f); // The sample period in seconds as a float  
 
                         Console.WriteLine("Done parsing the config response.");
 

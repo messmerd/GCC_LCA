@@ -98,8 +98,8 @@ bool ProcessConfigRequest()
         //Serial.write(bytebuffer, 3); // Send as 3 bytes
         Serial.print(conf.test_duration, HEX);
         Serial.write(0x00);
-        Serial.write((byte)(conf.start_delay+0x4));
-        Serial.write((byte)(conf.sample_rate/0.25+0x4));
+        Serial.write((byte)(conf.start_delay + 0x4));
+        Serial.write((byte)(conf.sample_rate*8.0 + 0x4));
         Serial.write(eot);
         
         return true;

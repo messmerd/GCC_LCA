@@ -80,6 +80,8 @@ namespace LCA_SYNC
 
             //RefreshLanguage(); 
 
+            numericUpDownSampleRate.Tag = numericUpDownSampleRate.Value;  // The tag will store the previous value
+            numericUpDownSampleRate.ValueChanged += NumericUpDownSampleRate_ValueChanged;
 
             Console.WriteLine("\n\n\n");
             deviceList = new object[] {"<No Device>"};
@@ -111,6 +113,34 @@ namespace LCA_SYNC
 
             // Probably should do all this differently: 
             //List<Tuple<String, UInt16>> result = serial.ArduinosConnected();
+
+        }
+
+        private void NumericUpDownSampleRate_ValueChanged(object sender, EventArgs e)
+        {
+            Console.WriteLine("Value: {0}, Tag: {1}", numericUpDownSampleRate.Value, (decimal)numericUpDownSampleRate.Tag);
+            if (Math.Floor(numericUpDownSampleRate.Value * 8) != numericUpDownSampleRate.Value * 8) // If the sample rate is not a multiple of 0.125 
+            {
+                Console.WriteLine("numericUpDownSampleRate: Not a multiple of 0.125");
+                numericUpDownSampleRate.Value = (decimal)numericUpDownSampleRate.Tag;  // Set it back to the previous value 
+            }
+            else if (numericUpDownSampleRate.Value > 30)
+            {
+                Console.WriteLine("numericUpDownSampleRate: Too high");
+                numericUpDownSampleRate.Value = (decimal)numericUpDownSampleRate.Tag;  // Set it back to the previous value 
+            }
+            else if (numericUpDownSampleRate.Value < 1)
+            {
+                Console.WriteLine("numericUpDownSampleRate: Too low");
+                numericUpDownSampleRate.Value = (decimal)numericUpDownSampleRate.Tag;  // Set it back to the previous value 
+            }
+            else  // Valid input
+            {
+                Console.WriteLine("numericUpDownSampleRate: Just right");
+                numericUpDownSampleRate.Tag = numericUpDownSampleRate.Value; // Set the tag for next time the value is changed
+            }
+
+            // Mark as changed since last sync here!!!
 
         }
 

@@ -48,8 +48,9 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>.\ButtonRoundCustom.dll</HintPath>
     </Reference>
-    <Reference Include="HTG_ImageCombo">
-      <HintPath>..\..\..\..\..\Desktop\HTG_ImageCombo_Demo\HTG_ImageCombo_Demo\HTG_ImageCombo.dll</HintPath>
+    <Reference Include="HTG_ImageCombo, Version=1.1.7005.37149, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>.\HTG_ImageCombo.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />

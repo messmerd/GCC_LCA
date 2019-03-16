@@ -57,20 +57,20 @@
             this.saveConfigurationToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.optionsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.temperatureUnitsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.cToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.fToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.kToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.dateFormatToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.mMDDYYYYToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.dDMMYYYYToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.timeFormatToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.TwelveHourToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.TwentyFourHourToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.LanguageIcons = new System.Windows.Forms.ImageList(this.components);
             this.imageList1 = new System.Windows.Forms.ImageList(this.components);
             this.imageComboLanguage = new System.Windows.Forms.ImageCombo();
             this.buttonArduinoSync = new System.Windows.Forms.Button();
-            this.cToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.fToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.kToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.mMDDYYYYToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.dDMMYYYYToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.TwelveHourToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.TwentyFourHourToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.mainBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.serialInterfaceBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.tabControl.SuspendLayout();
@@ -228,7 +228,7 @@
             this.numericUpDownSampleRate.Size = new System.Drawing.Size(57, 20);
             this.numericUpDownSampleRate.TabIndex = 14;
             this.numericUpDownSampleRate.Value = new decimal(new int[] {
-            125,
+            1000,
             0,
             0,
             196608});
@@ -394,8 +394,26 @@
             this.fToolStripMenuItem,
             this.kToolStripMenuItem});
             this.temperatureUnitsToolStripMenuItem.Name = "temperatureUnitsToolStripMenuItem";
-            this.temperatureUnitsToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.temperatureUnitsToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
             this.temperatureUnitsToolStripMenuItem.Text = "Temperature Units";
+            // 
+            // cToolStripMenuItem
+            // 
+            this.cToolStripMenuItem.Name = "cToolStripMenuItem";
+            this.cToolStripMenuItem.Size = new System.Drawing.Size(82, 22);
+            this.cToolStripMenuItem.Text = "C";
+            // 
+            // fToolStripMenuItem
+            // 
+            this.fToolStripMenuItem.Name = "fToolStripMenuItem";
+            this.fToolStripMenuItem.Size = new System.Drawing.Size(82, 22);
+            this.fToolStripMenuItem.Text = "F";
+            // 
+            // kToolStripMenuItem
+            // 
+            this.kToolStripMenuItem.Name = "kToolStripMenuItem";
+            this.kToolStripMenuItem.Size = new System.Drawing.Size(82, 22);
+            this.kToolStripMenuItem.Text = "K";
             // 
             // dateFormatToolStripMenuItem
             // 
@@ -403,8 +421,20 @@
             this.mMDDYYYYToolStripMenuItem,
             this.dDMMYYYYToolStripMenuItem});
             this.dateFormatToolStripMenuItem.Name = "dateFormatToolStripMenuItem";
-            this.dateFormatToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.dateFormatToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
             this.dateFormatToolStripMenuItem.Text = "Date Format";
+            // 
+            // mMDDYYYYToolStripMenuItem
+            // 
+            this.mMDDYYYYToolStripMenuItem.Name = "mMDDYYYYToolStripMenuItem";
+            this.mMDDYYYYToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
+            this.mMDDYYYYToolStripMenuItem.Text = "mm/dd/yyyy";
+            // 
+            // dDMMYYYYToolStripMenuItem
+            // 
+            this.dDMMYYYYToolStripMenuItem.Name = "dDMMYYYYToolStripMenuItem";
+            this.dDMMYYYYToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
+            this.dDMMYYYYToolStripMenuItem.Text = "dd/mm/yyyy";
             // 
             // timeFormatToolStripMenuItem
             // 
@@ -412,8 +442,20 @@
             this.TwelveHourToolStripMenuItem,
             this.TwentyFourHourToolStripMenuItem});
             this.timeFormatToolStripMenuItem.Name = "timeFormatToolStripMenuItem";
-            this.timeFormatToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.timeFormatToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
             this.timeFormatToolStripMenuItem.Text = "Time Format";
+            // 
+            // TwelveHourToolStripMenuItem
+            // 
+            this.TwelveHourToolStripMenuItem.Name = "TwelveHourToolStripMenuItem";
+            this.TwelveHourToolStripMenuItem.Size = new System.Drawing.Size(116, 22);
+            this.TwelveHourToolStripMenuItem.Text = "12-hour";
+            // 
+            // TwentyFourHourToolStripMenuItem
+            // 
+            this.TwentyFourHourToolStripMenuItem.Name = "TwentyFourHourToolStripMenuItem";
+            this.TwentyFourHourToolStripMenuItem.Size = new System.Drawing.Size(116, 22);
+            this.TwentyFourHourToolStripMenuItem.Text = "24-hour";
             // 
             // aboutToolStripMenuItem
             // 
@@ -463,48 +505,6 @@
             this.buttonArduinoSync.TabStop = false;
             this.buttonArduinoSync.UseVisualStyleBackColor = false;
             this.buttonArduinoSync.Click += new System.EventHandler(this.buttonArduinoSync_Click);
-            // 
-            // cToolStripMenuItem
-            // 
-            this.cToolStripMenuItem.Name = "cToolStripMenuItem";
-            this.cToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.cToolStripMenuItem.Text = "C";
-            // 
-            // fToolStripMenuItem
-            // 
-            this.fToolStripMenuItem.Name = "fToolStripMenuItem";
-            this.fToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.fToolStripMenuItem.Text = "F";
-            // 
-            // kToolStripMenuItem
-            // 
-            this.kToolStripMenuItem.Name = "kToolStripMenuItem";
-            this.kToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.kToolStripMenuItem.Text = "K";
-            // 
-            // mMDDYYYYToolStripMenuItem
-            // 
-            this.mMDDYYYYToolStripMenuItem.Name = "mMDDYYYYToolStripMenuItem";
-            this.mMDDYYYYToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.mMDDYYYYToolStripMenuItem.Text = "mm/dd/yyyy";
-            // 
-            // dDMMYYYYToolStripMenuItem
-            // 
-            this.dDMMYYYYToolStripMenuItem.Name = "dDMMYYYYToolStripMenuItem";
-            this.dDMMYYYYToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.dDMMYYYYToolStripMenuItem.Text = "dd/mm/yyyy";
-            // 
-            // TwelveHourToolStripMenuItem
-            // 
-            this.TwelveHourToolStripMenuItem.Name = "TwelveHourToolStripMenuItem";
-            this.TwelveHourToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.TwelveHourToolStripMenuItem.Text = "12-hour";
-            // 
-            // TwentyFourHourToolStripMenuItem
-            // 
-            this.TwentyFourHourToolStripMenuItem.Name = "TwentyFourHourToolStripMenuItem";
-            this.TwentyFourHourToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.TwentyFourHourToolStripMenuItem.Text = "24-hour";
             // 
             // mainBindingSource
             // 

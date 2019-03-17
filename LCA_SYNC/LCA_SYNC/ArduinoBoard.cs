@@ -37,7 +37,14 @@ namespace LCA_SYNC
         public ManagementBaseObject mgmtBaseObj { get; set; }
         public SerialPort Port { get; set; }
 
-        public ArduinoEventHandler ArduinoDataChanged { get; set; } 
+        public event ArduinoEventHandler ArduinoDataChanged;
+        /*
+        public event ArduinoEventHandler SamplePeriodChanged;
+        public event ArduinoEventHandler TestDurationChanged;
+        public event ArduinoEventHandler StartDelayChanged;
+        public event ArduinoEventHandler PackageNameChanged;
+        */
+
         public EventHandler LCAChanged { get; set; }
         private bool _lca;  // Whether the device is a legit LCA arduino (true) or not (false)
         public bool lca
@@ -52,10 +59,10 @@ namespace LCA_SYNC
                 }
             }
         }
-        String type; // Mega, Uno, Nano, etc. 
+        string type; // Mega, Uno, Nano, etc. 
 
-        String vid;
-        String pid;
+        string vid;
+        string pid;
 
         public ArduinoBoard Self  // Is there a better way to do this in Form1? DataSource
         {
@@ -73,7 +80,17 @@ namespace LCA_SYNC
 
         private List<byte> _ReceivedBytes;
 
-        public string PackageName { get; private set; }       
+        private string _PackageName; 
+        public string PackageName
+        {
+            get { return _PackageName; }
+            private set
+            {
+                string oldPackageName = _PackageName; 
+                _PackageName = value;
+                if (oldPackageName != _PackageName) ArduinoDataChanged.Invoke(this, new ArduinoEventArgs(oldPackageName, "PackageName"));
+            }
+        }       
         public string DisplayName
         {
             get
@@ -88,9 +105,39 @@ namespace LCA_SYNC
                 }
             }
         }
-        public byte StartDelay { get; private set; }
-        public uint TestDuration { get; private set; }
-        public float SamplePeriod { get; private set; }
+        private byte _StartDelay;
+        public byte StartDelay
+        {
+            get { return _StartDelay; }
+            private set
+            {
+                byte oldStartDelay = _StartDelay; 
+                _StartDelay = value;
+                if (oldStartDelay != _StartDelay) ArduinoDataChanged.Invoke(this, new ArduinoEventArgs(oldStartDelay, "StartDelay"));
+            }
+        }
+        private uint _TestDuration; 
+        public uint TestDuration
+        {
+            get { return _TestDuration; }
+            private set
+            {
+                uint oldTestDuration = _TestDuration;
+                _TestDuration = value;
+                if (oldTestDuration != _TestDuration) ArduinoDataChanged.Invoke(this, new ArduinoEventArgs(oldTestDuration, "TestDuration"));
+            }
+        }
+        private float _SamplePeriod; 
+        public float SamplePeriod
+        {
+            get { return _SamplePeriod; }
+            private set
+            {
+                float oldSamplePeriod = _SamplePeriod; 
+                _SamplePeriod = value;
+                if (oldSamplePeriod != _SamplePeriod) ArduinoDataChanged.Invoke(this, new ArduinoEventArgs(oldSamplePeriod, "SamplePeriod"));
+            }
+        }
 
         //public static String PINGVALUE = "10" + "qlc9KNMKi0mAyT4oKlVky6w7gtHympiyzpdJhE8gj2PPgvO0am5zoSeqkOanME";  // "1" (PING) + 62-character random string from random.org + eot
         private readonly string PINGVALUE = "\x02\x01\xF0qlc9KNMKi0mAyT4o\x03";  // Includes sot and eot.
@@ -112,7 +159,6 @@ namespace LCA_SYNC
         {
             Console.WriteLine("Creating a new arduino device (in constructor now)");
             _ExpectedResponseCancellation = new CancellationTokenSource();
-            //gotLock = false; 
             lca = false;                            // to be determined...
             mgmtBaseObj = device;
             Port = new SerialPort(SerialInterface.GetPortName(device));
@@ -127,7 +173,8 @@ namespace LCA_SYNC
             vid = SerialInterface.GetVID(device);
             pid = SerialInterface.GetPID(device);
             type = SerialInterface.GetArduinoType(vid, pid);
-            PackageName = "NULL";                   // to be found
+
+            _PackageName = "NULL";                   // to be found
             _ReceivedData = "";
             //_SendData = "";
             _syncNeeded = true;
@@ -139,9 +186,9 @@ namespace LCA_SYNC
 
             _ResponseValidity = COMMERROR.NULL;
             //_Busy = true;   // Assuming ping happens at start 
-            TestDuration = 0;
-            StartDelay = 0;
-            SamplePeriod = 0;
+            _TestDuration = 0;
+            _StartDelay = 0;
+            _SamplePeriod = 0;
 
             _ReceivedBytes = new List<byte>();
             
@@ -781,11 +828,24 @@ namespace LCA_SYNC
 
     public class ArduinoEventArgs : EventArgs
     {
-        public ArduinoEventArgs(string reason)
+        public ArduinoEventArgs()
         {
-            Reason = reason; 
+            Reason = "";
+            Type = "";
         }
-        public string Reason { get; set; }
+        public ArduinoEventArgs(object reason)
+        {
+            Reason = reason;
+            Type = "";
+        }
+        public ArduinoEventArgs(object reason, object type)
+        {
+            Reason = reason;
+            Type = type;
+        }
+
+        public object Reason { get; set; }
+        public object Type { get; set; }
 
     }
 

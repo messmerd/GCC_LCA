@@ -65,82 +65,174 @@ namespace LCA_SYNC
             FormClosing += Main_FormClosing;  // Trying w/o this. B/c PnP watcher stopped working again for some reason
 
             InitializeComponent();
+
+            // Unfocus controls as necessary when the user clicks any of these controls:
+            this.MouseDown += UnfocusControls;
+            tabControl.MouseDown += UnfocusControls;
+            menuStrip1.MouseDown += UnfocusControls;
+            StatusPage.MouseDown += UnfocusControls;
+            ConfigPage.MouseDown += UnfocusControls;
+            SensorsPage.MouseDown += UnfocusControls;
+            DataPage.MouseDown += UnfocusControls;
+
             //deviceList = (serial.LCAArduinos.Select(a => a.displayName).Cast<object>().ToArray());
 
+            // Config Page setup: 
+            numericUpDownSampleRate.Tag = (decimal)1; //null;  // The tag will store the arduino's current value
+            numericUpDownTestDurationHours.Tag = (decimal)0;//= null;  // The tag will store the arduino's current value
+            numericUpDownTestDurationMinutes.Tag = (decimal)0;//= null;  // The tag will store the arduino's current value
+            numericUpDownTestDurationSeconds.Tag = (decimal)30;//= null;  // The tag will store the arduino's current value
+            textBoxPackageName.Tag = "";
+            textBoxPackageName.TextChanged += TextBoxPackageName_TextChanged;
+            numericUpDownSampleRate.ValueChanged += NumericUpDownSampleRate_ValueChanged;
+            numericUpDownTestDurationHours.ValueChanged += NumericUpDownTestDuration_ValueChanged;
+            numericUpDownTestDurationMinutes.ValueChanged += NumericUpDownTestDuration_ValueChanged;
+            numericUpDownTestDurationSeconds.ValueChanged += NumericUpDownTestDuration_ValueChanged;
+
+
+            // Languages setup: 
             imageComboLanguage.DropDownClosed += imageComboLanguage_DropDownClosed;  // To unhighlight the selection 
             imageComboLanguage.KeyDown += imageComboLanguage_KeyDown;
             imageComboLanguage.SelectedIndexChanged += imageComboLanguage_SelectedIndexChanged;
-
             LanguageText = new Dictionary<string, string>();
             AvailableLanguages = new SortedSet<string>();
             LanguageIcons = new ImageList();
             LanguageIcons.ImageSize = new Size(imageComboLanguage.ImageList.ImageSize.Height, imageComboLanguage.ImageList.ImageSize.Height);
             CurrentLanguage = ""; 
             LoadLanguages();
-
             //RefreshLanguage(); 
 
-            numericUpDownSampleRate.Tag = numericUpDownSampleRate.Value;  // The tag will store the previous value
-            numericUpDownSampleRate.ValueChanged += NumericUpDownSampleRate_ValueChanged;
 
+            serial.ArduinoDataChanged += serial_ArduinoDataChanged;
             Console.WriteLine("\n\n\n");
+
+            // Arduino List setup: 
             deviceList = new object[] {"<No Device>"};
-
-            //comboBox1.DataSource = serial.LCAArduinos;
-            //comboBox1.DisplayMember = "displayName";
-            //comboBox1.ValueMember = "Port.PortName";
-
-
-            //comboBox1.Items.AddRange(serial.LCAArduinos.Select(a => a.displayName).Cast<object>().ToArray());
-
             //arduinoList.Items.AddRange(deviceList);
             arduinoListBinding = new BindingSource();
             arduinoListBinding.DataSource = serial.LCAArduinos;
             arduinoListBinding.ListChanged += serial_LCAArduinos_Changed;
-            serial.ArduinoDataChanged += serial_ArduinoDataChanged;
-
             arduinoList.DataSource = arduinoListBinding;
             arduinoList.DisplayMember = "displayName";
             //arduinoList.ValueMember = "Self";   // What is the default value of this? Is it self? 
-            
             //arduinoList.SelectedIndex = 0;
 
-            serial.StartPnPWatcher();  // Start watching for USB PnP devices to be added/removed/modified. 
+            // Start watching for USB PnP devices to be added/removed/modified:
+            serial.StartPnPWatcher();  
 
-            // Find LCA arduinos
+            // Find LCA arduinos: 
             serial.LocateLCADevices();
 
+        }
 
-            // Probably should do all this differently: 
-            //List<Tuple<String, UInt16>> result = serial.ArduinosConnected();
+        private void NumericUpDownTestDuration_ValueChanged(object sender, EventArgs e)
+        {
+
+            if (numericUpDownTestDurationHours.Value != Math.Truncate(numericUpDownTestDurationHours.Value))
+            {
+                numericUpDownTestDurationHours.Value = Math.Round(numericUpDownTestDurationHours.Value, 0, MidpointRounding.AwayFromZero);
+            }
+            if (numericUpDownTestDurationMinutes.Value != Math.Truncate(numericUpDownTestDurationMinutes.Value))
+            {
+                numericUpDownTestDurationMinutes.Value = Math.Round(numericUpDownTestDurationMinutes.Value, 0, MidpointRounding.AwayFromZero);
+            }
+            if (numericUpDownTestDurationSeconds.Value != Math.Truncate(numericUpDownTestDurationSeconds.Value))
+            {
+                numericUpDownTestDurationSeconds.Value = Math.Round(numericUpDownTestDurationSeconds.Value, 0, MidpointRounding.AwayFromZero);
+            }
+
+            UpdateTabText();
+
+        }
+
+        private void TextBoxPackageName_TextChanged(object sender, EventArgs e)
+        {
+            
+            bool validInput = true; 
+            foreach (char c in textBoxPackageName.Text)
+            {
+                if (c > 255 || c < 32)  // If a character is not a character supported by the arduino 
+                {
+                    validInput = false; 
+                }
+            }
+
+            if (validInput)
+            {
+                textBoxPackageName.BackColor = Color.White; 
+            }
+            else
+            {
+                textBoxPackageName.BackColor = Color.Red;
+            }
+
+            UpdateTabText(); 
+        }
+
+        private void UnfocusControls(object sender, MouseEventArgs e)
+        {
+            // Removes focus for controls if you click away 
+
+            //Console.WriteLine("In UnfocusControls. Still active: {0}, Clicked on: {1}.", ActiveControl?.Name, ((Control)sender)?.Name ); // sender?.GetType()?.Name);
+
+            if (ActiveControl?.Name != ((Control)sender)?.Name)
+            {
+                this.ActiveControl = null;
+            }
 
         }
 
         private void NumericUpDownSampleRate_ValueChanged(object sender, EventArgs e)
         {
-            Console.WriteLine("Value: {0}, Tag: {1}", numericUpDownSampleRate.Value, (decimal)numericUpDownSampleRate.Tag);
+            //Console.WriteLine("Value: {0}, Tag: {1}", numericUpDownSampleRate.Value, (decimal?)numericUpDownSampleRate?.Tag);
+            
             if (Math.Floor(numericUpDownSampleRate.Value * 8) != numericUpDownSampleRate.Value * 8) // If the sample rate is not a multiple of 0.125 
             {
-                Console.WriteLine("numericUpDownSampleRate: Not a multiple of 0.125");
-                numericUpDownSampleRate.Value = (decimal)numericUpDownSampleRate.Tag;  // Set it back to the previous value 
-            }
-            else if (numericUpDownSampleRate.Value > 30)
-            {
-                Console.WriteLine("numericUpDownSampleRate: Too high");
-                numericUpDownSampleRate.Value = (decimal)numericUpDownSampleRate.Tag;  // Set it back to the previous value 
-            }
-            else if (numericUpDownSampleRate.Value < 1)
-            {
-                Console.WriteLine("numericUpDownSampleRate: Too low");
-                numericUpDownSampleRate.Value = (decimal)numericUpDownSampleRate.Tag;  // Set it back to the previous value 
+                //Console.WriteLine("numericUpDownSampleRate: Not a multiple of 0.125");
+                numericUpDownSampleRate.Value = Math.Round(numericUpDownSampleRate.Value * 8) / 8; // Set it to the nearest multiple of 0.125 
             }
             else  // Valid input
             {
-                Console.WriteLine("numericUpDownSampleRate: Just right");
-                numericUpDownSampleRate.Tag = numericUpDownSampleRate.Value; // Set the tag for next time the value is changed
+                //Console.WriteLine("numericUpDownSampleRate: Just right");
             }
 
-            // Mark as changed since last sync here!!!
+            UpdateTabText(); 
+        }
+
+        private void UpdateTabText()
+        {
+            // Config Tab: 
+            if ((decimal?)numericUpDownSampleRate.Tag != numericUpDownSampleRate.Value ||
+                (decimal?)numericUpDownTestDurationHours.Tag != numericUpDownTestDurationHours.Value ||
+                (decimal?)numericUpDownTestDurationMinutes.Tag != numericUpDownTestDurationMinutes.Value ||
+                (decimal?)numericUpDownTestDurationSeconds.Tag != numericUpDownTestDurationSeconds.Value ||
+                (string)textBoxPackageName.Tag != textBoxPackageName.Text)
+            {
+
+                //Console.WriteLine("Difference detected.");
+                if (tabControl.TabPages[1].Text.Last() != '*')
+                {
+                    tabControl.TabPages[1].Text += '*';
+                    buttonConfigDiscardChanges.Enabled = true; 
+                }
+            }
+            else
+            {
+                //Console.WriteLine("No difference.");
+                tabControl.TabPages[1].Text = tabControl.TabPages[1].Text.TrimEnd('*');
+                buttonConfigDiscardChanges.Enabled = false;
+            }
+
+            // If changes have been made and those changes are valid: 
+            if ((tabControl.TabPages[1].Text.Last() == '*' || tabControl.TabPages[2].Text.Last() == '*') && 
+                textBoxPackageName.BackColor == Color.White)
+            {
+                buttonSync.Enabled = true;
+            }
+            else
+            {
+                buttonSync.Enabled = false;
+            }
 
         }
 
@@ -312,19 +404,19 @@ namespace LCA_SYNC
             }
 
             RefreshLanguage();
-            imageComboLanguage.Refresh(); 
+            imageComboLanguage.Refresh();
         }
 
-        private string getLanguageText(string lang, string key)
+        private string getLanguageText(string key, string defaultValue, string lang = null)
         {
-            // I think this method is unused 
+            lang = lang ?? CurrentLanguage;
             if (LanguageText.ContainsKey(lang + key))
             {
                 return LanguageText[lang + key]; 
             }
             else
             {
-                return "Error: Text not found for language " + lang + " and key " + key + ".";
+                return defaultValue;
             }
         }
 
@@ -366,29 +458,40 @@ namespace LCA_SYNC
 
             // Menu Items //////////////////// 
             // The English "File" is default if the language cannot be loaded:  
-            menuStrip1.Items[0].Text = LanguageText.ContainsKey(CurrentLanguage + "File") ? LanguageText[CurrentLanguage + "File"] : "File"; 
-            menuStrip1.Items[1].Text = LanguageText.ContainsKey(CurrentLanguage + "Options") ? LanguageText[CurrentLanguage + "Options"] : "Options";
-            menuStrip1.Items[2].Text = LanguageText.ContainsKey(CurrentLanguage + "About") ? LanguageText[CurrentLanguage + "About"] : "About";
+            menuStrip1.Items[0].Text = getLanguageText("File", "File");  
+            menuStrip1.Items[1].Text = getLanguageText("Options", "Options"); 
+            menuStrip1.Items[2].Text = getLanguageText("About", "About"); 
 
-            loadConfigurationToolStripMenuItem.Text = LanguageText.ContainsKey(CurrentLanguage + "LoadConfig") ? LanguageText[CurrentLanguage + "LoadConfig"] : "Load Configuration";
-            saveConfigurationToolStripMenuItem.Text = LanguageText.ContainsKey(CurrentLanguage + "SaveConfig") ? LanguageText[CurrentLanguage + "SaveConfig"] : "Save Configuration";
+            loadConfigurationToolStripMenuItem.Text = getLanguageText("LoadConfig", "Load Configuration"); 
+            saveConfigurationToolStripMenuItem.Text = getLanguageText("SaveConfig", "Save Configuration"); 
 
-            temperatureUnitsToolStripMenuItem.Text = LanguageText.ContainsKey(CurrentLanguage + "TempUnits") ? LanguageText[CurrentLanguage + "TempUnits"] : "Temperature Units";
-            dateFormatToolStripMenuItem.Text = LanguageText.ContainsKey(CurrentLanguage + "DateFormat") ? LanguageText[CurrentLanguage + "DateFormat"] : "Date Format";
-            timeFormatToolStripMenuItem.Text = LanguageText.ContainsKey(CurrentLanguage + "TimeFormat") ? LanguageText[CurrentLanguage + "TimeFormat"] : "Time Format";
-            mMDDYYYYToolStripMenuItem.Text = LanguageText.ContainsKey(CurrentLanguage + "DateFormatMDY") ? LanguageText[CurrentLanguage + "DateFormatMDY"] : "mm/dd/yyyy";
-            dDMMYYYYToolStripMenuItem.Text = LanguageText.ContainsKey(CurrentLanguage + "DateFormatDMY") ? LanguageText[CurrentLanguage + "DateFormatDMY"] : "dd/mm/yyyy";
-            TwelveHourToolStripMenuItem.Text = LanguageText.ContainsKey(CurrentLanguage + "12Hour") ? LanguageText[CurrentLanguage + "12Hour"] : "12-hour";
-            TwentyFourHourToolStripMenuItem.Text = LanguageText.ContainsKey(CurrentLanguage + "24Hour") ? LanguageText[CurrentLanguage + "24Hour"] : "24-hour";
+            temperatureUnitsToolStripMenuItem.Text = getLanguageText("TempUnits", "Temperature Units"); 
+            dateFormatToolStripMenuItem.Text = getLanguageText("DateFormat", "Date Format"); 
+            timeFormatToolStripMenuItem.Text = getLanguageText("TimeFormat", "Time Format"); 
+            mMDDYYYYToolStripMenuItem.Text = getLanguageText("DateFormatMDY", "mm/dd/yyyy"); 
+            dDMMYYYYToolStripMenuItem.Text = getLanguageText("DateFormatDMY", "dd/mm/yyyy"); 
+            TwelveHourToolStripMenuItem.Text = getLanguageText("12Hour", "12-hour"); 
+            TwentyFourHourToolStripMenuItem.Text = getLanguageText("24Hour", "24-hour"); 
 
             // Tab Control Items //////////////////// 
-            tabControl.TabPages[0].Text = LanguageText.ContainsKey(CurrentLanguage + "Status") ? LanguageText[CurrentLanguage + "Status"] : "Status";
-            tabControl.TabPages[1].Text = LanguageText.ContainsKey(CurrentLanguage + "Config") ? LanguageText[CurrentLanguage + "Config"] : "Config";
-            tabControl.TabPages[2].Text = LanguageText.ContainsKey(CurrentLanguage + "Sensors") ? LanguageText[CurrentLanguage + "Sensors"] : "Sensors";
-            tabControl.TabPages[3].Text = LanguageText.ContainsKey(CurrentLanguage + "Data") ? LanguageText[CurrentLanguage + "Data"] : "Data";
+            tabControl.TabPages[0].Text = getLanguageText("Status", "Status"); 
+            tabControl.TabPages[1].Text = getLanguageText("Config", "Config"); 
+            tabControl.TabPages[2].Text = getLanguageText("Sensors", "Sensors"); 
+            tabControl.TabPages[3].Text = getLanguageText("Data", "Data"); 
 
+
+            // Config Page Items //////////////////// 
+            labelPackageName.Text = getLanguageText("PackageName", "Package Name"); 
+            labelSamplePeriod.Text = getLanguageText("SamplePeriod", "Sample Period (s)"); 
+            labelTestDuration.Text = getLanguageText("TestDuration", "Test Duration"); 
+            labelConfigHr.Text = getLanguageText("HourAbbr", "Hr."); 
+            labelConfigMin.Text = getLanguageText("MinuteAbbr", "Min."); 
+            labelConfigSec.Text = getLanguageText("SecondAbbr", "Sec."); 
+            buttonConfigDiscardChanges.Text = getLanguageText("DiscardChanges", "Discard Changes");
 
             // Add the rest of the language support in the same way as above or by calling LanguageText when needed. 
+
+            UpdateTabText(); 
         }
 
 
@@ -415,7 +518,38 @@ namespace LCA_SYNC
         {
             // Can do more here: 
             // Use e.Reason for the reason the event was called 
+
+            switch ((string)e.Type)
+            {
+                case "PackageName":
+                    textBoxPackageName.Text = serial.Arduino.PackageName;
+                    textBoxPackageName.Tag = textBoxPackageName.Text;
+                    break;
+                case "StartDelay":
+                    // To do
+                    break;
+                case "TestDuration":
+                    numericUpDownTestDurationHours.Value = Math.Floor((decimal)serial.Arduino.TestDuration/60/60); // Get hours from total seconds 
+                    numericUpDownTestDurationHours.Tag = numericUpDownTestDurationHours.Value;   // Tag is the value the arduino is set to 
+
+                    numericUpDownTestDurationMinutes.Value = Math.Floor((decimal)serial.Arduino.TestDuration / 60) % 60; // Get minutes from total seconds 
+                    numericUpDownTestDurationMinutes.Tag = numericUpDownTestDurationMinutes.Value;   // Tag is the value the arduino is set to 
+
+                    numericUpDownTestDurationSeconds.Value = (decimal)serial.Arduino.TestDuration % 60; // Get seconds from total seconds 
+                    numericUpDownTestDurationSeconds.Tag = numericUpDownTestDurationSeconds.Value;   // Tag is the value the arduino is set to 
+
+                    //Console.WriteLine("{0}:{1}:{2}", Math.Floor((decimal)serial.Arduino.TestDuration / 60 / 60), Math.Floor((decimal)serial.Arduino.TestDuration / 60) % 60, (decimal)serial.Arduino.TestDuration % 60);
+                    break;
+                case "SamplePeriod":
+                    numericUpDownSampleRate.Value = (decimal)serial.Arduino.SamplePeriod; 
+                    numericUpDownSampleRate.Tag = (decimal)serial.Arduino.SamplePeriod;   // Tag is the value the arduino is set to 
+                    break;
+
+            }
+
             arduinoListBinding.ResetBindings(false);
+
+            UpdateTabText();
         }
 
         /// <summary>
@@ -505,12 +639,6 @@ namespace LCA_SYNC
 
         }
         
-
-
-        private void Form1_Load(object sender, EventArgs e)
-        {
-
-        }
 
         // Click 'Sync'
         private void button1_Click(object sender, EventArgs e)
@@ -633,6 +761,18 @@ namespace LCA_SYNC
 
         }
 
+        private void buttonConfigDiscardChanges_Click(object sender, EventArgs e)
+        {
+            numericUpDownSampleRate.Value = (decimal)numericUpDownSampleRate.Tag; 
+
+            numericUpDownTestDurationHours.Value = (decimal)numericUpDownTestDurationHours.Tag;
+            numericUpDownTestDurationMinutes.Value = (decimal)numericUpDownTestDurationMinutes.Tag;
+            numericUpDownTestDurationSeconds.Value = (decimal)numericUpDownTestDurationSeconds.Tag;
+
+            textBoxPackageName.Text = (string)textBoxPackageName.Tag;
+
+            UpdateTabText();
+        }
 
 
     }

@@ -1,10 +1,1 @@
-{
-  "pkg_name": "GCC LCA",
-  "test_dur": 30,
-  "start_delay":0,
-  "smpl_rate":1,
-  "temp_units":"C",
-  "init_date":"01/01/2000",
-  "init_time":"00:00:00",
-  "reset_date_time":1
-}
+GCC LCA	30	0	8	01/01/2000	00:00:00	1

@@ -174,14 +174,14 @@ void setup()
   pinMode(RTC_INT_PIN, INPUT_PULLUP);
   rtc.writeSqwPinMode(DS3231_SquareWave1kHz); // For sample interrupts 
   
-  conf.read(true);   // Read from config file, setting the date and time if needed
+  conf.read2(true);   // Read from config file, setting the date and time if needed
   //Serial.println();
 
   // NEED TO CHECK THAT CONFIG STUFF IS VALID - especially the sample rate
 
   delay(500); // Just in case things need to settle
   
-  last_sample = conf.test_duration/conf.sample_rate; // The last sample before the test ends. 
+  last_sample = conf.test_duration/conf.sample_period; // The last sample before the test ends. 
 
   digitalWrite(LED_PIN2,LOW);
   Timer1.attachInterrupt( Timer1_ISR ); // attach the service routine here
@@ -265,7 +265,7 @@ void loop()
       //Serial.print("TIFR1's interrupt flag is ");
       //Serial.println((TIFR1 & (1<<OCF1A))>>1);
 
-      Timer1.setPeriod((unsigned long)(conf.sample_rate*1000000) - SERIAL_COMM_TIME - (unsigned long)(1000000*TCNT5/1024)); // Sample period - serial comm time - sampling routine time
+      Timer1.setPeriod((unsigned long)(conf.sample_period*1000000) - SERIAL_COMM_TIME - (unsigned long)(1000000*TCNT5/1024)); // Sample period - serial comm time - sampling routine time
       Timer1.restart(); 
 
       //interrupts();                 //Enable interrupts  (!!!)
@@ -425,7 +425,7 @@ ISR(TIMER5_COMPA_vect) // This is the interrupt request
     //Serial.println(samplePeriod);
     //Serial.print("--Old OCR5A: ");
     //Serial.println(OCR5A);
-    setCounter5(conf.sample_rate);
+    setCounter5(conf.sample_period/8.0f);
     TIFR5 |= (1<<OCF5A);  // Needed (clears interrupt flag)
     //Serial.print("--New OCR5A: ");
     //Serial.println(OCR5A);

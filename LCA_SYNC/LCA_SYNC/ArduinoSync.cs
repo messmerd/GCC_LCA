@@ -20,7 +20,7 @@ namespace LCA_SYNC
 {
 
     public enum DATACATEGORY : byte { NULL, PING, CONFIG, OTHER, SENSORS, DATAFILE };  
-    public enum CONFIGCATEGORY : byte { ALL, PACKAGE_NAME, TEST_DUR, START_DELAY, SAMPLE_RATE, TEMP_UNITS, INIT_DATE, INIT_TIME, RESET_DT, LANGUAGE };
+    public enum CONFIGCATEGORY : byte { ALL, PACKAGE_NAME, TEST_DUR, START_DELAY, SAMPLE_PERIOD, TEMP_UNITS, INIT_DATE, INIT_TIME, RESET_DT, LANGUAGE };
     public enum ACTION : byte { READFILE=0, DELETEFILE=1, READVAR=32, WRITEVAR=96 };
     
     //public enum ARDUINOTYPE { UNO, MEGA, SERIAL_ADAPTER, };
@@ -267,11 +267,12 @@ namespace LCA_SYNC
 
         
 
-        public async Task LocateLCADevices()
+        public async Task ActivateAllArduinos()
         {
+            // Activate (Ping + RefreshInfo) all arduinos that have not been added yet
             foreach (ManagementBaseObject dev in FindArduinos())
             {
-                await ActivateArduino(dev);
+                await ActivateArduino(dev);  // ActivateArduino does nothing for arduinos already added
 
             }
 

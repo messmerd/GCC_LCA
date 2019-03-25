@@ -203,7 +203,7 @@ namespace LCA_SYNC
             CloseConnection();
         }
 
-        private void SendData(String data)
+        private void SendData(string data)
         {
             // This method is untested. 2/17/2019. 
             if (Port != null && Port.IsOpen) //&& !_Busy)
@@ -257,7 +257,7 @@ namespace LCA_SYNC
             }
         }
 
-        public void SendData(DATACATEGORY cat, byte subcat, ACTION action, String data = null)
+        public void SendData(DATACATEGORY cat, byte subcat, ACTION action, object data = null)
         {
             // Need to check for invalid input in this method!!!! 
             // Return a COMMERROR ?  An maybe change everything over to Exceptions (b/c some errors already begin as exceptions, and they are more detailed in description and don't require a special Response class)?
@@ -273,9 +273,32 @@ namespace LCA_SYNC
                     break;
                 case DATACATEGORY.CONFIG:
                     // cat = 2. The first hex is F just so that the byte isn't 0x02, which is sot. 
-                    SendData(new byte[] { 0xF2, (byte)((byte)action | subcat) });  // cat = 2
+                    if (subcat == (byte)CONFIGCATEGORY.SAMPLE_PERIOD && data != null)  // Write sample period 
+                    {
+                        SendData(new byte[] { 0xF2, (byte)((byte)action | subcat), (byte)(((float)data) * 8.0 + 4.0) });  // cat = 2
+                    }
+                    else if (subcat == (byte)CONFIGCATEGORY.TEST_DUR && data != null)  // Write test duration 
+                    {
+                        SendData(new byte[] { 0xF2, (byte)((byte)action | subcat), (byte)((byte)data + 0x4) });  // cat = 2
+                    }
+                    else if (subcat == (byte)CONFIGCATEGORY.PACKAGE_NAME && data != null)  // Write package name 
+                    {
+                        List<byte> bytelist = new List<byte>();
+                        bytelist.Add(0xF2);
+                        bytelist.Add((byte)((byte)action | subcat));
+                        bytelist.AddRange(StringToBytes((string)data)); 
+                        SendData(bytelist.ToArray());  // cat = 2
+                    }
+                    else  // Default case. Used for reading and whatever else 
+                    {
+                        SendData(new byte[] { 0xF2, (byte)((byte)action | subcat) });  // cat = 2
+                    }
+
                     break;
                 case DATACATEGORY.OTHER:
+
+
+
                     // Not implemented yet...
                     // Real-time toggle
                     // Stop/stop tests 
@@ -299,7 +322,7 @@ namespace LCA_SYNC
 
         }
 
-        public void SendData(DATACATEGORY cat, CONFIGCATEGORY subcat, ACTION action, String data = null)
+        public void SendData(DATACATEGORY cat, CONFIGCATEGORY subcat, ACTION action, object data = null)
         {
             try
             {
@@ -386,12 +409,12 @@ namespace LCA_SYNC
         }
 
 
-        private double _GetTimeoutLength(DATACATEGORY cat, CONFIGCATEGORY subcat, ACTION action, String data = null)
+        private double _GetTimeoutLength(DATACATEGORY cat, CONFIGCATEGORY subcat, ACTION action, object data = null)
         {
             return 100.0; // Implement this later. 
         }
 
-        private async Task<List<byte>> CommunicateRaw(DATACATEGORY cat, CONFIGCATEGORY subcat, ACTION action, String data = null, double timeoutLength = -1.0)
+        private async Task<List<byte>> CommunicateRaw(DATACATEGORY cat, CONFIGCATEGORY subcat, ACTION action, object data = null, double timeoutLength = -1.0)
         {
             // Returns the raw response without validating it. 
             // It can still return some errors (in Response.validity), but it can't find fault with the content of the data received, so Response.validity should never be INVALID. 
@@ -510,7 +533,7 @@ namespace LCA_SYNC
             }
         }
 
-        public async Task<Response> Communicate(DATACATEGORY cat, CONFIGCATEGORY subcat, ACTION action, String data = null, double timeoutLength = -1.0)
+        public async Task<Response> Communicate(DATACATEGORY cat, CONFIGCATEGORY subcat, ACTION action, object data = null, double timeoutLength = -1.0)
         {
             Console.WriteLine("In Communicate. The current thread is {0}", Thread.CurrentThread.Name);
 
@@ -534,7 +557,7 @@ namespace LCA_SYNC
                     throw new ArduinoCommunicationException("The response was of the NULL category.");
 
                 case DATACATEGORY.PING:
-                    Console.WriteLine("In Communicate, in PING category, resp.data=" + BytesToString(resp) + ". And the correct value is {0}",PINGVALUE);
+                    Console.WriteLine("In Communicate, in PING category, resp.data=" + BytesToString(resp) + ". And the correct value is {0}", PINGVALUE);
                     Console.WriteLine("The comparison made to determine correctness: resp.data=" + BitConverter.ToString(resp.ToArray()) + " and {0}", BitConverter.ToString(StringToBytes(PINGVALUE).ToArray()));
                     if (BytesToString(resp).Equals(PINGVALUE))
                     {
@@ -549,56 +572,83 @@ namespace LCA_SYNC
                     }
 
                 case DATACATEGORY.CONFIG:
-                    if (subcat == CONFIGCATEGORY.ALL)
-                    {
-                        //List<byte> resp_data = (List<byte>)resp.data;
-                        // Check for sot and eot ? When should that be done ?
-                        if (resp.Count > 46 || resp.Count < 9) { throw new ArduinoCommunicationException("The response string is of the wrong length."); }
-                        if (resp[1] != 0xF2 && resp[2] != (byte)((byte)action | (byte)subcat)) { throw new ArduinoCommunicationException("The response string contains the wrong request code."); }
-
-                        List<object> results = new List<object>();
-
-                        int nullterm = resp.IndexOf(0x00, 3);
-                        if (nullterm == -1)
+                    if (action == ACTION.READVAR)
+                    { 
+                        if (subcat == CONFIGCATEGORY.ALL)
                         {
-                            throw new ArduinoCommunicationException("Could not parse the Package Name from the response string.");
-                        }
-                        else
-                        {
-                            string str = "";
-                            for (int i = 3; i < nullterm; i++)  // Don't include the null term. in the package name 
+                            //List<byte> resp_data = (List<byte>)resp.data;
+                            // Check for sot and eot ? When should that be done ?
+                            if (resp.Count > 46 || resp.Count < 9) { throw new ArduinoCommunicationException("The response string is of the wrong length."); }
+                            if (resp[1] != 0xF2 && resp[2] != (byte)((byte)action | (byte)subcat)) { throw new ArduinoCommunicationException("The response string contains the wrong request code."); }
+
+                            List<object> results = new List<object>();
+
+                            int nullterm = resp.IndexOf(0x00, 3);
+                            if (nullterm == -1)
                             {
-                                str += (char)resp[i]; 
+                                throw new ArduinoCommunicationException("Could not parse the Package Name from the response string.");
                             }
-                            results.Add(str);  
-                        }
+                            else
+                            {
+                                string str = "";
+                                for (int i = 3; i < nullterm; i++)  // Don't include the null term. in the package name 
+                                {
+                                    str += (char)resp[i];
+                                }
+                                results.Add(str);
+                            }
 
-                        int nullterm2 = resp.IndexOf(0x00, nullterm + 1);
-                        if (nullterm2 == -1)
-                        {
-                            throw new ArduinoCommunicationException("Could not parse the Test Duration from the response string.");
+                            int nullterm2 = resp.IndexOf(0x00, nullterm + 1);
+                            if (nullterm2 == -1)
+                            {
+                                throw new ArduinoCommunicationException("Could not parse the Test Duration from the response string.");
+                            }
+                            else
+                            {
+                                results.Add(uint.Parse(Encoding.Default.GetString(resp.GetRange(nullterm + 1, nullterm2 - nullterm - 1).ToArray()), System.Globalization.NumberStyles.HexNumber));  // Don't include the null term. in the package name 
+                            }
+
+                            if (resp.Count < nullterm2 + 4) { throw new ArduinoCommunicationException("The response string is of the wrong length."); }
+
+                            //results.Add(new byte[] { 0x00, resp[nullterm + 1], resp[nullterm + 2], resp[nullterm + 3] }); //;.AddRange(resp.GetRange(nullterm + 1, 3))); // The test duration 
+                            results.Add((byte)(resp[nullterm2 + 1] - 0x4)); // The start delay in seconds as a byte (the 0x4 is to correct for avoiding sending sot or eot over serial)
+                            results.Add(((byte)(resp[nullterm2 + 2] - 0x4)) / 8.0f); // The sample period in seconds as a float  
+
+                            Console.WriteLine("Done parsing the config response.");
+
+                            return new Response(results, COMMERROR.VALID);
                         }
                         else
                         {
-                            results.Add(uint.Parse(Encoding.Default.GetString(resp.GetRange(nullterm + 1, nullterm2 - nullterm - 1).ToArray()), System.Globalization.NumberStyles.HexNumber));  // Don't include the null term. in the package name 
+                            // Not implemented yet 
+                            throw new ArduinoCommunicationException("Error, not implemented yet...");
                         }
-
-                        if (resp.Count < nullterm2 + 4) { throw new ArduinoCommunicationException("The response string is of the wrong length."); }
-
-                        //results.Add(new byte[] { 0x00, resp[nullterm + 1], resp[nullterm + 2], resp[nullterm + 3] }); //;.AddRange(resp.GetRange(nullterm + 1, 3))); // The test duration 
-                        results.Add((byte)(resp[nullterm2 + 1] - 0x4)); // The start delay in seconds as a byte (the 0x4 is to correct for avoiding sending sot or eot over serial)
-                        results.Add(((byte)(resp[nullterm2 + 2] - 0x4))/8.0f); // The sample period in seconds as a float  
-
-                        Console.WriteLine("Done parsing the config response.");
-
-                        return new Response(results, COMMERROR.VALID);
+                    }
+                    else if (action == ACTION.WRITEVAR)
+                    {
+                        switch (subcat)
+                        {
+                            case CONFIGCATEGORY.PACKAGE_NAME:
+                                if (resp.Count == 4 && resp[1] == 0xF2 && resp[2] == (byte)((byte)action | (byte)subcat))
+                                {
+                                    PackageName = (string)data; // Success. Can update this now. 
+                                    return new Response(resp, COMMERROR.VALID);
+                                }
+                                    
+                                else
+                                    throw new ArduinoCommunicationException("The response didn't match the expected value.");
+                            // Implement the rest of the cases later 
+                            default:
+                                throw new ArduinoCommunicationException("Error, not implemented yet...");
+                                
+                        }
                     }
                     else
                     {
-                        // Not implemented yet 
-                        throw new ArduinoCommunicationException("Error, not implemented yet...");
+                        // invalid action type 
+                        throw new ArduinoCommunicationException("Invalid communication action type.");
                     }
-
+                    break; 
                 default:
                     throw new ArduinoCommunicationException("The response is of an invalid category.");
                     //return new Response(resp.data, COMMERROR.OTHER);

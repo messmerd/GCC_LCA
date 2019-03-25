@@ -17,7 +17,7 @@ public:
   String package_name;        // Package name
   unsigned long test_duration;// Test duration
   unsigned int start_delay;   // Delay in seconds between the button push and the test start
-  float sample_rate;          // Sample rate
+  byte sample_period;         // Sample period
   char temp_units;            // C, F, or K
   String initial_date;        // Initial date
   String initial_time;        // Initial time
@@ -27,6 +27,8 @@ public:
   boolean need_to_sync_bt;    // For future use
 
   boolean read(boolean setRTC = false); // Reads from SD card's config file, updates values of config variables stored on Arduino, and also sets RTC if needed. 
+  boolean read2(boolean setRTC = false); // Reads from SD card's config file, updates values of config variables stored on Arduino, and also sets RTC if needed. 
+  boolean updateConfigFile(); // Overwrites the config file with the config file contents stored locally in conf.
 };
 
 // This struct stores information about a sensor so that sensors can be treated modularly and be freely added/removed from system. Currently, none of this information is used. 

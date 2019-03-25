@@ -1,4 +1,5 @@
 
+#include "ArduinoJson.h"
 #include "serialSync.h"
 #include "fileIO.h"
 #include "RTClib.h"  
@@ -15,7 +16,6 @@ extern byte sot;
 extern bool dataReceived;
 extern byte dataIn[150]; 
 extern int dataInPos;
-
 
 bool ProcessData()
 {
@@ -99,7 +99,7 @@ bool ProcessConfigRequest()
         Serial.print(conf.test_duration, HEX);
         Serial.write(0x00);
         Serial.write((byte)(conf.start_delay + 0x4));
-        Serial.write((byte)(conf.sample_rate*8.0 + 0x4));
+        Serial.write((byte)(conf.sample_period + 0x4));
         Serial.write(eot);
         
         return true;
@@ -109,10 +109,38 @@ bool ProcessConfigRequest()
   }
   else if (action == 1) // Write 
   {
+    switch (subcat) 
+    {
+      case 1: // Package name
+        conf.package_name.reserve(32);
+        conf.package_name = "";
+        int i = 3;
+        for (i; i<dataInPos-1; i++)
+        {
+          conf.package_name += (char)dataIn[i];
+        }
+        if (conf.updateConfigFile())
+        {
+          // Error!   
+          return false;       
+        }
+        else
+        {
+          Serial.write(sot); 
+          Serial.write(dataIn[1]);
+          Serial.write(dataIn[2]);
+          Serial.write(eot); 
+          return true; 
+        }
+        
+      default: 
+        return false; 
+    }
+    
     // Not implemented yet...
     return false;
   }
-  else  // Invlaid action value
+  else  // Invalid action value
   {
     // Send error message?
     return false; 

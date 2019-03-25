@@ -97,7 +97,7 @@
             this.buttonSync.TabStop = false;
             this.buttonSync.Text = "Sync";
             this.buttonSync.UseVisualStyleBackColor = true;
-            this.buttonSync.Click += new System.EventHandler(this.button1_Click);
+            this.buttonSync.Click += new System.EventHandler(this.buttonSync_Click);
             // 
             // tabControl
             // 

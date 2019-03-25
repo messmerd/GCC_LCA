@@ -121,7 +121,7 @@ namespace LCA_SYNC
             serial.StartPnPWatcher();  
 
             // Find LCA arduinos: 
-            serial.LocateLCADevices();
+            serial.ActivateAllArduinos(); 
 
         }
 
@@ -638,21 +638,28 @@ namespace LCA_SYNC
             //Console.WriteLine("PropertyDescriptor = {0}.", e.PropertyDescriptor.ToString());  // This isn't displaying for some reason.. An exception?
 
         }
-        
+
 
         // Click 'Sync'
-        private void button1_Click(object sender, EventArgs e)
+        private async void buttonSync_Click(object sender, EventArgs e)
         {
-            /*
-            try
+            UpdateTabText();
+
+            if (tabControl.TabPages[1].Text.Last() == '*')  // If config page needs synced 
             {
-                serial.Arduino.GetWeatherData();
+                if ((decimal?)numericUpDownSampleRate.Tag != numericUpDownSampleRate.Value)
+                    await serial.Arduino.Communicate(DATACATEGORY.CONFIG, CONFIGCATEGORY.SAMPLE_PERIOD, ACTION.WRITEVAR, numericUpDownSampleRate.Value);
+                if ((decimal?)numericUpDownTestDurationHours.Tag != numericUpDownTestDurationHours.Value || (decimal?)numericUpDownTestDurationMinutes.Tag != numericUpDownTestDurationMinutes.Value || (decimal?)numericUpDownTestDurationSeconds.Tag != numericUpDownTestDurationSeconds.Value)
+                    await serial.Arduino.Communicate(DATACATEGORY.CONFIG, CONFIGCATEGORY.TEST_DUR, ACTION.WRITEVAR, numericUpDownTestDurationHours.Value * 60 * 60 + numericUpDownTestDurationMinutes.Value * 60 + numericUpDownTestDurationSeconds.Value);
+                if ((string)textBoxPackageName.Tag != textBoxPackageName.Text && textBoxPackageName.BackColor == Color.White)
+                    await serial.Arduino.Communicate(DATACATEGORY.CONFIG, CONFIGCATEGORY.PACKAGE_NAME, ACTION.WRITEVAR, textBoxPackageName.Text);
+                // Time/Date set here 
             }
-            catch (Exception exc)
+
+            if (tabControl.TabPages[2].Text.Last() == '*')  // If data page needs synced 
             {
-                Console.WriteLine(exc.Message);
+                // Implement later 
             }
-            */
 
         }
 
@@ -685,7 +692,6 @@ namespace LCA_SYNC
         }
         */
         
-
 
         private async void button1_Click_2(object sender, EventArgs e)
         {
@@ -744,11 +750,15 @@ namespace LCA_SYNC
         // Untested: 
         private async void buttonArduinoSync_Click(object sender, EventArgs e)
         {
+         
+            // RefreshInfo for all arduinos already added: 
             foreach (var ard in serial.LCAArduinos)
             {
                 await ard.RefreshInfo();
             }
-            serial.LocateLCADevices(); 
+
+            await serial.ActivateAllArduinos();  // Activates (Ping + RefreshInfo) all arduinos that have not been added yet
+
         }
 
         private void label2_Click(object sender, EventArgs e)

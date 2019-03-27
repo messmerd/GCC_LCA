@@ -265,40 +265,38 @@ namespace LCA_SYNC
             switch (cat)
             {
                 case DATACATEGORY.NULL:  // Should never be used. 0x00 might cause issues when sending?
-                    SendData(new byte[] { 0x00, 0x00 });  // cat = 0
+                    SendData(new byte[] { (byte)cat, 0x00 });  // cat = 0
                     break;
                 case DATACATEGORY.PING:
                     //Console.WriteLine("here");
-                    SendData(new byte[] { 0x01, 0xF0 });  // cat = 1
+                    SendData(new byte[] { (byte)cat, 0xF0 });  // cat = 1
                     break;
                 case DATACATEGORY.CONFIG:
                     // cat = 2. The first hex is F just so that the byte isn't 0x02, which is sot. 
-                    if (subcat == (byte)CONFIGCATEGORY.SAMPLE_PERIOD && data != null)  // Write sample period 
+                    if (subcat == (byte)SUBCATEGORY.SAMPLE_PERIOD && data != null)  // Write sample period 
                     {
-                        SendData(new byte[] { 0xF2, (byte)((byte)action | subcat), (byte)(((float)data) * 8.0 + 4.0) });  // cat = 2
+                        SendData(new byte[] { (byte)cat, (byte)((byte)action | subcat), (byte)(((float)data) * 8.0 + 4.0) });  
                     }
-                    else if (subcat == (byte)CONFIGCATEGORY.TEST_DUR && data != null)  // Write test duration 
+                    else if (subcat == (byte)SUBCATEGORY.TEST_DUR && data != null)  // Write test duration 
                     {
-                        SendData(new byte[] { 0xF2, (byte)((byte)action | subcat), (byte)((byte)data + 0x4) });  // cat = 2
+                        char[] hex = BitConverter.ToString(BitConverter.GetBytes((uint)data).Reverse().ToArray()).Replace("-","").ToCharArray(); // Converts test duration to ascii-encoded char array
+                        SendData(new byte[] { (byte)cat, (byte)((byte)action | subcat), (byte)hex[2], (byte)hex[3], (byte)hex[4], (byte)hex[5], (byte)hex[6], (byte)hex[7] });  // cat = 2
                     }
-                    else if (subcat == (byte)CONFIGCATEGORY.PACKAGE_NAME && data != null)  // Write package name 
+                    else if (subcat == (byte)SUBCATEGORY.PACKAGE_NAME && data != null)  // Write package name 
                     {
                         List<byte> bytelist = new List<byte>();
-                        bytelist.Add(0xF2);
+                        bytelist.Add((byte)cat);
                         bytelist.Add((byte)((byte)action | subcat));
                         bytelist.AddRange(StringToBytes((string)data)); 
-                        SendData(bytelist.ToArray());  // cat = 2
+                        SendData(bytelist.ToArray()); 
                     }
                     else  // Default case. Used for reading and whatever else 
                     {
-                        SendData(new byte[] { 0xF2, (byte)((byte)action | subcat) });  // cat = 2
+                        SendData(new byte[] { (byte)cat, (byte)((byte)action | subcat) });  // 
                     }
 
                     break;
                 case DATACATEGORY.OTHER:
-
-
-
                     // Not implemented yet...
                     // Real-time toggle
                     // Stop/stop tests 
@@ -322,7 +320,7 @@ namespace LCA_SYNC
 
         }
 
-        public void SendData(DATACATEGORY cat, CONFIGCATEGORY subcat, ACTION action, object data = null)
+        public void SendData(DATACATEGORY cat, SUBCATEGORY subcat, ACTION action, object data = null)
         {
             try
             {
@@ -369,7 +367,7 @@ namespace LCA_SYNC
             //Response results = new Response(null, COMMERROR.INVALID);
             try
             {
-                Response results = await Communicate(DATACATEGORY.CONFIG, CONFIGCATEGORY.ALL, ACTION.READVAR);
+                Response results = await Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.ALL, ACTION.READVAR);
                 Console.WriteLine("After Communicate in RefreshInfo: results.data=" + results.data + ", results.validity=" + results.validity.ToString());
 
                 if (results.validity == COMMERROR.VALID)  // Only update values if successful
@@ -409,12 +407,12 @@ namespace LCA_SYNC
         }
 
 
-        private double _GetTimeoutLength(DATACATEGORY cat, CONFIGCATEGORY subcat, ACTION action, object data = null)
+        private double _GetTimeoutLength(DATACATEGORY cat, SUBCATEGORY subcat, ACTION action, object data = null)
         {
-            return 100.0; // Implement this later. 
+            return 600.0; // Implement this later. 
         }
 
-        private async Task<List<byte>> CommunicateRaw(DATACATEGORY cat, CONFIGCATEGORY subcat, ACTION action, object data = null, double timeoutLength = -1.0)
+        private async Task<List<byte>> CommunicateRaw(DATACATEGORY cat, SUBCATEGORY subcat, ACTION action, object data = null, double timeoutLength = -1.0)
         {
             // Returns the raw response without validating it. 
             // It can still return some errors (in Response.validity), but it can't find fault with the content of the data received, so Response.validity should never be INVALID. 
@@ -533,9 +531,11 @@ namespace LCA_SYNC
             }
         }
 
-        public async Task<Response> Communicate(DATACATEGORY cat, CONFIGCATEGORY subcat, ACTION action, object data = null, double timeoutLength = -1.0)
+        public async Task<Response> Communicate(DATACATEGORY cat, SUBCATEGORY subcat, ACTION action, object data = null, double timeoutLength = -1.0)
         {
             Console.WriteLine("In Communicate. The current thread is {0}", Thread.CurrentThread.Name);
+
+            //Console.WriteLine(data==null ? "nope" : (((uint)data).ToString()));
 
             List<byte> resp = new List<byte>();
             try
@@ -574,12 +574,12 @@ namespace LCA_SYNC
                 case DATACATEGORY.CONFIG:
                     if (action == ACTION.READVAR)
                     { 
-                        if (subcat == CONFIGCATEGORY.ALL)
+                        if (subcat == SUBCATEGORY.ALL)
                         {
                             //List<byte> resp_data = (List<byte>)resp.data;
                             // Check for sot and eot ? When should that be done ?
                             if (resp.Count > 46 || resp.Count < 9) { throw new ArduinoCommunicationException("The response string is of the wrong length."); }
-                            if (resp[1] != 0xF2 && resp[2] != (byte)((byte)action | (byte)subcat)) { throw new ArduinoCommunicationException("The response string contains the wrong request code."); }
+                            if (resp[1] != (byte)DATACATEGORY.CONFIG && resp[2] != (byte)((byte)action | (byte)subcat)) { throw new ArduinoCommunicationException("The response string contains the wrong request code."); }
 
                             List<object> results = new List<object>();
 
@@ -628,13 +628,28 @@ namespace LCA_SYNC
                     {
                         switch (subcat)
                         {
-                            case CONFIGCATEGORY.PACKAGE_NAME:
-                                if (resp.Count == 4 && resp[1] == 0xF2 && resp[2] == (byte)((byte)action | (byte)subcat))
+                            case SUBCATEGORY.PACKAGE_NAME:
+                                if (resp.Count == 4 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
                                 {
                                     PackageName = (string)data; // Success. Can update this now. 
                                     return new Response(resp, COMMERROR.VALID);
+                                }  
+                                else
+                                    throw new ArduinoCommunicationException("The response didn't match the expected value.");
+                            case SUBCATEGORY.TEST_DUR:
+                                if (resp.Count == 4 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
+                                {
+                                    TestDuration = (uint)data; // Success. Can update this now. 
+                                    return new Response(resp, COMMERROR.VALID);
                                 }
-                                    
+                                else
+                                    throw new ArduinoCommunicationException("The response didn't match the expected value.");
+                            case SUBCATEGORY.SAMPLE_PERIOD:
+                                if (resp.Count == 4 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
+                                {
+                                    SamplePeriod = (float)data; // Success. Can update this now. 
+                                    return new Response(resp, COMMERROR.VALID);
+                                }
                                 else
                                     throw new ArduinoCommunicationException("The response didn't match the expected value.");
                             // Implement the rest of the cases later 
@@ -685,7 +700,7 @@ namespace LCA_SYNC
                 // For debugging: Port.PortName = ConfigurationSettings.AppSettings["VirtualPort"]; // com0com virtual serial port
 
                 Port.Open();
-                Port.DiscardInBuffer();
+                Port.DiscardInBuffer(); // ? 
             }
             else
             {
@@ -825,11 +840,6 @@ namespace LCA_SYNC
                 NewDataReceived(this, new EventArgs()); //Fire the event, indicating that new WeatherData was added to the list.
             }
         }
-
-        /// <summary>
-        /// Sends the command to the Arduino board which triggers the board
-        /// to send the weather data it has internally stored.
-        /// </summary>
 
         public string BytesToString(List<byte> bytes)
         {

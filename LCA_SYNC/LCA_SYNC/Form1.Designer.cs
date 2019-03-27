@@ -32,6 +32,14 @@
             this.buttonSync = new System.Windows.Forms.Button();
             this.tabControl = new System.Windows.Forms.TabControl();
             this.StatusPage = new System.Windows.Forms.TabPage();
+            this.label4 = new System.Windows.Forms.Label();
+            this.buttonStatusStartStop = new System.Windows.Forms.Button();
+            this.labelStatusDataFile = new System.Windows.Forms.Label();
+            this.labelStatusElapsedTime = new System.Windows.Forms.Label();
+            this.labelStatusMode = new System.Windows.Forms.Label();
+            this.labelStatusTotalSensors = new System.Windows.Forms.Label();
+            this.labelStatusComPort = new System.Windows.Forms.Label();
+            this.labelStatusPackageName = new System.Windows.Forms.Label();
             this.ConfigPage = new System.Windows.Forms.TabPage();
             this.label3 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
@@ -41,8 +49,7 @@
             this.labelConfigMin = new System.Windows.Forms.Label();
             this.labelConfigHr = new System.Windows.Forms.Label();
             this.buttonConfigDiscardChanges = new System.Windows.Forms.Button();
-            this.label2 = new System.Windows.Forms.Label();
-            this.dateTimePicker1 = new System.Windows.Forms.DateTimePicker();
+            this.dateTimePickerCustomTime = new System.Windows.Forms.DateTimePicker();
             this.numericUpDownTestDurationSeconds = new System.Windows.Forms.NumericUpDown();
             this.numericUpDownTestDurationMinutes = new System.Windows.Forms.NumericUpDown();
             this.numericUpDownTestDurationHours = new System.Windows.Forms.NumericUpDown();
@@ -75,15 +82,26 @@
             this.buttonArduinoSync = new System.Windows.Forms.Button();
             this.textBoxDebugWindow = new System.Windows.Forms.TextBox();
             this.buttonClearWindow = new System.Windows.Forms.Button();
+            this.checkBoxSyncTimeDate = new System.Windows.Forms.CheckBox();
+            this.radioButtonUseSysTime = new System.Windows.Forms.RadioButton();
+            this.radioButtonUseCustomTime = new System.Windows.Forms.RadioButton();
+            this.labelConfigSec2 = new System.Windows.Forms.Label();
+            this.radioButtonStartDelayNone = new System.Windows.Forms.RadioButton();
+            this.radioButtonStartDelayOneMin = new System.Windows.Forms.RadioButton();
+            this.radioButtonStartDelayThreeMin = new System.Windows.Forms.RadioButton();
+            this.panelStartDelay = new System.Windows.Forms.Panel();
+            this.labelStartDelay = new System.Windows.Forms.Label();
             this.mainBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.serialInterfaceBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.tabControl.SuspendLayout();
+            this.StatusPage.SuspendLayout();
             this.ConfigPage.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationSeconds)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationMinutes)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationHours)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownSampleRate)).BeginInit();
             this.menuStrip1.SuspendLayout();
+            this.panelStartDelay.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.mainBindingSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.serialInterfaceBindingSource)).BeginInit();
             this.SuspendLayout();
@@ -113,6 +131,14 @@
             // 
             // StatusPage
             // 
+            this.StatusPage.Controls.Add(this.label4);
+            this.StatusPage.Controls.Add(this.buttonStatusStartStop);
+            this.StatusPage.Controls.Add(this.labelStatusDataFile);
+            this.StatusPage.Controls.Add(this.labelStatusElapsedTime);
+            this.StatusPage.Controls.Add(this.labelStatusMode);
+            this.StatusPage.Controls.Add(this.labelStatusTotalSensors);
+            this.StatusPage.Controls.Add(this.labelStatusComPort);
+            this.StatusPage.Controls.Add(this.labelStatusPackageName);
             this.StatusPage.Location = new System.Drawing.Point(4, 22);
             this.StatusPage.Name = "StatusPage";
             this.StatusPage.Padding = new System.Windows.Forms.Padding(3);
@@ -121,8 +147,95 @@
             this.StatusPage.Text = "Status";
             this.StatusPage.UseVisualStyleBackColor = true;
             // 
+            // label4
+            // 
+            this.label4.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
+            this.label4.Location = new System.Drawing.Point(-5, 169);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(462, 2);
+            this.label4.TabIndex = 28;
+            // 
+            // buttonStatusStartStop
+            // 
+            this.buttonStatusStartStop.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.buttonStatusStartStop.AutoSize = true;
+            this.buttonStatusStartStop.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.buttonStatusStartStop.Location = new System.Drawing.Point(365, 191);
+            this.buttonStatusStartStop.Name = "buttonStatusStartStop";
+            this.buttonStatusStartStop.Size = new System.Drawing.Size(63, 23);
+            this.buttonStatusStartStop.TabIndex = 6;
+            this.buttonStatusStartStop.Text = "Start Test";
+            this.buttonStatusStartStop.UseVisualStyleBackColor = true;
+            this.buttonStatusStartStop.Click += new System.EventHandler(this.buttonStatusStartStop_Click);
+            // 
+            // labelStatusDataFile
+            // 
+            this.labelStatusDataFile.AutoSize = true;
+            this.labelStatusDataFile.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.labelStatusDataFile.Location = new System.Drawing.Point(24, 228);
+            this.labelStatusDataFile.Name = "labelStatusDataFile";
+            this.labelStatusDataFile.Size = new System.Drawing.Size(160, 24);
+            this.labelStatusDataFile.TabIndex = 5;
+            this.labelStatusDataFile.Text = "Current Data File: ";
+            // 
+            // labelStatusElapsedTime
+            // 
+            this.labelStatusElapsedTime.AutoSize = true;
+            this.labelStatusElapsedTime.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.labelStatusElapsedTime.Location = new System.Drawing.Point(24, 191);
+            this.labelStatusElapsedTime.Name = "labelStatusElapsedTime";
+            this.labelStatusElapsedTime.Size = new System.Drawing.Size(137, 24);
+            this.labelStatusElapsedTime.TabIndex = 4;
+            this.labelStatusElapsedTime.Text = "Elapsed Time: ";
+            // 
+            // labelStatusMode
+            // 
+            this.labelStatusMode.AutoSize = true;
+            this.labelStatusMode.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.labelStatusMode.Location = new System.Drawing.Point(249, 62);
+            this.labelStatusMode.Name = "labelStatusMode";
+            this.labelStatusMode.Size = new System.Drawing.Size(69, 24);
+            this.labelStatusMode.TabIndex = 3;
+            this.labelStatusMode.Text = "Mode: ";
+            // 
+            // labelStatusTotalSensors
+            // 
+            this.labelStatusTotalSensors.AutoSize = true;
+            this.labelStatusTotalSensors.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.labelStatusTotalSensors.Location = new System.Drawing.Point(24, 62);
+            this.labelStatusTotalSensors.Name = "labelStatusTotalSensors";
+            this.labelStatusTotalSensors.Size = new System.Drawing.Size(135, 24);
+            this.labelStatusTotalSensors.TabIndex = 2;
+            this.labelStatusTotalSensors.Text = "Total Sensors: ";
+            // 
+            // labelStatusComPort
+            // 
+            this.labelStatusComPort.AutoSize = true;
+            this.labelStatusComPort.Font = new System.Drawing.Font("Microsoft Sans Serif", 20.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.labelStatusComPort.Location = new System.Drawing.Point(247, 19);
+            this.labelStatusComPort.Name = "labelStatusComPort";
+            this.labelStatusComPort.Size = new System.Drawing.Size(134, 31);
+            this.labelStatusComPort.TabIndex = 1;
+            this.labelStatusComPort.Text = "COM Port";
+            // 
+            // labelStatusPackageName
+            // 
+            this.labelStatusPackageName.AutoSize = true;
+            this.labelStatusPackageName.Font = new System.Drawing.Font("Microsoft Sans Serif", 20.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.labelStatusPackageName.Location = new System.Drawing.Point(20, 19);
+            this.labelStatusPackageName.Name = "labelStatusPackageName";
+            this.labelStatusPackageName.Size = new System.Drawing.Size(199, 31);
+            this.labelStatusPackageName.TabIndex = 0;
+            this.labelStatusPackageName.Text = "Package Name";
+            this.labelStatusPackageName.Click += new System.EventHandler(this.label4_Click);
+            // 
             // ConfigPage
             // 
+            this.ConfigPage.Controls.Add(this.panelStartDelay);
+            this.ConfigPage.Controls.Add(this.labelConfigSec2);
+            this.ConfigPage.Controls.Add(this.radioButtonUseCustomTime);
+            this.ConfigPage.Controls.Add(this.radioButtonUseSysTime);
+            this.ConfigPage.Controls.Add(this.checkBoxSyncTimeDate);
             this.ConfigPage.Controls.Add(this.label3);
             this.ConfigPage.Controls.Add(this.label1);
             this.ConfigPage.Controls.Add(this.labelPackageName);
@@ -131,8 +244,7 @@
             this.ConfigPage.Controls.Add(this.labelConfigMin);
             this.ConfigPage.Controls.Add(this.labelConfigHr);
             this.ConfigPage.Controls.Add(this.buttonConfigDiscardChanges);
-            this.ConfigPage.Controls.Add(this.label2);
-            this.ConfigPage.Controls.Add(this.dateTimePicker1);
+            this.ConfigPage.Controls.Add(this.dateTimePickerCustomTime);
             this.ConfigPage.Controls.Add(this.numericUpDownTestDurationSeconds);
             this.ConfigPage.Controls.Add(this.numericUpDownTestDurationMinutes);
             this.ConfigPage.Controls.Add(this.numericUpDownTestDurationHours);
@@ -183,7 +295,7 @@
             // labelConfigSec
             // 
             this.labelConfigSec.AutoSize = true;
-            this.labelConfigSec.Location = new System.Drawing.Point(285, 122);
+            this.labelConfigSec.Location = new System.Drawing.Point(253, 122);
             this.labelConfigSec.Name = "labelConfigSec";
             this.labelConfigSec.Size = new System.Drawing.Size(29, 13);
             this.labelConfigSec.TabIndex = 26;
@@ -192,7 +304,7 @@
             // labelConfigMin
             // 
             this.labelConfigMin.AutoSize = true;
-            this.labelConfigMin.Location = new System.Drawing.Point(246, 122);
+            this.labelConfigMin.Location = new System.Drawing.Point(214, 122);
             this.labelConfigMin.Name = "labelConfigMin";
             this.labelConfigMin.Size = new System.Drawing.Size(27, 13);
             this.labelConfigMin.TabIndex = 25;
@@ -201,7 +313,7 @@
             // labelConfigHr
             // 
             this.labelConfigHr.AutoSize = true;
-            this.labelConfigHr.Location = new System.Drawing.Point(207, 122);
+            this.labelConfigHr.Location = new System.Drawing.Point(175, 122);
             this.labelConfigHr.Name = "labelConfigHr";
             this.labelConfigHr.Size = new System.Drawing.Size(21, 13);
             this.labelConfigHr.TabIndex = 24;
@@ -220,26 +332,18 @@
             this.buttonConfigDiscardChanges.UseVisualStyleBackColor = true;
             this.buttonConfigDiscardChanges.Click += new System.EventHandler(this.buttonConfigDiscardChanges_Click);
             // 
-            // label2
+            // dateTimePickerCustomTime
             // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(30, 199);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(215, 26);
-            this.label2.TabIndex = 20;
-            this.label2.Text = "Date/Time (in final product, \r\nprobably just sync system time automatically)";
-            // 
-            // dateTimePicker1
-            // 
-            this.dateTimePicker1.CustomFormat = "";
-            this.dateTimePicker1.Location = new System.Drawing.Point(51, 228);
-            this.dateTimePicker1.Name = "dateTimePicker1";
-            this.dateTimePicker1.Size = new System.Drawing.Size(200, 20);
-            this.dateTimePicker1.TabIndex = 19;
+            this.dateTimePickerCustomTime.CustomFormat = "";
+            this.dateTimePickerCustomTime.Enabled = false;
+            this.dateTimePickerCustomTime.Location = new System.Drawing.Point(87, 245);
+            this.dateTimePickerCustomTime.Name = "dateTimePickerCustomTime";
+            this.dateTimePickerCustomTime.Size = new System.Drawing.Size(186, 20);
+            this.dateTimePickerCustomTime.TabIndex = 19;
             // 
             // numericUpDownTestDurationSeconds
             // 
-            this.numericUpDownTestDurationSeconds.Location = new System.Drawing.Point(288, 139);
+            this.numericUpDownTestDurationSeconds.Location = new System.Drawing.Point(256, 139);
             this.numericUpDownTestDurationSeconds.Maximum = new decimal(new int[] {
             59,
             0,
@@ -256,7 +360,7 @@
             // 
             // numericUpDownTestDurationMinutes
             // 
-            this.numericUpDownTestDurationMinutes.Location = new System.Drawing.Point(249, 139);
+            this.numericUpDownTestDurationMinutes.Location = new System.Drawing.Point(217, 139);
             this.numericUpDownTestDurationMinutes.Maximum = new decimal(new int[] {
             59,
             0,
@@ -268,7 +372,7 @@
             // 
             // numericUpDownTestDurationHours
             // 
-            this.numericUpDownTestDurationHours.Location = new System.Drawing.Point(210, 139);
+            this.numericUpDownTestDurationHours.Location = new System.Drawing.Point(178, 139);
             this.numericUpDownTestDurationHours.Maximum = new decimal(new int[] {
             72,
             0,
@@ -281,7 +385,7 @@
             // labelTestDuration
             // 
             this.labelTestDuration.AutoSize = true;
-            this.labelTestDuration.Location = new System.Drawing.Point(207, 104);
+            this.labelTestDuration.Location = new System.Drawing.Point(175, 104);
             this.labelTestDuration.Name = "labelTestDuration";
             this.labelTestDuration.Size = new System.Drawing.Size(71, 13);
             this.labelTestDuration.TabIndex = 15;
@@ -320,9 +424,9 @@
             this.labelSamplePeriod.AutoSize = true;
             this.labelSamplePeriod.Location = new System.Drawing.Point(38, 104);
             this.labelSamplePeriod.Name = "labelSamplePeriod";
-            this.labelSamplePeriod.Size = new System.Drawing.Size(89, 13);
+            this.labelSamplePeriod.Size = new System.Drawing.Size(75, 13);
             this.labelSamplePeriod.TabIndex = 13;
-            this.labelSamplePeriod.Text = "Sample Period (s)";
+            this.labelSamplePeriod.Text = "Sample Period";
             this.labelSamplePeriod.Click += new System.EventHandler(this.label2_Click);
             // 
             // SensorsPage
@@ -424,25 +528,25 @@
             // cToolStripMenuItem
             // 
             this.cToolStripMenuItem.Checked = true;
-            this.cToolStripMenuItem.CheckOnClick = true;
             this.cToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.cToolStripMenuItem.Name = "cToolStripMenuItem";
             this.cToolStripMenuItem.Size = new System.Drawing.Size(82, 22);
             this.cToolStripMenuItem.Text = "C";
+            this.cToolStripMenuItem.Click += new System.EventHandler(this.TempUnitsToolStripMenuItem_Click);
             // 
             // fToolStripMenuItem
             // 
-            this.fToolStripMenuItem.CheckOnClick = true;
             this.fToolStripMenuItem.Name = "fToolStripMenuItem";
             this.fToolStripMenuItem.Size = new System.Drawing.Size(82, 22);
             this.fToolStripMenuItem.Text = "F";
+            this.fToolStripMenuItem.Click += new System.EventHandler(this.TempUnitsToolStripMenuItem_Click);
             // 
             // kToolStripMenuItem
             // 
-            this.kToolStripMenuItem.CheckOnClick = true;
             this.kToolStripMenuItem.Name = "kToolStripMenuItem";
             this.kToolStripMenuItem.Size = new System.Drawing.Size(82, 22);
             this.kToolStripMenuItem.Text = "K";
+            this.kToolStripMenuItem.Click += new System.EventHandler(this.TempUnitsToolStripMenuItem_Click);
             // 
             // dateFormatToolStripMenuItem
             // 
@@ -455,15 +559,19 @@
             // 
             // mMDDYYYYToolStripMenuItem
             // 
+            this.mMDDYYYYToolStripMenuItem.Checked = true;
+            this.mMDDYYYYToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.mMDDYYYYToolStripMenuItem.Name = "mMDDYYYYToolStripMenuItem";
             this.mMDDYYYYToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
             this.mMDDYYYYToolStripMenuItem.Text = "mm/dd/yyyy";
+            this.mMDDYYYYToolStripMenuItem.Click += new System.EventHandler(this.DateFormatOptionToolStripMenuItem_Click);
             // 
             // dDMMYYYYToolStripMenuItem
             // 
             this.dDMMYYYYToolStripMenuItem.Name = "dDMMYYYYToolStripMenuItem";
             this.dDMMYYYYToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
             this.dDMMYYYYToolStripMenuItem.Text = "dd/mm/yyyy";
+            this.dDMMYYYYToolStripMenuItem.Click += new System.EventHandler(this.DateFormatOptionToolStripMenuItem_Click);
             // 
             // timeFormatToolStripMenuItem
             // 
@@ -479,18 +587,23 @@
             this.TwelveHourToolStripMenuItem.Name = "TwelveHourToolStripMenuItem";
             this.TwelveHourToolStripMenuItem.Size = new System.Drawing.Size(116, 22);
             this.TwelveHourToolStripMenuItem.Text = "12-hour";
+            this.TwelveHourToolStripMenuItem.Click += new System.EventHandler(this.TimeFormatOptionToolStripMenuItem_Click);
             // 
             // TwentyFourHourToolStripMenuItem
             // 
+            this.TwentyFourHourToolStripMenuItem.Checked = true;
+            this.TwentyFourHourToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.TwentyFourHourToolStripMenuItem.Name = "TwentyFourHourToolStripMenuItem";
             this.TwentyFourHourToolStripMenuItem.Size = new System.Drawing.Size(116, 22);
             this.TwentyFourHourToolStripMenuItem.Text = "24-hour";
+            this.TwentyFourHourToolStripMenuItem.Click += new System.EventHandler(this.TimeFormatOptionToolStripMenuItem_Click);
             // 
             // aboutToolStripMenuItem
             // 
             this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
             this.aboutToolStripMenuItem.Size = new System.Drawing.Size(52, 20);
             this.aboutToolStripMenuItem.Text = "About";
+            this.aboutToolStripMenuItem.Click += new System.EventHandler(this.aboutToolStripMenuItem_Click);
             // 
             // LanguageIcons
             // 
@@ -541,6 +654,7 @@
             this.textBoxDebugWindow.Location = new System.Drawing.Point(27, 387);
             this.textBoxDebugWindow.Multiline = true;
             this.textBoxDebugWindow.Name = "textBoxDebugWindow";
+            this.textBoxDebugWindow.ReadOnly = true;
             this.textBoxDebugWindow.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.textBoxDebugWindow.Size = new System.Drawing.Size(458, 81);
             this.textBoxDebugWindow.TabIndex = 6;
@@ -554,6 +668,101 @@
             this.buttonClearWindow.TabStop = false;
             this.buttonClearWindow.Text = "Clear Window";
             this.buttonClearWindow.UseVisualStyleBackColor = true;
+            // 
+            // checkBoxSyncTimeDate
+            // 
+            this.checkBoxSyncTimeDate.AutoSize = true;
+            this.checkBoxSyncTimeDate.Location = new System.Drawing.Point(41, 202);
+            this.checkBoxSyncTimeDate.Name = "checkBoxSyncTimeDate";
+            this.checkBoxSyncTimeDate.Size = new System.Drawing.Size(157, 17);
+            this.checkBoxSyncTimeDate.TabIndex = 29;
+            this.checkBoxSyncTimeDate.Text = "Synchronize Time and Date";
+            this.checkBoxSyncTimeDate.UseVisualStyleBackColor = true;
+            this.checkBoxSyncTimeDate.CheckedChanged += new System.EventHandler(this.checkBoxSyncTimeDate_CheckedChanged);
+            // 
+            // radioButtonUseSysTime
+            // 
+            this.radioButtonUseSysTime.AutoSize = true;
+            this.radioButtonUseSysTime.Checked = true;
+            this.radioButtonUseSysTime.Enabled = false;
+            this.radioButtonUseSysTime.Location = new System.Drawing.Point(69, 226);
+            this.radioButtonUseSysTime.Name = "radioButtonUseSysTime";
+            this.radioButtonUseSysTime.Size = new System.Drawing.Size(135, 17);
+            this.radioButtonUseSysTime.TabIndex = 30;
+            this.radioButtonUseSysTime.TabStop = true;
+            this.radioButtonUseSysTime.Text = "Use System Time/Date";
+            this.radioButtonUseSysTime.UseVisualStyleBackColor = true;
+            // 
+            // radioButtonUseCustomTime
+            // 
+            this.radioButtonUseCustomTime.AutoSize = true;
+            this.radioButtonUseCustomTime.Enabled = false;
+            this.radioButtonUseCustomTime.Location = new System.Drawing.Point(69, 249);
+            this.radioButtonUseCustomTime.Name = "radioButtonUseCustomTime";
+            this.radioButtonUseCustomTime.Size = new System.Drawing.Size(14, 13);
+            this.radioButtonUseCustomTime.TabIndex = 31;
+            this.radioButtonUseCustomTime.UseVisualStyleBackColor = true;
+            // 
+            // labelConfigSec2
+            // 
+            this.labelConfigSec2.AutoSize = true;
+            this.labelConfigSec2.Location = new System.Drawing.Point(38, 122);
+            this.labelConfigSec2.Name = "labelConfigSec2";
+            this.labelConfigSec2.Size = new System.Drawing.Size(29, 13);
+            this.labelConfigSec2.TabIndex = 32;
+            this.labelConfigSec2.Text = "Sec.";
+            // 
+            // radioButtonStartDelayNone
+            // 
+            this.radioButtonStartDelayNone.AutoSize = true;
+            this.radioButtonStartDelayNone.Checked = true;
+            this.radioButtonStartDelayNone.Location = new System.Drawing.Point(14, 18);
+            this.radioButtonStartDelayNone.Name = "radioButtonStartDelayNone";
+            this.radioButtonStartDelayNone.Size = new System.Drawing.Size(51, 17);
+            this.radioButtonStartDelayNone.TabIndex = 33;
+            this.radioButtonStartDelayNone.TabStop = true;
+            this.radioButtonStartDelayNone.Text = "None";
+            this.radioButtonStartDelayNone.UseVisualStyleBackColor = true;
+            // 
+            // radioButtonStartDelayOneMin
+            // 
+            this.radioButtonStartDelayOneMin.AutoSize = true;
+            this.radioButtonStartDelayOneMin.Location = new System.Drawing.Point(14, 35);
+            this.radioButtonStartDelayOneMin.Name = "radioButtonStartDelayOneMin";
+            this.radioButtonStartDelayOneMin.Size = new System.Drawing.Size(54, 17);
+            this.radioButtonStartDelayOneMin.TabIndex = 34;
+            this.radioButtonStartDelayOneMin.Text = "1 Min.";
+            this.radioButtonStartDelayOneMin.UseVisualStyleBackColor = true;
+            // 
+            // radioButtonStartDelayThreeMin
+            // 
+            this.radioButtonStartDelayThreeMin.AutoSize = true;
+            this.radioButtonStartDelayThreeMin.Location = new System.Drawing.Point(14, 52);
+            this.radioButtonStartDelayThreeMin.Name = "radioButtonStartDelayThreeMin";
+            this.radioButtonStartDelayThreeMin.Size = new System.Drawing.Size(54, 17);
+            this.radioButtonStartDelayThreeMin.TabIndex = 35;
+            this.radioButtonStartDelayThreeMin.Text = "3 Min.";
+            this.radioButtonStartDelayThreeMin.UseVisualStyleBackColor = true;
+            // 
+            // panelStartDelay
+            // 
+            this.panelStartDelay.Controls.Add(this.labelStartDelay);
+            this.panelStartDelay.Controls.Add(this.radioButtonStartDelayNone);
+            this.panelStartDelay.Controls.Add(this.radioButtonStartDelayThreeMin);
+            this.panelStartDelay.Controls.Add(this.radioButtonStartDelayOneMin);
+            this.panelStartDelay.Location = new System.Drawing.Point(323, 104);
+            this.panelStartDelay.Name = "panelStartDelay";
+            this.panelStartDelay.Size = new System.Drawing.Size(110, 73);
+            this.panelStartDelay.TabIndex = 36;
+            // 
+            // labelStartDelay
+            // 
+            this.labelStartDelay.AutoSize = true;
+            this.labelStartDelay.Location = new System.Drawing.Point(14, 0);
+            this.labelStartDelay.Name = "labelStartDelay";
+            this.labelStartDelay.Size = new System.Drawing.Size(59, 13);
+            this.labelStartDelay.TabIndex = 36;
+            this.labelStartDelay.Text = "Start Delay";
             // 
             // mainBindingSource
             // 
@@ -581,6 +790,8 @@
             this.Name = "Main";
             this.Text = "Low-Cost Array Sync";
             this.tabControl.ResumeLayout(false);
+            this.StatusPage.ResumeLayout(false);
+            this.StatusPage.PerformLayout();
             this.ConfigPage.ResumeLayout(false);
             this.ConfigPage.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationSeconds)).EndInit();
@@ -589,6 +800,8 @@
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownSampleRate)).EndInit();
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
+            this.panelStartDelay.ResumeLayout(false);
+            this.panelStartDelay.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.mainBindingSource)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.serialInterfaceBindingSource)).EndInit();
             this.ResumeLayout(false);
@@ -615,8 +828,7 @@
         private System.Windows.Forms.NumericUpDown numericUpDownTestDurationMinutes;
         private System.Windows.Forms.NumericUpDown numericUpDownTestDurationHours;
         private System.Windows.Forms.Label labelTestDuration;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.DateTimePicker dateTimePicker1;
+        private System.Windows.Forms.DateTimePicker dateTimePickerCustomTime;
         private System.Windows.Forms.MenuStrip menuStrip1;
         private System.Windows.Forms.ToolStripMenuItem fileToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem loadConfigurationToolStripMenuItem;
@@ -645,6 +857,23 @@
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.TextBox textBoxDebugWindow;
         private System.Windows.Forms.Button buttonClearWindow;
+        private System.Windows.Forms.Label labelStatusPackageName;
+        private System.Windows.Forms.Label labelStatusComPort;
+        private System.Windows.Forms.Label labelStatusMode;
+        private System.Windows.Forms.Label labelStatusTotalSensors;
+        private System.Windows.Forms.Label labelStatusDataFile;
+        private System.Windows.Forms.Label labelStatusElapsedTime;
+        private System.Windows.Forms.Button buttonStatusStartStop;
+        private System.Windows.Forms.Label label4;
+        private System.Windows.Forms.RadioButton radioButtonUseCustomTime;
+        private System.Windows.Forms.RadioButton radioButtonUseSysTime;
+        private System.Windows.Forms.CheckBox checkBoxSyncTimeDate;
+        private System.Windows.Forms.Label labelConfigSec2;
+        private System.Windows.Forms.Panel panelStartDelay;
+        private System.Windows.Forms.Label labelStartDelay;
+        private System.Windows.Forms.RadioButton radioButtonStartDelayNone;
+        private System.Windows.Forms.RadioButton radioButtonStartDelayThreeMin;
+        private System.Windows.Forms.RadioButton radioButtonStartDelayOneMin;
     }
 }
 

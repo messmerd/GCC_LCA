@@ -10,7 +10,7 @@
 
 
 bool ProcessData();
-bool ProcessConfigRequest();
+void ProcessConfigRequest();
 
 
 #endif

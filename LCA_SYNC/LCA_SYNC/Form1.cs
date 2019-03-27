@@ -31,11 +31,6 @@ namespace LCA_SYNC
 
     public partial class Main : Form
     {
-        
-        /// <summary>
-        /// Contains a collection of <see cref="WeatherDataItem"/>
-        /// and control methods to send commands to the Arduino Board
-        /// </summary>
         SerialInterface serial;
         object[] deviceList;
         private BindingSource arduinoListBinding;
@@ -74,21 +69,40 @@ namespace LCA_SYNC
             ConfigPage.MouseDown += UnfocusControls;
             SensorsPage.MouseDown += UnfocusControls;
             DataPage.MouseDown += UnfocusControls;
+            panelStartDelay.MouseDown += UnfocusControls;
+            labelConfigSec2.MouseDown += UnfocusControls;
+            labelConfigSec.MouseDown += UnfocusControls;
+            labelConfigMin.MouseDown += UnfocusControls;
+            labelConfigHr.MouseDown += UnfocusControls;
+            labelPackageName.MouseDown += UnfocusControls;
+            labelSamplePeriod.MouseDown += UnfocusControls;
+            labelTestDuration.MouseDown += UnfocusControls;
+            labelStartDelay.MouseDown += UnfocusControls;
+
 
             //deviceList = (serial.LCAArduinos.Select(a => a.displayName).Cast<object>().ToArray());
 
+            // Status Page setup:
+            buttonStatusStartStop.Tag = false;
+
             // Config Page setup: 
-            numericUpDownSampleRate.Tag = (decimal)1; //null;  // The tag will store the arduino's current value
-            numericUpDownTestDurationHours.Tag = (decimal)0;//= null;  // The tag will store the arduino's current value
-            numericUpDownTestDurationMinutes.Tag = (decimal)0;//= null;  // The tag will store the arduino's current value
-            numericUpDownTestDurationSeconds.Tag = (decimal)30;//= null;  // The tag will store the arduino's current value
+            numericUpDownSampleRate.Tag = (decimal)1;           // The tag will store the arduino's current value
+            numericUpDownTestDurationHours.Tag = (decimal)0;    // The tag will store the arduino's current value
+            numericUpDownTestDurationMinutes.Tag = (decimal)0;  // The tag will store the arduino's current value
+            numericUpDownTestDurationSeconds.Tag = (decimal)30; // The tag will store the arduino's current value
+            radioButtonStartDelayNone.Tag = true;               // Checked by default 
+            radioButtonStartDelayOneMin.Tag = false;            // Unchecked by default 
+            radioButtonStartDelayThreeMin.Tag = false;          // Unchecked by default 
+            checkBoxSyncTimeDate.Tag = false;                   // Unchecked by default 
             textBoxPackageName.Tag = "";
             textBoxPackageName.TextChanged += TextBoxPackageName_TextChanged;
             numericUpDownSampleRate.ValueChanged += NumericUpDownSampleRate_ValueChanged;
             numericUpDownTestDurationHours.ValueChanged += NumericUpDownTestDuration_ValueChanged;
             numericUpDownTestDurationMinutes.ValueChanged += NumericUpDownTestDuration_ValueChanged;
             numericUpDownTestDurationSeconds.ValueChanged += NumericUpDownTestDuration_ValueChanged;
-
+            radioButtonStartDelayNone.CheckedChanged += RadioButtonStartDelayOption_CheckedChanged;
+            radioButtonStartDelayOneMin.CheckedChanged += RadioButtonStartDelayOption_CheckedChanged;
+            radioButtonStartDelayThreeMin.CheckedChanged += RadioButtonStartDelayOption_CheckedChanged;
 
             // Languages setup: 
             imageComboLanguage.DropDownClosed += imageComboLanguage_DropDownClosed;  // To unhighlight the selection 
@@ -101,7 +115,6 @@ namespace LCA_SYNC
             CurrentLanguage = ""; 
             LoadLanguages();
             //RefreshLanguage(); 
-
 
             serial.ArduinoDataChanged += serial_ArduinoDataChanged;
             Console.WriteLine("\n\n\n");
@@ -123,6 +136,11 @@ namespace LCA_SYNC
             // Find LCA arduinos: 
             serial.ActivateAllArduinos(); 
 
+        }
+
+        private void RadioButtonStartDelayOption_CheckedChanged(object sender, EventArgs e)
+        {
+            UpdateTabText(); 
         }
 
         private void NumericUpDownTestDuration_ValueChanged(object sender, EventArgs e)
@@ -206,7 +224,11 @@ namespace LCA_SYNC
                 (decimal?)numericUpDownTestDurationHours.Tag != numericUpDownTestDurationHours.Value ||
                 (decimal?)numericUpDownTestDurationMinutes.Tag != numericUpDownTestDurationMinutes.Value ||
                 (decimal?)numericUpDownTestDurationSeconds.Tag != numericUpDownTestDurationSeconds.Value ||
-                (string)textBoxPackageName.Tag != textBoxPackageName.Text)
+                (string)textBoxPackageName.Tag != textBoxPackageName.Text || 
+                (bool)radioButtonStartDelayNone.Tag != radioButtonStartDelayNone.Checked ||
+                (bool)radioButtonStartDelayOneMin.Tag != radioButtonStartDelayOneMin.Checked ||
+                (bool)radioButtonStartDelayThreeMin.Tag != radioButtonStartDelayThreeMin.Checked ||
+                checkBoxSyncTimeDate.Checked == true)
             {
 
                 //Console.WriteLine("Difference detected.");
@@ -482,11 +504,12 @@ namespace LCA_SYNC
 
             // Config Page Items //////////////////// 
             labelPackageName.Text = getLanguageText("PackageName", "Package Name"); 
-            labelSamplePeriod.Text = getLanguageText("SamplePeriod", "Sample Period (s)"); 
+            labelSamplePeriod.Text = getLanguageText("SamplePeriod", "Sample Period"); 
             labelTestDuration.Text = getLanguageText("TestDuration", "Test Duration"); 
             labelConfigHr.Text = getLanguageText("HourAbbr", "Hr."); 
             labelConfigMin.Text = getLanguageText("MinuteAbbr", "Min."); 
-            labelConfigSec.Text = getLanguageText("SecondAbbr", "Sec."); 
+            labelConfigSec.Text = getLanguageText("SecondAbbr", "Sec.");
+            labelConfigSec2.Text = getLanguageText("SecondAbbr", "Sec.");
             buttonConfigDiscardChanges.Text = getLanguageText("DiscardChanges", "Discard Changes");
 
             // Add the rest of the language support in the same way as above or by calling LanguageText when needed. 
@@ -526,7 +549,37 @@ namespace LCA_SYNC
                     textBoxPackageName.Tag = textBoxPackageName.Text;
                     break;
                 case "StartDelay":
-                    // To do
+                    if (serial.Arduino.StartDelay == 0)  // No start delay 
+                    {
+                        radioButtonStartDelayNone.Checked = true;
+                        radioButtonStartDelayNone.Tag = true;
+                        radioButtonStartDelayOneMin.Checked = false;
+                        radioButtonStartDelayOneMin.Tag = false;
+                        radioButtonStartDelayThreeMin.Checked = false;
+                        radioButtonStartDelayThreeMin.Tag = false;
+                    }
+                    else if (serial.Arduino.StartDelay == 60)  // One minute 
+                    {
+                        radioButtonStartDelayNone.Checked = false;
+                        radioButtonStartDelayNone.Tag = false;
+                        radioButtonStartDelayOneMin.Checked = true;
+                        radioButtonStartDelayOneMin.Tag = true;
+                        radioButtonStartDelayThreeMin.Checked = false;
+                        radioButtonStartDelayThreeMin.Tag = false;
+                    }
+                    else if (serial.Arduino.StartDelay == 60 * 3) // Three minutes
+                    {
+                        radioButtonStartDelayNone.Checked = false;
+                        radioButtonStartDelayNone.Tag = false;
+                        radioButtonStartDelayOneMin.Checked = false;
+                        radioButtonStartDelayOneMin.Tag = false;
+                        radioButtonStartDelayThreeMin.Checked = true;
+                        radioButtonStartDelayThreeMin.Tag = true;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Unacceptable value for StartDelay.");
+                    }
                     break;
                 case "TestDuration":
                     numericUpDownTestDurationHours.Value = Math.Floor((decimal)serial.Arduino.TestDuration/60/60); // Get hours from total seconds 
@@ -545,6 +598,9 @@ namespace LCA_SYNC
                     numericUpDownSampleRate.Tag = (decimal)serial.Arduino.SamplePeriod;   // Tag is the value the arduino is set to 
                     break;
 
+                default:
+                    Console.WriteLine("In serial_ArduinoDataChanged, an unrecognized arduino variable was changed. ");
+                    break;
             }
 
             arduinoListBinding.ResetBindings(false);
@@ -643,23 +699,55 @@ namespace LCA_SYNC
         // Click 'Sync'
         private async void buttonSync_Click(object sender, EventArgs e)
         {
+            // This method currently doesn't check to see if it syncs successfully... Might be a problem
             UpdateTabText();
-
-            if (tabControl.TabPages[1].Text.Last() == '*')  // If config page needs synced 
+            try
             {
-                if ((decimal?)numericUpDownSampleRate.Tag != numericUpDownSampleRate.Value)
-                    await serial.Arduino.Communicate(DATACATEGORY.CONFIG, CONFIGCATEGORY.SAMPLE_PERIOD, ACTION.WRITEVAR, numericUpDownSampleRate.Value);
-                if ((decimal?)numericUpDownTestDurationHours.Tag != numericUpDownTestDurationHours.Value || (decimal?)numericUpDownTestDurationMinutes.Tag != numericUpDownTestDurationMinutes.Value || (decimal?)numericUpDownTestDurationSeconds.Tag != numericUpDownTestDurationSeconds.Value)
-                    await serial.Arduino.Communicate(DATACATEGORY.CONFIG, CONFIGCATEGORY.TEST_DUR, ACTION.WRITEVAR, numericUpDownTestDurationHours.Value * 60 * 60 + numericUpDownTestDurationMinutes.Value * 60 + numericUpDownTestDurationSeconds.Value);
-                if ((string)textBoxPackageName.Tag != textBoxPackageName.Text && textBoxPackageName.BackColor == Color.White)
-                    await serial.Arduino.Communicate(DATACATEGORY.CONFIG, CONFIGCATEGORY.PACKAGE_NAME, ACTION.WRITEVAR, textBoxPackageName.Text);
-                // Time/Date set here 
-            }
+                if (tabControl.TabPages[1].Text.Last() == '*')  // If config page needs synced 
+                {
+                    this.UseWaitCursor = true; // This isn't working for some reason 
+                    buttonSync.Enabled = false;
+                    if ((decimal?)numericUpDownSampleRate.Tag != numericUpDownSampleRate.Value)
+                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.SAMPLE_PERIOD, ACTION.WRITEVAR, (float)numericUpDownSampleRate.Value);
+                    if ((decimal?)numericUpDownTestDurationHours.Tag != numericUpDownTestDurationHours.Value || (decimal?)numericUpDownTestDurationMinutes.Tag != numericUpDownTestDurationMinutes.Value || (decimal?)numericUpDownTestDurationSeconds.Tag != numericUpDownTestDurationSeconds.Value)
+                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.TEST_DUR, ACTION.WRITEVAR, (uint)numericUpDownTestDurationHours.Value * 60 * 60 + (uint)numericUpDownTestDurationMinutes.Value * 60 + (uint)numericUpDownTestDurationSeconds.Value);
+                    if ((string)textBoxPackageName.Tag != textBoxPackageName.Text && textBoxPackageName.BackColor == Color.White)
+                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.PACKAGE_NAME, ACTION.WRITEVAR, textBoxPackageName.Text);
+                    if (checkBoxSyncTimeDate.Checked == true)
+                    {
+                        // This isn't implemented yet in ArduinoBoard.cs or in the arduino code
+                        if (radioButtonUseSysTime.Checked) // System time
+                        {
+                            await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.SET_TIME_DATE, ACTION.WRITEVAR, DateTime.Now);
+                            checkBoxSyncTimeDate.Checked = false; // Should this verify that the time was set correctly first? 
+                        }
+                        else  // Custom time 
+                        {
+                            await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.SET_TIME_DATE, ACTION.WRITEVAR, dateTimePickerCustomTime.Value);
+                            checkBoxSyncTimeDate.Checked = false;
+                        }
+                    }
 
-            if (tabControl.TabPages[2].Text.Last() == '*')  // If data page needs synced 
-            {
-                // Implement later 
+                    // Start delay here 
+                }
+
+                if (tabControl.TabPages[2].Text.Last() == '*')  // If data page needs synced 
+                {
+                    this.UseWaitCursor = true;
+                    buttonSync.Enabled = false;
+                    // Implement later 
+                }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error when syncing. Error message: ", ex.Message); 
+            }
+            finally
+            {
+                this.UseWaitCursor = false; 
+                UpdateTabText();
+            }
+            
 
         }
 
@@ -761,6 +849,148 @@ namespace LCA_SYNC
 
         }
 
+
+        private async void buttonStatusStartStop_Click(object sender, EventArgs e)
+        {
+            // Doesn't work yet. Not implemented in ArduinoBoard.cs or in the arduino code  
+
+            if ((bool)buttonStatusStartStop.Tag == false)  // Test is currently not running 
+            {
+                Response resp = new Response("", ArduinoBoard.COMMERROR.NULL);
+                try
+                {
+                    buttonStatusStartStop.Enabled = false;
+                    resp = await serial.Arduino.Communicate(DATACATEGORY.OTHER, SUBCATEGORY.START_TEST, ACTION.WRITEVAR);
+                    buttonStatusStartStop.Enabled = true;
+                }
+                catch
+                {
+
+                }
+                finally
+                {
+                    if (resp.validity == ArduinoBoard.COMMERROR.VALID)
+                    {
+                        buttonStatusStartStop.Tag = true;  // Test is running
+                        buttonStatusStartStop.Text = getLanguageText("StopTest", "Stop Test");
+                    }
+                    buttonStatusStartStop.Enabled = true;
+                }
+            }
+            else
+            {
+                Response resp = new Response("", ArduinoBoard.COMMERROR.NULL);
+                try
+                {
+                    buttonStatusStartStop.Enabled = false;
+                    resp = await serial.Arduino.Communicate(DATACATEGORY.OTHER, SUBCATEGORY.STOP_TEST, ACTION.WRITEVAR);
+                    buttonStatusStartStop.Enabled = true;
+                }
+                catch
+                {
+
+                }
+                finally
+                {
+                    if (resp.validity == ArduinoBoard.COMMERROR.VALID)
+                    {
+                        buttonStatusStartStop.Tag = false;  // Test is stopped
+                        buttonStatusStartStop.Text = getLanguageText("StartTest", "Start Test");
+                    }
+                    buttonStatusStartStop.Enabled = true;
+                }
+            }
+            
+        }
+
+        private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show(getLanguageText("AboutPageText", "Created at Grove City College for 2018-2019 Senior Capstone Project. "));
+        }
+
+        private void TempUnitsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (((ToolStripMenuItem)sender).Checked == false)  // If it was not checked before it was clicked 
+            {
+                ((ToolStripMenuItem)sender).Checked = true;    // Check it 
+
+                // Uncheck other menu items 
+                if (cToolStripMenuItem != (ToolStripMenuItem)sender)
+                {
+                    cToolStripMenuItem.Checked = false; 
+                }
+                if (fToolStripMenuItem != (ToolStripMenuItem)sender)
+                {
+                    fToolStripMenuItem.Checked = false;
+                }
+                if (kToolStripMenuItem != (ToolStripMenuItem)sender)
+                {
+                    kToolStripMenuItem.Checked = false;
+                }
+
+                // Update any controls relying on the temperature unit setting here 
+            }
+
+        }
+
+        private void DateFormatOptionToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (((ToolStripMenuItem)sender).Checked == false)  // If it was not checked before it was clicked 
+            {
+                ((ToolStripMenuItem)sender).Checked = true;    // Check it 
+
+                // Uncheck other menu items 
+                if (mMDDYYYYToolStripMenuItem != (ToolStripMenuItem)sender)
+                {
+                    mMDDYYYYToolStripMenuItem.Checked = false;
+                }
+                if (dDMMYYYYToolStripMenuItem != (ToolStripMenuItem)sender)
+                {
+                    dDMMYYYYToolStripMenuItem.Checked = false;
+                }
+
+                // Update any controls relying on the date format setting here 
+            }
+        }
+
+        private void TimeFormatOptionToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (((ToolStripMenuItem)sender).Checked == false)  // If it was not checked before it was clicked 
+            {
+                ((ToolStripMenuItem)sender).Checked = true;    // Check it 
+
+                // Uncheck other menu items 
+                if (TwelveHourToolStripMenuItem != (ToolStripMenuItem)sender)
+                {
+                    TwelveHourToolStripMenuItem.Checked = false;
+                }
+                if (TwentyFourHourToolStripMenuItem != (ToolStripMenuItem)sender)
+                {
+                    TwentyFourHourToolStripMenuItem.Checked = false;
+                }
+
+                // Update any controls relying on the time format setting here 
+            }
+        }
+
+        private void checkBoxSyncTimeDate_CheckedChanged(object sender, EventArgs e)
+        {
+            if (checkBoxSyncTimeDate.Checked == false)
+            {
+                radioButtonUseSysTime.Enabled = false;
+                radioButtonUseCustomTime.Enabled = false;
+                dateTimePickerCustomTime.Enabled = false; 
+            }
+            else
+            {
+                radioButtonUseSysTime.Enabled = true;
+                radioButtonUseCustomTime.Enabled = true;
+                dateTimePickerCustomTime.Enabled = true;
+            }
+            UpdateTabText(); 
+        }
+
+
         private void label2_Click(object sender, EventArgs e)
         {
 
@@ -781,9 +1011,20 @@ namespace LCA_SYNC
 
             textBoxPackageName.Text = (string)textBoxPackageName.Tag;
 
+            radioButtonStartDelayNone.Checked = (bool)radioButtonStartDelayNone.Tag;
+            radioButtonStartDelayOneMin.Checked = (bool)radioButtonStartDelayOneMin.Tag;
+            radioButtonStartDelayThreeMin.Checked = (bool)radioButtonStartDelayThreeMin.Tag;
+
+            checkBoxSyncTimeDate.Checked = (bool)checkBoxSyncTimeDate.Tag; 
+
             UpdateTabText();
         }
 
+        private void label4_Click(object sender, EventArgs e)
+        {
+
+        }
+        
 
     }
 

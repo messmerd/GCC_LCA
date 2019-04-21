@@ -32,7 +32,6 @@ void serialEventRun(void)  // Must use this name
 #include "fileIO.h"
 #include <Adafruit_MAX31856.h>    // For universal thermocouple amplifiers 
 #include "RTClib.h"     // ??? 
-//#include "TimerOne.h"   // !!!
 #include <DueTimer.h>
 
 extern Config conf;     // An singleton object for working with the config file and sensor file
@@ -82,6 +81,7 @@ volatile bool testStarted;
 bool samplePeriodReached;
 volatile bool missedClock = 0;
 volatile bool inSerialSafeRegion;
+bool inSetup; 
 
 boolean led_value = 0;
 
@@ -106,6 +106,8 @@ Adafruit_MAX31856 digital_thermo_7(MAXCS_7);
 
 void setup() 
 {
+  inSetup = true; 
+  
   pinMode(LED_PIN, OUTPUT);
   pinMode(LED_PIN2, OUTPUT);
   pinMode(PUSHBUTTON_PIN, INPUT); 
@@ -129,6 +131,13 @@ void setup()
   digital_thermo_6.setThermocoupleType(MAX31856_TCTYPE_T);
   digital_thermo_7.setThermocoupleType(MAX31856_TCTYPE_T);
 
+  Serial.begin(9600);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
+  
+  Serial.println("Serial began..");
+
   attachInterrupt(digitalPinToInterrupt(PUSHBUTTON_PIN), pushbuttonPress, RISING);
 
   samplePeriodReached = false; 
@@ -138,6 +147,8 @@ void setup()
 
   dataString.reserve(15+1+115); // I'm not sure about the exact size needed.
   dataString = ""; 
+
+  //while (true) {};
 
   //dataIn.reserve(200);
   //dataIn = "";
@@ -153,12 +164,7 @@ void setup()
   eot = 0x03; //'\x03'; //'.';
 
   digitalWrite(LED_PIN2, digitalRead(CD_PIN));  // LED is on when SD card is inserted and off when it is not.
-
-  SerialUSB.begin(9600);
-  while (!SerialUSB) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
-
+  
   // Initialize SD library
   // Note: SD card must be formatted as FAT16 or FAT32 
   while (!SD.begin(chipSelect)) {
@@ -193,7 +199,7 @@ void setup()
   rtc.writeSqwPinMode(DS3231_SquareWave1kHz); // For sample interrupts 
   
   conf.read(true);   // Read from config file, setting the date and time if needed
-  //Serial.println();
+  Serial.println("Just read conf.");
 
   // NEED TO CHECK THAT CONFIG STUFF IS VALID - especially the sample rate
 
@@ -206,13 +212,23 @@ void setup()
 
   testStarted = false;
 
+  rtc.adjust(DateTime(2014, 1, 21, 3, 4, 5));
+  DateTime dt = rtc.now();
+  Serial.print((String)dt.day());
+  Serial.print((String)dt.month()); 
+  Serial.print((String)(dt.year()-2000));
+  Serial.print((String)dt.hour());
+  Serial.print(":"); 
+  Serial.print((String)dt.minute());
+  Serial.print(":"); 
+  Serial.print((String)dt.second());
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void loop() 
 {
-  
   if (testStarted)
   {
     if (samplePeriodReached) // (_timer >= _timer_max)   // One sample period has passed
@@ -279,13 +295,13 @@ void loop()
       REG_PIOC_PER |= PIO_PER_P1;  // Enable pushbutton interrupt on digital pin 33
     }
 
-    if (SerialUSB.available()) serialEvent(); 
+    //if (Serial.available()) serialEvent(); 
     
     if (dataReceived) 
     {
       //digitalWrite(LED_PIN2,HIGH);
       //noInterrupts();
-      if (SerialUSB)  // Problem with this line? Maybe remove the Serial condition? 
+      if (Serial)  // Problem with this line? Maybe remove the Serial condition? 
       {
         if (ProcessData())
         {
@@ -309,11 +325,11 @@ void loop()
   }
   else  // Test has not started  
   {
-    if (SerialUSB.available()) serialEvent();
+    //if (Serial.available()) serialEvent();
     // Communicate with computer here. Outside of the test here, there are no strict requirements for how much time serial communication can take
     if (dataReceived) 
     {
-      if (SerialUSB)  // Problem with this line? Maybe remove the Serial condition? 
+      if (Serial)  // Problem with this line? Maybe remove the Serial condition? 
       {
         if (ProcessData())
         {}
@@ -361,9 +377,9 @@ void serialEvent(){   // Note: serialEvent() doesn't work on Arduino Due!!!
   //delay(100); 
 
   int inByte;
-  while (SerialUSB && SerialUSB.available()>0) {
+  while (Serial && Serial.available()>0) {
     // get the new byte:
-    inByte = SerialUSB.read();
+    inByte = Serial.read();
     // add it to the inputString:
     dataIn[dataInPos] = inByte;
     dataInPos++;
@@ -385,7 +401,7 @@ void serialEvent(){   // Note: serialEvent() doesn't work on Arduino Due!!!
 
 void serial_flush_buffer()
 {
-  while (SerialUSB.read() >= 0)
+  while (Serial.read() >= 0)
    ; // do nothing
 }
 
@@ -477,6 +493,11 @@ void TC2_Handler() // This is the interrupt request
 
 void pushbuttonPress()
 {
+  if (inSetup)
+  {
+    return; 
+  }
+  
   //stopTestWhenPossible = true; 
   if (!testStarted) 
   {

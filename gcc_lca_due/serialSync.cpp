@@ -35,12 +35,12 @@ bool ProcessData()
       if (dataInPos==4 && dataIn[0]==sot && dataIn[1]==0x01 && dataIn[2]==0xF0 && dataIn[3]==eot) {
 
       byte byte_array[] = {0x02, 0x01, 0xF0, 0x71, 0x6c, 0x63, 0x39, 0x4b, 0x4e, 0x4d, 0x4b, 0x69, 0x30, 0x6d, 0x41, 0x79, 0x54, 0x34, 0x6f, 0x03 };
-      SerialUSB.write(byte_array, 20);
+      Serial.write(byte_array, 20);
       
       dataInPos = 0; 
       dataReceived = false;
       
-      SerialUSB.flush(); // ? 
+      Serial.flush(); // ? 
       
       return true; // true means success(?)
       } else {return false; }
@@ -79,21 +79,21 @@ void ProcessConfigRequest()
     switch (subcat) 
     {
       case 0: // All
-        SerialUSB.write(sot); 
-        SerialUSB.write(dataIn[1]);
-        SerialUSB.write(dataIn[2]);
-        SerialUSB.print(conf.package_name);  // Using null terminator to mark end of string
-        SerialUSB.write((byte)0x00);
+        Serial.write(sot); 
+        Serial.write(dataIn[1]);
+        Serial.write(dataIn[2]);
+        Serial.print(conf.package_name);  // Using null terminator to mark end of string
+        Serial.write((byte)0x00);
         //byte bytebuffer[3];  // Stores bottom 3 bytes of long. 
         //bytebuffer[0] = (conf.test_duration >> 16);
         //bytebuffer[1] = (conf.test_duration >> 8);
         //bytebuffer[2] = conf.test_duration;
         //Serial.write(bytebuffer, 3); // Send as 3 bytes
-        SerialUSB.print(conf.test_duration, HEX);
-        SerialUSB.write((byte)0x00);
-        SerialUSB.write((byte)(conf.start_delay + 0x4));
-        SerialUSB.write((byte)(conf.sample_period + 0x4));
-        SerialUSB.write(eot);
+        Serial.print(conf.test_duration, HEX);
+        Serial.write((byte)0x00);
+        Serial.write((byte)(conf.start_delay + 0x4));
+        Serial.write((byte)(conf.sample_period + 0x4));
+        Serial.write(eot);
         
         break; 
       default:  // The only thing that should be read is all (0), so this would be an error
@@ -117,10 +117,10 @@ void ProcessConfigRequest()
       }
       else
       {
-        SerialUSB.write(sot); 
-        SerialUSB.write(dataIn[1]);
-        SerialUSB.write(dataIn[2]);
-        SerialUSB.write(eot); 
+        Serial.write(sot); 
+        Serial.write(dataIn[1]);
+        Serial.write(dataIn[2]);
+        Serial.write(eot); 
       }
     }
     else if (subcat == 2)  // Test duration
@@ -145,10 +145,10 @@ void ProcessConfigRequest()
         }
         else
         {
-          SerialUSB.write(sot); 
-          SerialUSB.write(dataIn[1]);
-          SerialUSB.write(dataIn[2]);
-          SerialUSB.write(eot); 
+          Serial.write(sot); 
+          Serial.write(dataIn[1]);
+          Serial.write(dataIn[2]);
+          Serial.write(eot); 
         }
       }
       else
@@ -168,10 +168,10 @@ void ProcessConfigRequest()
         }
         else
         {
-          SerialUSB.write(sot); 
-          SerialUSB.write(dataIn[1]);
-          SerialUSB.write(dataIn[2]);
-          SerialUSB.write(eot); 
+          Serial.write(sot); 
+          Serial.write(dataIn[1]);
+          Serial.write(dataIn[2]);
+          Serial.write(eot); 
         }
       }
       

@@ -1,9 +1,9 @@
 /*
- * This code is meant to be used with an Arduino UNO, 
+ * This code is meant to be used with an Arduino Nano, 
  * A Adafruit MAX 31855 Digital Thermocouple, and a Vellemer VMA307 RGB LED Module
  * 
  * The goal of the code is to change the color of the LED based off of the 
- * temperater reading of the thermocouple. (Red for hot, Yellow for mid temp, and Green for cold
+ * temperatre reading of the thermocouple. (Red for hot, Green for mid temp, and blue for cold
  * 
  * WHile it was designed for the Arduino Nano it can still be used by similar 8  bit arduino products
  * like the leonardo, uno, mega, and maybe the micro (did not work with our micro because of a bug)
@@ -22,13 +22,12 @@
 #define LEDR 2
 //Defines what digital pins each part of the thermocouple is linked with
 
-
-
-// This is whats causing problems for the lights
+//Defines which digital pins the LED's should be hooked into
+//This is slightly different in France
 int ledDigitalOne[] = {8,7,6}; //the three digital ports the LED is plugged into
-//Red = 6
-//Yellow = 8
-//Green = 7
+//Red = 7
+//Yellow = 6
+//Green = 8
 
 
 
@@ -36,9 +35,9 @@ const boolean ON = HIGH;
 const boolean OFF = LOW;
 //Defines on and off to be a low voltage and a high voltage respectivly. 
 
-const boolean RED[] = {OFF, OFF, ON};
-const boolean YELLOW[] = {ON,OFF,OFF};
-const boolean GREEN[] = {OFF,ON,OFF};
+const boolean RED[] = {OFF, ON, OFF};
+const boolean YELLOW[] = {OFF,OFF,ON};
+const boolean GREEN[] = {ON,OFF,OFF};
 //Defines primary LED colors based on which LED lights up on the board
 
 
@@ -70,7 +69,7 @@ void setup() {
   }
   //initializes the led pins to be able to recieve an output
   
-  delay(500);
+  delay(200);
 }
 
 void loop() {
@@ -134,7 +133,7 @@ void loop() {
    
    
  
-   delay(1000);
+   delay(200);
 }
 
 void setColor(int* led, boolean* color)

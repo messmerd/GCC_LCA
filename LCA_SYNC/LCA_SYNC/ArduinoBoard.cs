@@ -139,6 +139,18 @@ namespace LCA_SYNC
             }
         }
 
+        private bool _TestStarted; 
+        public bool TestStarted
+        {
+            get { return _TestStarted; }
+            private set
+            {
+                bool oldTestStarted = _TestStarted;
+                _TestStarted = value;
+                if (oldTestStarted != _TestStarted) ArduinoDataChanged.Invoke(this, new ArduinoEventArgs(oldTestStarted, "TestStarted"));
+            }
+        }
+
         //public static String PINGVALUE = "10" + "qlc9KNMKi0mAyT4oKlVky6w7gtHympiyzpdJhE8gj2PPgvO0am5zoSeqkOanME";  // "1" (PING) + 62-character random string from random.org + eot
         private readonly string PINGVALUE = "\x02\x01\xF0qlc9KNMKi0mAyT4o\x03";  // Includes sot and eot.
         //('\x01').ToString() + ('\xF0').ToString() + "qlc9KNMKi0mAyT4o";  // "10" (PING) + 62-character random string from random.org + eot
@@ -272,7 +284,7 @@ namespace LCA_SYNC
                     SendData(new byte[] { (byte)cat, 0xF0 });  // cat = 1
                     break;
                 case DATACATEGORY.CONFIG:
-                    // cat = 2. The first hex is F just so that the byte isn't 0x02, which is sot. 
+                    // cat = 2. The first hex is F just so that the byte isn't 0x02, which is sot (start of text). 
                     if (subcat == (byte)SUBCATEGORY.SAMPLE_PERIOD && data != null)  // Write sample period 
                     {
                         SendData(new byte[] { (byte)cat, (byte)((byte)action | subcat), (byte)(((float)data) * 8.0 + 4.0) });  
@@ -297,11 +309,30 @@ namespace LCA_SYNC
 
                     break;
                 case DATACATEGORY.OTHER:
-                    // Not implemented yet...
-                    // Real-time toggle
-                    // Stop/stop tests 
-                    // Sensor code? 
-                    // Rick-roll
+                    // cat = 3. The first hex is F just so that the byte isn't 0x03, which is eot (end of text). 
+                    if (subcat == (byte)SUBCATEGORY.START_TEST || subcat == (byte)SUBCATEGORY.STOP_TEST)  // Start test or stop test
+                    {
+                        SendData(new byte[] { (byte)cat, (byte)((byte)ACTION.SENDCOMMAND | subcat) });
+                    }
+                    else if (subcat == (byte)SUBCATEGORY.TIME_DATE)  // Set or read time/date 
+                    {
+                        if ((action == ACTION.SENDCOMMAND || action == ACTION.WRITEVAR) && data != null)
+                        {
+                            DateTime dt = (DateTime)data;
+                            List<byte> bytelist = new List<byte>();
+                            bytelist.AddRange(new byte[] { (byte)cat, (byte)((byte)action | subcat), (byte)(dt.Hour + 4), (byte)(dt.Minute + 4), (byte)(dt.Second + 4), (byte)(dt.Month + 4), (byte)(dt.Day + 4) });
+                            bytelist.AddRange(Encoding.ASCII.GetBytes(dt.Year.ToString())); // array of ascii-encoded bytes representing the year 
+                            SendData(bytelist.ToArray());
+                        }
+                        else if (action == ACTION.READVAR)
+                        {
+                            SendData(new byte[] { (byte)cat, (byte)((byte)action | subcat) });   
+                        }
+
+                    }
+
+                    // Features not implemented yet:
+                    // Real-time data toggle
                     // etc.
                     // Don't forget the 0x02 and 0x03 bytes can't be used
                     break;
@@ -624,7 +655,7 @@ namespace LCA_SYNC
                             throw new ArduinoCommunicationException("Error, not implemented yet...");
                         }
                     }
-                    else if (action == ACTION.WRITEVAR)
+                    else if (action == ACTION.WRITEVAR || action == ACTION.SENDCOMMAND)
                     {
                         switch (subcat)
                         {
@@ -652,6 +683,15 @@ namespace LCA_SYNC
                                 }
                                 else
                                     throw new ArduinoCommunicationException("The response didn't match the expected value.");
+                            case SUBCATEGORY.START_DELAY:
+                                if (resp.Count == 4 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
+                                {
+                                    StartDelay = (byte)data; // Success. Can update this now. 
+                                    return new Response(resp, COMMERROR.VALID);
+                                }
+                                else
+                                    throw new ArduinoCommunicationException("The response didn't match the expected value.");
+                            
                             // Implement the rest of the cases later 
                             default:
                                 throw new ArduinoCommunicationException("Error, not implemented yet...");
@@ -663,7 +703,48 @@ namespace LCA_SYNC
                         // invalid action type 
                         throw new ArduinoCommunicationException("Invalid communication action type.");
                     }
-                    break; 
+                    break;
+                case DATACATEGORY.OTHER:
+                    if (action == ACTION.SENDCOMMAND || action == ACTION.WRITEVAR)
+                    {
+                        switch (subcat)
+                        {
+                            case SUBCATEGORY.START_TEST:
+                            case SUBCATEGORY.STOP_TEST:
+                            case SUBCATEGORY.TIME_DATE:
+                                if (resp.Count == 4 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
+                                {
+                                    return new Response(resp, COMMERROR.VALID);
+                                }
+                                else
+                                    throw new ArduinoCommunicationException("The response didn't match the expected value.");
+                            default:
+                                throw new ArduinoCommunicationException("Error, not implemented yet...");
+                        }
+                    }
+                    else if (action == ACTION.READVAR)
+                    {
+                        if (subcat == SUBCATEGORY.TIME_DATE)
+                        {
+                            if (resp.Count == 11 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
+                            {
+                                // Set local copy of Arduino's RTC time here 
+                                return new Response(resp, COMMERROR.VALID);
+                            }
+                            else
+                                throw new ArduinoCommunicationException("The response didn't match the expected value.");
+                        }
+                        else
+                        {
+                            throw new ArduinoCommunicationException("Error, not implemented yet...");
+                        }
+                    }
+                    else
+                    {
+                        // invalid action type 
+                        throw new ArduinoCommunicationException("Invalid communication action type.");
+                    }
+                    break;
                 default:
                     throw new ArduinoCommunicationException("The response is of an invalid category.");
                     //return new Response(resp.data, COMMERROR.OTHER);

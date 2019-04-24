@@ -31,8 +31,7 @@ void serialEventRun(void)  // Must use this name
 #include <SD.h>
 #include "fileIO.h"
 #include <Adafruit_MAX31856.h>    // For universal thermocouple amplifiers 
-#include "RTClib.h"     // IMPORTANT: Need to edit this library so that it uses Wire and not Wire1. 
-// ^ This can be done by simply commenting out the "#define Wire Wire1" line. 
+#include "RTClib.h"  // Use https://github.com/messmerd/RTClib 
 #include <DueTimer.h>   // Edited to remove definition of TC2_Handler. 
 
 extern Config conf;     // An singleton object for working with the config file and sensor file
@@ -175,9 +174,9 @@ void setup()
   }
   
   Serial.println("Serial began..");
-
+  
   attachInterrupt(digitalPinToInterrupt(PUSHBUTTON_PIN), pushbuttonPress, RISING);
-
+  
   samplePeriodReached = false; 
   testStarted = false; 
   missedClock = false;

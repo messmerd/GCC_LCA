@@ -20,8 +20,8 @@ namespace LCA_SYNC
 {
 
     public enum DATACATEGORY : byte { NULL=0x0, PING=0x1, CONFIG=0xF2, OTHER=0xF3, SENSORS=0x4, DATAFILE=0x5 };  
-    public enum SUBCATEGORY : byte { ALL=0, START_TEST=0, PACKAGE_NAME=1, STOP_TEST=1, TEST_DUR=2, SET_TIME_DATE=2, START_DELAY=3, SAMPLE_PERIOD=4, TEMP_UNITS=5, INIT_DATE=6, INIT_TIME=7, RESET_DT=8, LANGUAGE=9 };
-    public enum ACTION : byte { READFILE=0, DELETEFILE=1, READVAR=32, WRITEVAR=96 };
+    public enum SUBCATEGORY : byte { ALL=0, START_TEST=0, PACKAGE_NAME=1, STOP_TEST=1, TEST_DUR=2, TIME_DATE=2, START_DELAY=3, SAMPLE_PERIOD=4, TEMP_UNITS=5, INIT_DATE=6, INIT_TIME=7, RESET_DT=8, LANGUAGE=9 };
+    public enum ACTION : byte { READFILE=0, DELETEFILE=1, READVAR=32, WRITEVAR=96, SENDCOMMAND=96 };
     
     //public enum ARDUINOTYPE { UNO, MEGA, SERIAL_ADAPTER, };
 
@@ -265,8 +265,6 @@ namespace LCA_SYNC
         }
 
 
-        
-
         public async Task ActivateAllArduinos()
         {
             // Activate (Ping + RefreshInfo) all arduinos that have not been added yet
@@ -293,11 +291,11 @@ namespace LCA_SYNC
                 //PNPDeviceID = USB\VID_1A86&PID_7523\5&1A63D808&0&2
                 if (null != queryObj["PNPDeviceID"])
                 {
-                    String port = GetPortName(queryObj);
+                    string port = GetPortName(queryObj);
 
                     if (IsGenuineArduino(queryObj))  // Genuine arduino 
                     {
-                        String ardType = GetArduinoType(GetVID(queryObj), GetPID(queryObj));
+                        string ardType = GetArduinoType(GetVID(queryObj), GetPID(queryObj));
                         Console.WriteLine("Arduino detected at port {0}. Arduino type: {1}.", port, ardType);
 
                         result.Add(queryObj);
@@ -325,7 +323,7 @@ namespace LCA_SYNC
 
         public async Task ActivateArduino(ManagementBaseObject device)  // Verifies that an arduino is LCA, and activates it if it is
         {
-            String port = GetPortName(device);
+            string port = GetPortName(device);
             bool ardExists = LCAArduinos.ToList().Exists(a => a.Port.PortName == port);  // Gives ArduinoBoard if one with that port exists, else null
 
             if (ardExists) // If an LCA arduino with the port specified doesn't exist in the LCAArduinos list, create an ArduinoBoard 
@@ -466,12 +464,12 @@ namespace LCA_SYNC
         }
 
         // Unnecessary since we have getPortName? 
-        public List<String> GetLCAArduinoPorts(List<ManagementBaseObject> arduinos)
+        public List<string> GetLCAArduinoPorts(List<ManagementBaseObject> arduinos)
         {
             // Right now this code just assumes all arduinos are LCA arduinos. 
             // Need to send special message to arduino and receive special response to detemine if it is an LCA Arduino. 
 
-            List<String> lcaArduinoPorts = new List<String>();
+            List<string> lcaArduinoPorts = new List<string>();
             foreach (ManagementBaseObject ard in arduinos)
             {
                 lcaArduinoPorts.Add(GetPortName(ard));
@@ -480,22 +478,22 @@ namespace LCA_SYNC
             return lcaArduinoPorts; 
         }
 
-        public static String GetPortName(ManagementBaseObject dev)
+        public static string GetPortName(ManagementBaseObject dev)
         {
             return new Regex(@"\((COM\d+)\)").Match(dev["Name"].ToString()).Groups[1].Value;
         }
 
-        public static String GetVID(ManagementBaseObject dev)
+        public static string GetVID(ManagementBaseObject dev)
         {
             return new Regex(@"(VID_)([0-9a-fA-F]+)").Match(dev["PNPDeviceID"].ToString()).Groups[2].Value.ToLower();
         }
 
-        public static String GetPID(ManagementBaseObject dev)
+        public static string GetPID(ManagementBaseObject dev)
         {
             return new Regex(@"(PID_)([0-9a-fA-F]+)").Match(dev["PNPDeviceID"].ToString()).Groups[2].Value.ToLower();
         }
 
-        public static String GetArduinoType(String vid, String pid)
+        public static string GetArduinoType(string vid, string pid)
         {
             // Maybe return an enum instead? And then make another funtion for getting the string from the enum?
             if (vid.ToLower() == "2341" || vid.ToLower() == "1b4f")  // Has the official Arduino LLC USB PID or Sparkfun USB PID (?)
@@ -538,7 +536,7 @@ namespace LCA_SYNC
         {
             // The 0403 VID was used by older Arduinos which use FTDI
             // Now, Arduinos use the 2341 VID. 
-            String vid = GetVID(dev);
+            string vid = GetVID(dev);
             return vid == "2341" || vid == "1b4f" || (vid == "0403" && dev["Description"].ToString().Contains("Arduino"));
         }
 
@@ -615,7 +613,7 @@ namespace LCA_SYNC
     class ConfigDataItem
     {
 
-        String packageName { get; set; } = "Package Name";
+        string packageName { get; set; } = "Package Name";
         UInt32 testDuration { get; set; } = 1200;  // Variable type? 
         UInt16 startDelay { get; set; } = 0;
         double sampleRate { get; set; } = 1.0;

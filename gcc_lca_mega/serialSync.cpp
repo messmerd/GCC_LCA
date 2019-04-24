@@ -2,7 +2,8 @@
 #include "ArduinoJson.h"
 #include "serialSync.h"
 #include "fileIO.h"
-#include "RTClib.h"  
+#include "RTClib.h" 
+#include "timing.h" 
 
 extern Config conf; 
 extern Sensor* sensors;
@@ -16,6 +17,8 @@ extern byte sot;
 extern bool dataReceived;
 extern byte dataIn[150]; 
 extern int dataInPos;
+
+extern bool testStarted; 
 
 bool ProcessData()
 {
@@ -50,9 +53,11 @@ bool ProcessData()
       dataInPos = 0; 
       dataReceived = false;
       return true;
-    case 0x03: // Other -  Not implemented yet, so return error
-      // 
-      return false; 
+    case 0x03: // Other (commands and such)
+      ProcessOtherCategory(); 
+      dataInPos = 0; 
+      dataReceived = false;
+      return true; 
 
     case 0x04: // Not implemented yet, so return error
       return;
@@ -101,7 +106,7 @@ void ProcessConfigRequest()
         break;
     }
   }
-  else if (action == 1) // Write variables
+  else if (action == 1 && !testStarted) // Write variables  (can only be done when a test is not running!)
   {
     if (subcat == 1) // Package name
     {
@@ -158,6 +163,24 @@ void ProcessConfigRequest()
       }
       
     }
+    else if (subcat == 3) // Start delay 
+    {
+      if (dataInPos == 5)
+      {
+        conf.start_delay = dataIn[3] - 0x4; 
+        if (conf.updateConfigFile())
+        {
+          // Error!        
+        }
+        else
+        {
+          Serial.write(sot); 
+          Serial.write(dataIn[1]);
+          Serial.write(dataIn[2]);
+          Serial.write(eot); 
+        }
+      }
+    }
     else if (subcat == 4) // Sample period 
     {
       if (dataInPos == 5)
@@ -187,5 +210,69 @@ void ProcessConfigRequest()
     return; 
   }
   
+  
+}
+
+void ProcessOtherCategory()
+{
+  if (dataInPos < 4) {
+    dataReceived = false;
+    // Error occurred! 
+    return;
+  }
+  
+  byte action = (byte)dataIn[2] >> 6;   // Upper 2 bits
+  byte subcat = (byte)dataIn[2] & 0x1F; // Lower 5 bits 
+  if (action == 0)  // READVAR
+  {
+    // Not implemented yet 
+    // Reading the RTC would go here     
+  }
+  else if (action == 1) // SENDCOMMAND or WRITEVAR
+  {
+    if (subcat == 0 || subcat == 1) // Start test or end test 
+    {
+      if (dataInPos == 4)
+      {
+        if (subcat == 0 && !testStarted)
+        {
+          startTest(); 
+          Serial.write(sot); 
+          Serial.write(dataIn[1]);
+          Serial.write(dataIn[2]);
+          Serial.write(eot); 
+        }
+        else if (subcat == 1 && testStarted) 
+        {
+          stopTest(); 
+          Serial.write(sot); 
+          Serial.write(dataIn[1]);
+          Serial.write(dataIn[2]);
+          Serial.write(eot); 
+        }
+      }
+    }
+    else if (subcat == 2 && !testStarted) // writing to the RTC  (can only be done when a test is not running!)
+    {
+      if (dataInPos <= 13 && dataInPos >= 10) // There's a range because the length of the year is not fixed (0 to 9999)
+      {
+        // The data is structured as: sot, code byte, code byte, hr byte, min byte, sec byte, month byte, day byte, year (1 to 4 bytes), eot 
+        char* yr = new char[dataInPos-9];
+        for (int i = 8; i < dataInPos - 1; i++)
+        {
+          yr[i-8] = (char)dataIn[i];
+        }
+        rtc.adjust(DateTime ((uint16_t)atoi(yr), (uint8_t)(dataIn[6]-4), (uint8_t)(dataIn[7]-4), (uint8_t)(dataIn[3]-4), (uint8_t)(dataIn[4]-4), (uint8_t)(dataIn[5]-4)));
+        Serial.write(sot); 
+        Serial.write(dataIn[1]);
+        Serial.write(dataIn[2]);
+        Serial.write(eot); 
+      }
+    }
+
+    
+  }
+
+
   
 }

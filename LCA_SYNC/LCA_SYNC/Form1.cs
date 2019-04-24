@@ -713,18 +713,27 @@ namespace LCA_SYNC
                         await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.TEST_DUR, ACTION.WRITEVAR, (uint)numericUpDownTestDurationHours.Value * 60 * 60 + (uint)numericUpDownTestDurationMinutes.Value * 60 + (uint)numericUpDownTestDurationSeconds.Value);
                     if ((string)textBoxPackageName.Tag != textBoxPackageName.Text && textBoxPackageName.BackColor == Color.White)
                         await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.PACKAGE_NAME, ACTION.WRITEVAR, textBoxPackageName.Text);
+                    if ((bool)radioButtonStartDelayNone.Tag != radioButtonStartDelayNone.Checked && radioButtonStartDelayNone.Checked)
+                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.START_DELAY, ACTION.WRITEVAR, 0);
+                    if ((bool)radioButtonStartDelayOneMin.Tag != radioButtonStartDelayOneMin.Checked && radioButtonStartDelayOneMin.Checked)
+                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.START_DELAY, ACTION.WRITEVAR, 60);
+                    if ((bool)radioButtonStartDelayThreeMin.Tag != radioButtonStartDelayThreeMin.Checked && radioButtonStartDelayThreeMin.Checked)
+                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.START_DELAY, ACTION.WRITEVAR, 180);
                     if (checkBoxSyncTimeDate.Checked == true)
                     {
                         // This isn't implemented yet in ArduinoBoard.cs or in the arduino code
                         if (radioButtonUseSysTime.Checked) // System time
                         {
-                            await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.SET_TIME_DATE, ACTION.WRITEVAR, DateTime.Now);
-                            checkBoxSyncTimeDate.Checked = false; // Should this verify that the time was set correctly first? 
+                            Response r = await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.TIME_DATE, ACTION.WRITEVAR, DateTime.Now);
+                            if (r.validity == ArduinoBoard.COMMERROR.VALID)
+                                checkBoxSyncTimeDate.Checked = false; // Does this verify that the time was set correctly first? 
                         }
                         else  // Custom time 
                         {
-                            await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.SET_TIME_DATE, ACTION.WRITEVAR, dateTimePickerCustomTime.Value);
-                            checkBoxSyncTimeDate.Checked = false;
+                            MessageBox.Show("Sorry, custom time and date is currently unsupported. ");
+                            //Response r = await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.TIME_DATE, ACTION.WRITEVAR, dateTimePickerCustomTime.Value);
+                            //if (r.validity == ArduinoBoard.COMMERROR.VALID)
+                            //  checkBoxSyncTimeDate.Checked = false;
                         }
                     }
 
@@ -860,7 +869,7 @@ namespace LCA_SYNC
                 try
                 {
                     buttonStatusStartStop.Enabled = false;
-                    resp = await serial.Arduino.Communicate(DATACATEGORY.OTHER, SUBCATEGORY.START_TEST, ACTION.WRITEVAR);
+                    resp = await serial.Arduino.Communicate(DATACATEGORY.OTHER, SUBCATEGORY.START_TEST, ACTION.SENDCOMMAND);
                     buttonStatusStartStop.Enabled = true;
                 }
                 catch

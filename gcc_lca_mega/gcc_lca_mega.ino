@@ -180,7 +180,7 @@ void setup()
 
   delay(500); // Just in case things need to settle
   
-  last_sample = conf.test_duration/conf.sample_period; // The last sample before the test ends. 
+  last_sample = conf.test_duration/(conf.sample_period/8.0f); // The last sample before the test ends. 
 
   digitalWrite(LED_PIN2,LOW);
   Timer1.attachInterrupt( Timer1_ISR ); // attach the service routine here

@@ -102,6 +102,8 @@ boolean Config::read2(boolean setRTC)
 
   if (!file) {
     // Failed to open
+    sample_period = 8;   // Default 
+    test_duration = 30;  // Default 
     return 1; // error 
   }
   
@@ -223,7 +225,7 @@ void printToFile(char* filename, String text, boolean append)
   
   // if the file is available, write to it:
   if (dataFile) {
-    //dataFile.println(text);
+    dataFile.println(text);
     dataFile.close();
     // print to the serial port too:
     //Serial.println(text+(String)eot);

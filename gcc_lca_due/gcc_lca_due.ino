@@ -31,14 +31,16 @@ void serialEventRun(void)  // Must use this name
 #include <SD.h>
 #include "fileIO.h"
 #include <Adafruit_MAX31856.h>    // For universal thermocouple amplifiers 
-#include "RTClib.h"     // ??? 
-#include <DueTimer.h>
+#include "RTClib.h"     // IMPORTANT: Need to edit this library so that it uses Wire and not Wire1. 
+// ^ This can be done by simply commenting out the "#define Wire Wire1" line. 
+#include <DueTimer.h>   // Edited to remove definition of TC2_Handler. 
 
 extern Config conf;     // An singleton object for working with the config file and sensor file
 
 bool COMP_MODE;         // Whether in computer mode or not 
 
 RTC_DS3231 rtc;         // Real-time clock (RTC) object
+DateTime dt;
 
 //char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
@@ -56,8 +58,8 @@ RTC_DS3231 rtc;         // Real-time clock (RTC) object
 
 //#define MAXCLK    33              // Shared clock for all digital thermocouples
 
-#define LED_PIN 12                // Sample period LED 
-#define LED_PIN2 10               // CD (card detect) pin? 
+#define LED_PIN 47                // Sample period LED 
+#define LED_PIN2 45               // CD (card detect) pin? 
 #define PUSHBUTTON_PIN 33         // Start test pushbutton 
 #define CD_PIN 13                 // Card detect pin 
 #define RTC_INT_PIN 31            // RTC interrupt pin 
@@ -92,6 +94,7 @@ String dataString;
 //void initTimer0(double seconds);
 bool ProcessData();
 void Timer1_ISR();
+void Timer3_ISR(); 
 
 
 // Initialize the digital thermocouples (using hardware SPI): 
@@ -104,14 +107,49 @@ Adafruit_MAX31856 digital_thermo_5(MAXCS_5);
 Adafruit_MAX31856 digital_thermo_6(MAXCS_6);
 Adafruit_MAX31856 digital_thermo_7(MAXCS_7);
 
+//extern SPISettings max31856_spisettings;
+
+#define SYS_BOARD_PLLAR (CKGR_PLLAR_ONE | CKGR_PLLAR_MULA(18UL) | CKGR_PLLAR_PLLACOUNT(0x3fUL) | CKGR_PLLAR_DIVA(1UL))
+#define SYS_BOARD_MCKR ( PMC_MCKR_PRES_CLK_2 | PMC_MCKR_CSS_PLLA_CLK)
+
 void setup() 
 {
   inSetup = true; 
+
+  // Use the divide-by-64 prescaler on main clock 
+  //REG_PMC_MCKR |= PMC_MCKR_PRES_CLK_1; 
+  // Wait until main clock is ready
+  //while (!(REG_PMC_SR & PMC_SR_MCKRDY));
+
+  //20MHz / 4 = 5MHz, 5MHz * (9+1) = 50MHz
+  //REG_CKGR_PLLAR |= CKGR_PLLAR_MULA(9);  // was 9 
+  //REG_CKGR_PLLAR |= CKGR_PLLAR_DIVA(4);
+
+  //select PLLB as the master clock
+  //master clock source selection - choose main clock
+  //REG_PMC_MCKR |= PMC_MCKR_CSS_PLLA_CLK;
+
+  //while (!(REG_PMC_SR & PMC_SR_MCKRDY));
+
+  //Set FWS according to SYS_BOARD_MCKR configuration
+  ////EFC0->EEFC_FMR = EEFC_FMR_FWS(4); //4 waitstate flash access
+  ////EFC1->EEFC_FMR = EEFC_FMR_FWS(4);
+  // Initialize PLLA to 114MHz
+  ////PMC->CKGR_PLLAR = SYS_BOARD_PLLAR;
+  ////while (!(PMC->PMC_SR & PMC_SR_LOCKA)) {}
+  ////PMC->PMC_MCKR = SYS_BOARD_MCKR;
+  ////while (!(PMC->PMC_SR & PMC_SR_MCKRDY)) {}
+  // Re-initialize some stuff with the new speed
+  ////SystemCoreClockUpdate();
   
   pinMode(LED_PIN, OUTPUT);
   pinMode(LED_PIN2, OUTPUT);
-  pinMode(PUSHBUTTON_PIN, INPUT); 
+  pinMode(PUSHBUTTON_PIN, INPUT_PULLUP); 
+  //digitalWrite(PUSHBUTTON_PIN, LOW);
+  ////pinMode(RTC_INT_PIN, INPUT_PULLUP);  // ???
   pinMode(CD_PIN, INPUT); 
+
+  //Adafruit_MAX31856::setSPISettings(new SPISettings(1000000, MSBFIRST, SPI_MODE1)); // was 500000 (500 KHz) 
 
   digital_thermo_0.begin();
   digital_thermo_1.begin();
@@ -148,11 +186,6 @@ void setup()
   dataString.reserve(15+1+115); // I'm not sure about the exact size needed.
   dataString = ""; 
 
-  //while (true) {};
-
-  //dataIn.reserve(200);
-  //dataIn = "";
-  //dataIn = new byte[150];
   int i = 0;
   for (i=0; i<150; i++)
   {
@@ -195,33 +228,29 @@ void setup()
     // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
   }
 
-  pinMode(RTC_INT_PIN, INPUT_PULLUP);
-  rtc.writeSqwPinMode(DS3231_SquareWave1kHz); // For sample interrupts 
+  ////pinMode(RTC_INT_PIN, INPUT_PULLUP);
+  ////rtc.writeSqwPinMode(DS3231_SquareWave1kHz); // For sample interrupts 
   
   conf.read(true);   // Read from config file, setting the date and time if needed
-  Serial.println("Just read conf.");
+  //Serial.println("Just read conf.");
+  //Serial.println(conf.sample_period); 
+  //Serial.println(conf.test_duration);
 
   // NEED TO CHECK THAT CONFIG STUFF IS VALID - especially the sample rate
 
   delay(500); // Just in case things need to settle
   
-  last_sample = conf.test_duration/conf.sample_period; // The last sample before the test ends. 
+  last_sample = conf.test_duration/(conf.sample_period/8.0f); // The last sample before the test ends. 
+  //Serial.print("last samp. "); Serial.println(last_sample);
 
   digitalWrite(LED_PIN2,LOW);
-  Timer1.attachInterrupt( Timer1_ISR ); // attach the service routine here
+  ////Timer1.attachInterrupt( Timer1_ISR ); // attach the service routine here
+  Timer3.attachInterrupt( Timer3_ISR ); // attach the service routine here
 
   testStarted = false;
+  inSetup = false; 
 
-  rtc.adjust(DateTime(2014, 1, 21, 3, 4, 5));
-  DateTime dt = rtc.now();
-  Serial.print((String)dt.day());
-  Serial.print((String)dt.month()); 
-  Serial.print((String)(dt.year()-2000));
-  Serial.print((String)dt.hour());
-  Serial.print(":"); 
-  Serial.print((String)dt.minute());
-  Serial.print(":"); 
-  Serial.print((String)dt.second());
+  pushbuttonPress(); // This shouldn't be here. I just put it here because the pushbutton isn't working and I wanted to test the rest of the program.
 
 }
 
@@ -231,29 +260,31 @@ void loop()
 {
   if (testStarted)
   {
-    if (samplePeriodReached) // (_timer >= _timer_max)   // One sample period has passed
+    if (samplePeriodReached) // One sample period has passed
     {  
       // Old: EIMSK &= ~(1 << INT0);  // Disable pushbutton interrupt 
-      REG_PIOC_PDR |= PIO_PDR_P1;  // Disable pushbutton interrupt on digital pin 33
+      ////REG_PIOC_PDR |= PIO_PDR_P1;  // Disable pushbutton interrupt on digital pin 33
 
+      Serial.println("Sample period reached.");
       
       //TIMSK1 &= ~(1<<OCIE1A);   //timer1 disable the interrupt
-      Timer1.stop(); 
+      ////Timer1.stop(); 
       
       // disable serial event interrupt? 
       //noInterrupts();                 //Disable interrupts  (!!!)
-    
-      unsigned long _time00 = micros(); 
+      
+      //unsigned long _time00 = micros(); 
 
       digitalWrite(LED_PIN, led_value); // Blink LED to signify the sample period being reached
       led_value=!led_value;
 
-      DateTime dt = rtc.now(); 
+      dt = rtc.now(); 
     
       // Read from sensors and put results into a string
       //dataString = "#" + (String)samples_elapsed + "\t";
-    
-      dataString = "#" + (String)dt.day() + (String)dt.month() + (String)(dt.year()-2000) + " " + (String)dt.hour() + ":" + (String)dt.minute() + ":" + (String)dt.second() + "\t";
+
+      /*
+      dataString = "#" + (String)dt.day() + "/" + (String)dt.month() + "/" + (String)(dt.year()) + " " + (String)dt.hour() + ":" + (String)dt.minute() + ":" + (String)dt.second() + "\t";
       dataString += (String)digital_thermo_0.readThermocoupleTemperature() + "\t"; 
       dataString += (String)digital_thermo_1.readThermocoupleTemperature() + "\t"; 
       dataString += (String)digital_thermo_2.readThermocoupleTemperature() + "\t"; 
@@ -262,9 +293,45 @@ void loop()
       dataString += (String)digital_thermo_5.readThermocoupleTemperature() + "\t"; 
       dataString += (String)digital_thermo_6.readThermocoupleTemperature() + "\t"; 
       dataString += (String)digital_thermo_7.readThermocoupleTemperature(); 
+      */
+      
+      File dataFile = SD.open(dataFileName, FILE_WRITE);
+      if (dataFile) 
+      {
+        dataFile.print(dt.day()); 
+        dataFile.print("/");
+        dataFile.print(dt.month()); 
+        dataFile.print("/");
+        dataFile.print(dt.year()); 
+        dataFile.print(" ");
+        dataFile.print(dt.hour()); 
+        dataFile.print(":");
+        dataFile.print(dt.minute()); 
+        dataFile.print(":");
+        dataFile.print(dt.second()); 
+        dataFile.print("\t");
+        dataFile.print(digital_thermo_0.readThermocoupleTemperature());
+        dataFile.print("\t");
+        dataFile.print(digital_thermo_1.readThermocoupleTemperature());
+        dataFile.print("\t");
+        dataFile.print(digital_thermo_2.readThermocoupleTemperature());
+        dataFile.print("\t");
+        dataFile.print(digital_thermo_3.readThermocoupleTemperature());
+        dataFile.print("\t");
+        dataFile.print(digital_thermo_4.readThermocoupleTemperature());
+        dataFile.print("\t");
+        dataFile.print(digital_thermo_5.readThermocoupleTemperature());
+        dataFile.print("\t");
+        dataFile.print(digital_thermo_6.readThermocoupleTemperature());
+        dataFile.print("\t");
+        dataFile.println(digital_thermo_7.readThermocoupleTemperature());
+        
+        dataFile.close();
+      }
+      
     
       // Write the measurements to the data file on the SD card
-      printToFile(dataFileName, dataString, true); // print to file
+      //printToFile(dataFileName, dataString, true); // print to file
 
     
       //Serial.println((String)(micros()-_time00));
@@ -277,6 +344,7 @@ void loop()
       //delay(100);  // needed for prints? 
     
       samples_elapsed++;
+      Serial.print("Samp. Elap. "); Serial.println(samples_elapsed);
     
       missedClock = false; 
       inSerialSafeRegion = true; 
@@ -287,12 +355,12 @@ void loop()
       //Serial.print("TIFR1's interrupt flag is ");
       //Serial.println((TIFR1 & (1<<OCF1A))>>1);
 
-      Timer1.setPeriod((unsigned long)(conf.sample_period*1000000) - SERIAL_COMM_TIME - (unsigned long)(1000000*(TC0->TC_CHANNEL[2].TC_CV/1024))); // Sample period - serial comm time - sampling routine time
-      Timer1.stop(); Timer1.start(); // Was: Timer1.restart();  
+      ////Timer1.setPeriod((unsigned long)(conf.sample_period*125000) - SERIAL_COMM_TIME - (unsigned long)(1000000*(TC1->TC_CHANNEL[0].TC_CV/1024))); // Sample period - serial comm time - sampling routine time
+      ////Timer1.stop(); Timer1.start(); // Was: Timer1.restart();  
 
       //interrupts();                 //Enable interrupts  (!!!)
       // Old: EIMSK |= (1 << INT0);  // Enable pushbutton interrupt 
-      REG_PIOC_PER |= PIO_PER_P1;  // Enable pushbutton interrupt on digital pin 33
+      ////REG_PIOC_PER |= PIO_PER_P1;  // Enable pushbutton interrupt on digital pin 33
     }
 
     //if (Serial.available()) serialEvent(); 
@@ -339,6 +407,12 @@ void loop()
       }
     }
   }
+
+  //Serial.println(TC0->TC_CHANNEL[2].TC_CV);  // Just for testing 
+  ////Serial.println(TC_ReadCV(TC0,2));  // Just for testing 
+  //Serial.print("   ");  // Just for testing 
+  //Serial.println(TC_ReadRC(TC0,2));  // Just for testing 
+  ////delay(500);  // Just for testing 
   
 }
 
@@ -351,6 +425,8 @@ void loop()
 
 void Timer1_ISR()
 {
+  Serial.println("In Timer1_ISR");
+  return;
   
   if (testStarted && !samplePeriodReached)
   {
@@ -372,6 +448,16 @@ void Timer1_ISR()
   
   //_timer++;
 }
+
+void Timer3_ISR()
+{
+  if (testStarted)
+  {
+    samplePeriodReached = true; 
+  }
+  
+}
+
 
 void serialEvent(){   // Note: serialEvent() doesn't work on Arduino Due!!!
   //delay(100); 
@@ -419,46 +505,39 @@ void setRTCSQWInput(float seconds)
   uint32_t channel = 2;  
   //uint32_t frequency = 1/seconds; 
 
+  //see 37.7.9
+  REG_TC0_WPMR = 0x54494D00;
+  //enable configuring the io registers. see 32.7.42
+  REG_PIOA_WPMR = 0x50494F00;
+  REG_PIOA_PDR |= PIO_PDR_P7;
+  REG_PIOA_ABSR &= ~PIO_ABSR_P7;  // assign the io line to the peripheral
+
   pmc_set_writeprotect(false);
 
-  REG_PIOA_ABSR &= ~PIO_ABSR_P7;  // Is this right? 
+  //REG_PIOA_ABSR = ~PIO_ABSR_P7;  // Is this right? 
   //PIOA_ABSR_P7 = 0; // Peripheral AB Select = A, for digital pin 1 to be used as the external clock for TC2 (TC0, channel 2). Don't know if this works. 
+  //REG_PIOA_PDR = ~PIO_PDR_P7;  // ??? 
+
   
-  pmc_enable_periph_clk((uint32_t)irq);
+  //pmc_enable_periph_clk((uint32_t)irq);
+  pmc_enable_periph_clk(ID_TC2);
+  
   TC_Configure(tc, channel, TC_CMR_CLKI | TC_CMR_ETRGEDG_FALLING | TC_CMR_CPCTRG | TC_CMR_TCCLKS_XC2);
   //uint32_t rc = VARIANT_MCK/128/frequency; //128 because we selected TIMER_CLOCK4 above
   //TC_SetRA(tc, channel, rc/2); //50% high, 50% low
   TC_SetRC(tc, channel, 1024*seconds);  // was TC_SetRC(tc, channel, rc);
   TC_Start(tc, channel);
   tc->TC_CHANNEL[channel].TC_IER = TC_IER_CPCS;  // Use the Register C compare interrupt 
-  tc->TC_CHANNEL[channel].TC_IDR = ~TC_IER_CPCS; // Disable all other types of interrupts for this timer except Reg. C compare
+  tc->TC_CHANNEL[channel].TC_IDR = ~TC_IDR_CPCS; // Disable all other types of interrupts for this timer except Reg. C compare
   NVIC_EnableIRQ(irq);
   
-  /*
-  TCCR5A = 0; // set entire TCCR5A register to 0 (OCnA/OCnB/OCnC disconnected)
-  TCCR5B = 0; // same for TCCR5B (set to what I want later in this method)
-  TCNT5  = 0; // initialize counter value to 0
-
-  //Serial.println((uint16_t)(1024*seconds));
-  
-  OCR5A = (uint16_t)(1024*seconds);    // Set the value for the interrupt (Multiples of 1/8 seconds will be exact)
-  
-  TCCR5B |= (1<<WGM52); //timer5 - enable the CTC mode (this is necessary!)
-  
-  TCCR5B |= 0x6; // B00000110 (external clock with clock on the falling edge) 
-  //TCCR5B |= (1<<CS02);     // External clock source with clock on falling edge
-  //TCCR5B |= (1<<CS01);     // ^ 
-
-  TIMSK5 |= (1<<OCIE5A);   //timer5 enable the interrupt (Output Compare A Match Interrupt Enable)
-  */ 
-
-  
   interrupts();                 // Enable interrupts
-  
 }
 
 void setCounter5(float seconds)
 {
+  pmc_set_writeprotect(false);
+  
   // Was: OCR5A = (uint16_t)(1024*seconds);    // Set the value for the interrupt (Multiples of 1/8 seconds will be exact)
   TC_SetRC(TC0, 2, 1024*seconds); 
   
@@ -467,8 +546,10 @@ void setCounter5(float seconds)
   TC0->TC_CHANNEL[2].TC_CV = 0;  // Clear the counter 
 }
 
+
 void TC2_Handler() // This is the interrupt request
 {    
+  Serial.println("In TC2_Handler");
   TC_GetStatus(TC0, 2);  // This is needed apparently 
   noInterrupts();
   //Serial.println("In T5 ISR");
@@ -493,6 +574,7 @@ void TC2_Handler() // This is the interrupt request
 
 void pushbuttonPress()
 {
+  Serial.println("Pushbutton press..");
   if (inSetup)
   {
     return; 
@@ -501,11 +583,11 @@ void pushbuttonPress()
   //stopTestWhenPossible = true; 
   if (!testStarted) 
   {
-    startTest(); 
+    startTest2(); 
   }
   else
   {
-    stopTest(); 
+    stopTest2(); 
   }
   
 }
@@ -533,6 +615,26 @@ void startTest()
   
 }
 
+
+void startTest2()  // For when internal timer handles the timing for sampling 
+{
+  samples_elapsed = 0;
+  delay(conf.start_delay*1000); // Start delay
+
+  ////Timer1.setPeriod(10000);  // Was: Timer1.initialize(10000); // set the timer. Needs to go off during or just after the sampling routine.  !!!!
+  ////Timer1.start(); 
+  //Serial.print("in us: ");
+  //Serial.println(conf.sample_period*125000);
+  Timer3.setPeriod(conf.sample_period*125000); // microseconds 
+  Timer3.start(); 
+  
+  samplePeriodReached = true; 
+  testStarted = true; 
+  interrupts(); // There should be an interrupt routine entered from within this interrupt routine
+  
+}
+
+
 void stopTest()
 {
   // Was: TIMSK5 &= ~(1<<OCIE5A);   //timer5 disable the interrupt (Output Compare A Match Interrupt disable)
@@ -542,5 +644,17 @@ void stopTest()
   data_file_number++;
   strcat(dataFileName, String(data_file_number).c_str());
   strcat(dataFileName, ".txt");  // THERE IS A MAX LENGTH TO THIS, SO THERE'S A MAX NUMBER OF DATA FILES
+  
+}
+
+void stopTest2()
+{
+  ////Timer1.stop(); 
+  Timer3.stop(); 
+  testStarted = false; 
+  data_file_number++; 
+  strcat(dataFileName, String(data_file_number).c_str());
+  strcat(dataFileName, ".txt");  // THERE IS A MAX LENGTH TO THIS, SO THERE'S A MAX NUMBER OF DATA FILES
+  
   
 }

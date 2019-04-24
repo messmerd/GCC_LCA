@@ -508,6 +508,8 @@ namespace LCA_SYNC
                         return "MEGA";
                     case "003b":
                         return "SERIAL ADAPTER";
+                    case "003d":
+                        return "DUE";
                     case "003f":
                         return "MEGA ADK";
                     case "0042":

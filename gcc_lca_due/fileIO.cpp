@@ -23,6 +23,7 @@ boolean Config::read(boolean setRTC)
 
   if (!file) {
     // Failed to open
+    sample_period = 8; 
     return 1; // error 
   }
   
@@ -144,10 +145,10 @@ void printToFile(char* filename, String text, boolean append)
   
   // if the file is available, write to it:
   if (dataFile) {
-    //dataFile.println(text);
+    dataFile.println(text);
     dataFile.close();
     // print to the serial port too:
-    //Serial.println(text+(String)eot);
+    Serial.println(text+(String)eot);
   }
   // if the file isn't open, pop up an error:
   else {

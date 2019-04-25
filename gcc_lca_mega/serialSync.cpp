@@ -36,17 +36,17 @@ bool ProcessData()
       // Error? 
       return false; 
     case 0x01:  // Ping
-      if (dataInPos==4 && dataIn[0]==sot && dataIn[1]==0x01 && dataIn[2]==0xF0 && dataIn[3]==eot) {
-
-      byte byte_array[] = {0x02, 0x01, 0xF0, 0x71, 0x6c, 0x63, 0x39, 0x4b, 0x4e, 0x4d, 0x4b, 0x69, 0x30, 0x6d, 0x41, 0x79, 0x54, 0x34, 0x6f, 0x03 };
-      Serial.write(byte_array, 20);
-      
-      dataInPos = 0; 
-      dataReceived = false;
-      
-      Serial.flush(); // ? 
-      
-      return true; // true means success(?)
+      if (dataInPos==4 && dataIn[0]==sot && dataIn[1]==0x01 && dataIn[2]==0xF0 && dataIn[3]==eot) 
+      {
+        byte byte_array[] = {0x02, 0x01, 0xF0, (byte)(testStarted), 0x03 };
+        Serial.write(byte_array, 5);
+        
+        dataInPos = 0; 
+        dataReceived = false;
+        
+        Serial.flush(); // ? 
+        
+        return true; // true means success(?)
       } else {return false; }
     case 0x02: // Config 
       ProcessConfigRequest(); 
@@ -240,6 +240,7 @@ void ProcessOtherCategory()
           Serial.write(sot); 
           Serial.write(dataIn[1]);
           Serial.write(dataIn[2]);
+          Serial.write((byte)testStarted);
           Serial.write(eot); 
         }
         else if (subcat == 1 && testStarted) 
@@ -248,6 +249,7 @@ void ProcessOtherCategory()
           Serial.write(sot); 
           Serial.write(dataIn[1]);
           Serial.write(dataIn[2]);
+          Serial.write((byte)testStarted);
           Serial.write(eot); 
         }
       }

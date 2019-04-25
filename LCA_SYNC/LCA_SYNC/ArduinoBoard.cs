@@ -363,17 +363,17 @@ namespace LCA_SYNC
             }
         }
 
-        public async Task<Response> Ping(double timeoutLength = -1)
+        public async Task Ping(double timeoutLength = -1)
         {
             // Use ExpectedResponseType = DATACATEGORY.PING;  here???? 
             try
             {
-                return await Communicate(DATACATEGORY.PING, 0, 0, null, timeoutLength);
+                await Communicate(DATACATEGORY.PING, 0, 0, null, timeoutLength);
                 //SendData("10");  // 10 is for ping. SendData does the rest. 
             }
-            catch
+            catch (Exception e)
             {
-                throw;
+                throw e;
                 //Console.WriteLine(e.GetType().Name + ": " + e.Message);
             }
         }
@@ -384,23 +384,21 @@ namespace LCA_SYNC
         /// </summary>
         public event EventHandler NewDataReceived;
 
-        public async Task<COMMERROR> RefreshInfo()
+        public async Task RefreshInfo()
         {
-            // Get all information about Arduino here:
-            // Name of lca sensor package
-            // Config file
-            // Sensors info
+            // Get essential information about Arduino here
             // List of data file filenames (if lastdatafile# - total#offiles > 0.5*total#offiles, then it would be less data needed to specify which files are present rather than missing (?))
             // ...
 
             Console.WriteLine("In RefreshInfo.");
-
+            bool success = false; 
             //Response results = new Response(null, COMMERROR.INVALID);
             try
             {
-                Response results = await Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.ALL, ACTION.READVAR);
-                Console.WriteLine("After Communicate in RefreshInfo: results.data=" + results.data + ", results.validity=" + results.validity.ToString());
-
+                await Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.ALL, ACTION.READVAR);
+                Console.WriteLine("After Communicate in RefreshInfo"); //: results.data=" + results.data + ", results.validity=" + results.validity.ToString());
+                success = true; 
+                /*
                 if (results.validity == COMMERROR.VALID)  // Only update values if successful
                 {
                     Console.WriteLine("I am here -1.");
@@ -427,12 +425,19 @@ namespace LCA_SYNC
                 Console.WriteLine("At end of RefreshInfo.");
 
                 return results.validity;
+                */
             }
             catch (Exception e)
             {
                 Console.WriteLine("Communicate error in RefreshInfo: " + e.Message);
+                throw e; 
             }
-            return COMMERROR.INVALID;
+            finally
+            {
+                if (success)
+                    ArduinoDataChanged.Invoke(this, new ArduinoEventArgs("RefreshInfo"));
+            }
+            //return COMMERROR.INVALID;
             
 
         }
@@ -562,8 +567,9 @@ namespace LCA_SYNC
             }
         }
 
-        public async Task<Response> Communicate(DATACATEGORY cat, SUBCATEGORY subcat, ACTION action, object data = null, double timeoutLength = -1.0)
+        public async Task Communicate(DATACATEGORY cat, SUBCATEGORY subcat, ACTION action, object data = null, double timeoutLength = -1.0)
         {
+            // Throws an ArduinoCommunicationException if unsuccessful 
             Console.WriteLine("In Communicate. The current thread is {0}", Thread.CurrentThread.Name);
 
             //Console.WriteLine(data==null ? "nope" : (((uint)data).ToString()));
@@ -590,15 +596,25 @@ namespace LCA_SYNC
                 case DATACATEGORY.PING:
                     Console.WriteLine("In Communicate, in PING category, resp.data=" + BytesToString(resp) + ". And the correct value is {0}", PINGVALUE);
                     Console.WriteLine("The comparison made to determine correctness: resp.data=" + BitConverter.ToString(resp.ToArray()) + " and {0}", BitConverter.ToString(StringToBytes(PINGVALUE).ToArray()));
-                    if (BytesToString(resp).Equals(PINGVALUE))
+                    if (resp.Count == 5 && resp[0] == sotb && resp[1] == 0x01 && resp[2] == 0xF0 && resp[4] == eotb)
                     {
                         _ExpectedResponseType = DATACATEGORY.NULL; // This assumes only one response type at a time
                         lca = true;
-                        return new Response(null, COMMERROR.VALID);
+                        if (resp[3] == 0x00 || resp[3] == 0x01)
+                        {
+                            
+                            TestStarted = Convert.ToBoolean(resp[3]);
+                            return;// new Response(null, COMMERROR.VALID);
+                        }
+                        else
+                        {
+                            throw new ArduinoCommunicationException("Ping failed: Response contained an invalid value.");
+                        }
+                        
                     }
                     else
                     {
-                        throw new ArduinoCommunicationException("Ping failed.");
+                        throw new ArduinoCommunicationException("Ping failed: Invalid response.");
                         //return new Response("Ping failed", COMMERROR.INVALID);
                     }
 
@@ -626,7 +642,8 @@ namespace LCA_SYNC
                                 {
                                     str += (char)resp[i];
                                 }
-                                results.Add(str);
+                                PackageName = str;
+                                //results.Add(str);
                             }
 
                             int nullterm2 = resp.IndexOf(0x00, nullterm + 1);
@@ -636,18 +653,21 @@ namespace LCA_SYNC
                             }
                             else
                             {
-                                results.Add(uint.Parse(Encoding.Default.GetString(resp.GetRange(nullterm + 1, nullterm2 - nullterm - 1).ToArray()), System.Globalization.NumberStyles.HexNumber));  // Don't include the null term. in the package name 
+                                TestDuration = uint.Parse(Encoding.Default.GetString(resp.GetRange(nullterm + 1, nullterm2 - nullterm - 1).ToArray()), System.Globalization.NumberStyles.HexNumber); 
+                                //results.Add(uint.Parse(Encoding.Default.GetString(resp.GetRange(nullterm + 1, nullterm2 - nullterm - 1).ToArray()), System.Globalization.NumberStyles.HexNumber));  // Don't include the null term. in the package name 
                             }
 
                             if (resp.Count < nullterm2 + 4) { throw new ArduinoCommunicationException("The response string is of the wrong length."); }
 
                             //results.Add(new byte[] { 0x00, resp[nullterm + 1], resp[nullterm + 2], resp[nullterm + 3] }); //;.AddRange(resp.GetRange(nullterm + 1, 3))); // The test duration 
-                            results.Add((byte)(resp[nullterm2 + 1] - 0x4)); // The start delay in seconds as a byte (the 0x4 is to correct for avoiding sending sot or eot over serial)
-                            results.Add(((byte)(resp[nullterm2 + 2] - 0x4)) / 8.0f); // The sample period in seconds as a float  
+                            StartDelay = (byte)(resp[nullterm2 + 1] - 0x4);  // The start delay in seconds as a byte (the 0x4 is to correct for avoiding sending sot or eot over serial)
+                            //results.Add((byte)(resp[nullterm2 + 1] - 0x4)); // The start delay in seconds as a byte (the 0x4 is to correct for avoiding sending sot or eot over serial)
+                            SamplePeriod = ((byte)(resp[nullterm2 + 2] - 0x4)) / 8.0f;  // The sample period in seconds as a float 
+                            //results.Add(((byte)(resp[nullterm2 + 2] - 0x4)) / 8.0f); // The sample period in seconds as a float  
 
                             Console.WriteLine("Done parsing the config response.");
 
-                            return new Response(results, COMMERROR.VALID);
+                            return; // new Response(results, COMMERROR.VALID);
                         }
                         else
                         {
@@ -663,7 +683,7 @@ namespace LCA_SYNC
                                 if (resp.Count == 4 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
                                 {
                                     PackageName = (string)data; // Success. Can update this now. 
-                                    return new Response(resp, COMMERROR.VALID);
+                                    return;// new Response(resp, COMMERROR.VALID);
                                 }  
                                 else
                                     throw new ArduinoCommunicationException("The response didn't match the expected value.");
@@ -671,7 +691,7 @@ namespace LCA_SYNC
                                 if (resp.Count == 4 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
                                 {
                                     TestDuration = (uint)data; // Success. Can update this now. 
-                                    return new Response(resp, COMMERROR.VALID);
+                                    return;// new Response(resp, COMMERROR.VALID);
                                 }
                                 else
                                     throw new ArduinoCommunicationException("The response didn't match the expected value.");
@@ -679,7 +699,7 @@ namespace LCA_SYNC
                                 if (resp.Count == 4 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
                                 {
                                     SamplePeriod = (float)data; // Success. Can update this now. 
-                                    return new Response(resp, COMMERROR.VALID);
+                                    return;// new Response(resp, COMMERROR.VALID);
                                 }
                                 else
                                     throw new ArduinoCommunicationException("The response didn't match the expected value.");
@@ -687,7 +707,7 @@ namespace LCA_SYNC
                                 if (resp.Count == 4 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
                                 {
                                     StartDelay = (byte)data; // Success. Can update this now. 
-                                    return new Response(resp, COMMERROR.VALID);
+                                    return;// new Response(resp, COMMERROR.VALID);
                                 }
                                 else
                                     throw new ArduinoCommunicationException("The response didn't match the expected value.");
@@ -711,10 +731,24 @@ namespace LCA_SYNC
                         {
                             case SUBCATEGORY.START_TEST:
                             case SUBCATEGORY.STOP_TEST:
+                                if (resp.Count == 5 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
+                                {
+                                    if (resp[3] == 0x00 || resp[3] == 0x01) 
+                                    {
+                                        TestStarted = Convert.ToBoolean(resp[3]);
+                                        return;// new Response(resp, COMMERROR.VALID);
+                                    }
+                                    else
+                                        throw new ArduinoCommunicationException("The response didn't match the expected value.");
+                                }
+                                else
+                                    throw new ArduinoCommunicationException("The response didn't match the expected value.");
+
+                                
                             case SUBCATEGORY.TIME_DATE:
                                 if (resp.Count == 4 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
                                 {
-                                    return new Response(resp, COMMERROR.VALID);
+                                    return;// new Response(resp, COMMERROR.VALID);
                                 }
                                 else
                                     throw new ArduinoCommunicationException("The response didn't match the expected value.");
@@ -729,7 +763,7 @@ namespace LCA_SYNC
                             if (resp.Count == 11 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
                             {
                                 // Set local copy of Arduino's RTC time here 
-                                return new Response(resp, COMMERROR.VALID);
+                                return;// new Response(resp, COMMERROR.VALID);
                             }
                             else
                                 throw new ArduinoCommunicationException("The response didn't match the expected value.");
@@ -947,6 +981,39 @@ namespace LCA_SYNC
             return bytes;
         }
 
+        // override object.Equals
+        public override bool Equals(object obj)
+        {
+            //       
+            // See the full list of guidelines at
+            //   http://go.microsoft.com/fwlink/?LinkID=85237  
+            // and also the guidance for operator== at
+            //   http://go.microsoft.com/fwlink/?LinkId=85238
+            //
+
+            if (obj == null || GetType() != obj.GetType())
+            {
+                return false;
+            }
+            if (Port == null || ((ArduinoBoard)obj).Port == null || Port.PortName != ((ArduinoBoard)obj).Port.PortName)
+            {
+                return false; 
+            }
+            else
+            {
+                return true;
+                // ArduinoBoard objects with the same serial port name are treated as equal. 
+            }
+        }
+
+        // override object.GetHashCode
+        public override int GetHashCode()
+        {
+            // Using the serial port name
+            if (Port == null)
+                return 0; 
+            return Port.PortName.GetHashCode(); 
+        }
 
     }
 

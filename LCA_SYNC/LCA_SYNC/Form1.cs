@@ -36,14 +36,14 @@ namespace LCA_SYNC
         private BindingSource arduinoListBinding;
         private Dictionary<string, string> LanguageText;
         //private Dictionary<string, Image> LanguageIcons;
-        private ImageList LanguageIcons; 
-        private SortedSet<string> AvailableLanguages; 
+        private ImageList LanguageIcons;
+        private SortedSet<string> AvailableLanguages;
         private string CurrentLanguage = "";
         private readonly string DefaultLanguage = "en";             // The hard-coded language of the program 
         private readonly string DefaultLanguageLong = "English";    // The hard-coded language of the program 
         private string UserDefaultLanguage = "en";                  // The language the user chose to use as a default 
-        
-        
+
+
         public Main()
         {
             AppDomain currentDomain = AppDomain.CurrentDomain;
@@ -112,15 +112,16 @@ namespace LCA_SYNC
             AvailableLanguages = new SortedSet<string>();
             LanguageIcons = new ImageList();
             LanguageIcons.ImageSize = new Size(imageComboLanguage.ImageList.ImageSize.Height, imageComboLanguage.ImageList.ImageSize.Height);
-            CurrentLanguage = ""; 
+            CurrentLanguage = "";
             LoadLanguages();
             //RefreshLanguage(); 
 
+            serial.ArduinoChanged += Serial_ArduinoChanged;
             serial.ArduinoDataChanged += serial_ArduinoDataChanged;
             Console.WriteLine("\n\n\n");
 
             // Arduino List setup: 
-            deviceList = new object[] {"<No Device>"};
+            deviceList = new object[] { "<No Device>" };
             //arduinoList.Items.AddRange(deviceList);
             arduinoListBinding = new BindingSource();
             arduinoListBinding.DataSource = serial.LCAArduinos;
@@ -131,16 +132,55 @@ namespace LCA_SYNC
             //arduinoList.SelectedIndex = 0;
 
             // Start watching for USB PnP devices to be added/removed/modified:
-            serial.StartPnPWatcher();  
+            serial.StartPnPWatcher();
 
             // Find LCA arduinos: 
-            serial.ActivateAllArduinos(); 
+            serial.ActivateAllArduinos();
+            RefreshControlsEnable();
+
+        }
+
+        private void Serial_ArduinoChanged(object sender, ArduinoEventArgs e)
+        {
+            // The ArduinoChanged event that this handler is subscribed to is triggered when SerialInterface.Arduino is changed. 
+            // SerialInterface.Arduino is the currently active ArduinoBoard object - the one that this synchronization program is connected to and interacting with. 
+
+            Console.WriteLine("SerialInterface.Arduino changed.");
+
+            RefreshControlsEnable();  // Refresh all GUI controls that require a sensor package to be connected
+
+        }
+
+        private void RefreshControlsEnable()
+        {
+            // This function refreshes all GUI controls that require a sensor package to be connected
+
+            //buttonConfigDiscardChanges_Click(this, new EventArgs());  // Clears changes made in the config page
+
+            bool enabled = serial.Arduino != null;
+            textBoxPackageName.Enabled = enabled;
+            numericUpDownSampleRate.Enabled = enabled;
+            numericUpDownTestDurationHours.Enabled = enabled;
+            numericUpDownTestDurationMinutes.Enabled = enabled;
+            numericUpDownTestDurationSeconds.Enabled = enabled;
+            radioButtonStartDelayNone.Enabled = enabled;
+            radioButtonStartDelayOneMin.Enabled = enabled;
+            radioButtonStartDelayThreeMin.Enabled = enabled;
+            checkBoxSyncTimeDate.Enabled = enabled;
+            radioButtonUseSysTime.Enabled = enabled;
+            radioButtonUseCustomTime.Enabled = enabled;
+            buttonStatusStartStop.Enabled = enabled;
+            //buttonSync.Enabled = enabled;
+
+            ButtonStatusStartStopRefresh();  // Sets the Start/Stop Test button to what it should be 
+            UpdateTabText(); 
+            
 
         }
 
         private void RadioButtonStartDelayOption_CheckedChanged(object sender, EventArgs e)
         {
-            UpdateTabText(); 
+            UpdateTabText();
         }
 
         private void NumericUpDownTestDuration_ValueChanged(object sender, EventArgs e)
@@ -165,26 +205,26 @@ namespace LCA_SYNC
 
         private void TextBoxPackageName_TextChanged(object sender, EventArgs e)
         {
-            
-            bool validInput = true; 
+
+            bool validInput = true;
             foreach (char c in textBoxPackageName.Text)
             {
                 if (c > 255 || c < 32)  // If a character is not a character supported by the arduino 
                 {
-                    validInput = false; 
+                    validInput = false;
                 }
             }
 
             if (validInput)
             {
-                textBoxPackageName.BackColor = Color.White; 
+                textBoxPackageName.BackColor = Color.White;
             }
             else
             {
                 textBoxPackageName.BackColor = Color.Red;
             }
 
-            UpdateTabText(); 
+            UpdateTabText();
         }
 
         private void UnfocusControls(object sender, MouseEventArgs e)
@@ -203,7 +243,7 @@ namespace LCA_SYNC
         private void NumericUpDownSampleRate_ValueChanged(object sender, EventArgs e)
         {
             //Console.WriteLine("Value: {0}, Tag: {1}", numericUpDownSampleRate.Value, (decimal?)numericUpDownSampleRate?.Tag);
-            
+
             if (Math.Floor(numericUpDownSampleRate.Value * 8) != numericUpDownSampleRate.Value * 8) // If the sample rate is not a multiple of 0.125 
             {
                 //Console.WriteLine("numericUpDownSampleRate: Not a multiple of 0.125");
@@ -214,7 +254,7 @@ namespace LCA_SYNC
                 //Console.WriteLine("numericUpDownSampleRate: Just right");
             }
 
-            UpdateTabText(); 
+            UpdateTabText();
         }
 
         private void UpdateTabText()
@@ -224,7 +264,7 @@ namespace LCA_SYNC
                 (decimal?)numericUpDownTestDurationHours.Tag != numericUpDownTestDurationHours.Value ||
                 (decimal?)numericUpDownTestDurationMinutes.Tag != numericUpDownTestDurationMinutes.Value ||
                 (decimal?)numericUpDownTestDurationSeconds.Tag != numericUpDownTestDurationSeconds.Value ||
-                (string)textBoxPackageName.Tag != textBoxPackageName.Text || 
+                (string)textBoxPackageName.Tag != textBoxPackageName.Text ||
                 (bool)radioButtonStartDelayNone.Tag != radioButtonStartDelayNone.Checked ||
                 (bool)radioButtonStartDelayOneMin.Tag != radioButtonStartDelayOneMin.Checked ||
                 (bool)radioButtonStartDelayThreeMin.Tag != radioButtonStartDelayThreeMin.Checked ||
@@ -235,7 +275,7 @@ namespace LCA_SYNC
                 if (tabControl.TabPages[1].Text.Last() != '*')
                 {
                     tabControl.TabPages[1].Text += '*';
-                    buttonConfigDiscardChanges.Enabled = true; 
+                    buttonConfigDiscardChanges.Enabled = true;
                 }
             }
             else
@@ -245,9 +285,9 @@ namespace LCA_SYNC
                 buttonConfigDiscardChanges.Enabled = false;
             }
 
-            // If changes have been made and those changes are valid: 
-            if ((tabControl.TabPages[1].Text.Last() == '*' || tabControl.TabPages[2].Text.Last() == '*') && 
-                textBoxPackageName.BackColor == Color.White)
+            // If changes have been made and those changes are valid and can be applied: 
+            if ((tabControl.TabPages[1].Text.Last() == '*' || tabControl.TabPages[2].Text.Last() == '*') &&
+                textBoxPackageName.BackColor == Color.White && serial.Arduino != null)
             {
                 buttonSync.Enabled = true;
             }
@@ -275,7 +315,7 @@ namespace LCA_SYNC
             Exception e = (Exception)args.ExceptionObject;
             Console.WriteLine("MyHandler caught : " + e.Message);
             Console.WriteLine("Runtime terminating: {0}", args.IsTerminating);
-            
+
             // Maybe this will fix the problem...
             if (serial != null && serial.pnpWatcher != null)
             {
@@ -314,11 +354,11 @@ namespace LCA_SYNC
                 comboItem = new ImageComboItem("Lang. error", 0);
                 comboItem.Tag = "error";
                 imageComboLanguage.Items.Add(comboItem);
-                imageComboLanguage.SelectedIndex = 0; 
+                imageComboLanguage.SelectedIndex = 0;
                 imageComboLanguage.Enabled = false;
                 AvailableLanguages.Clear();
                 CurrentLanguage = "error";
-                return; 
+                return;
             }
 
             string[] filePaths = Directory.GetFiles(Application.StartupPath + @"\lang\", "*.dat").OrderBy(s => s).ToArray();
@@ -337,9 +377,9 @@ namespace LCA_SYNC
                 comboItem.Tag = "error";
                 imageComboLanguage.Items.Add(comboItem);
                 imageComboLanguage.SelectedIndex = 0;
-                imageComboLanguage.Enabled = false; 
+                imageComboLanguage.Enabled = false;
                 AvailableLanguages.Clear();
-                CurrentLanguage = "error"; 
+                CurrentLanguage = "error";
                 return;
             }
 
@@ -364,7 +404,7 @@ namespace LCA_SYNC
 
                 // Load language icon 
                 if (!LanguageIcons.Images.ContainsKey(langShort))
-                { 
+                {
                     if (LanguageText.ContainsKey(langShort + "Icon"))
                     {
                         if (File.Exists(Application.StartupPath + @"\lang\" + LanguageText[langShort + "Icon"]))
@@ -386,12 +426,12 @@ namespace LCA_SYNC
                     imageComboLanguage.ImageList = LanguageIcons;
                     // Check if it's already in the list first? 
                     comboItem = new ImageComboItem(LanguageText[langShort + "LangLong"], i);
-                    comboItem.Tag = langShort; 
+                    comboItem.Tag = langShort;
                     imageComboLanguage.Items.Add(comboItem);
-                } 
+                }
 
                 AvailableLanguages.Add(langShort);
-                i++; 
+                i++;
             }
 
             if (CurrentLanguage == "")  // If the CurrentLanguage has not been set, then set it 
@@ -402,11 +442,11 @@ namespace LCA_SYNC
                 }
                 else if (AvailableLanguages.Contains(DefaultLanguage)) // 2nd priority is the program's default language if it exists in the lang folder
                 {
-                    CurrentLanguage = DefaultLanguage; 
+                    CurrentLanguage = DefaultLanguage;
                 }
                 else if (AvailableLanguages.Count > 0) // 3rd priority is whatever other language exists in the lang folder 
                 {
-                    CurrentLanguage = AvailableLanguages.First(); 
+                    CurrentLanguage = AvailableLanguages.First();
                 }
                 else // Last is the error state where no languages exist. 
                 {
@@ -434,7 +474,7 @@ namespace LCA_SYNC
             lang = lang ?? CurrentLanguage;
             if (LanguageText.ContainsKey(lang + key))
             {
-                return LanguageText[lang + key]; 
+                return LanguageText[lang + key];
             }
             else
             {
@@ -445,7 +485,7 @@ namespace LCA_SYNC
         private void imageComboLanguage_DropDownClosed(object sender, EventArgs e)
         {
             // To unhighlight the selection 
-            this.ActiveControl = null; 
+            this.ActiveControl = null;
 
             //imageComboLanguage.Refresh();
             //imageComboLanguage.Invalidate();
@@ -459,17 +499,17 @@ namespace LCA_SYNC
             if (!((ImageCombo)sender).DroppedDown && (e.KeyCode == Keys.Right || e.KeyCode == Keys.Left || e.KeyCode == Keys.Up || e.KeyCode == Keys.Down))
             {
                 //TxtPass.Focus();
-                this.ActiveControl = null; 
+                this.ActiveControl = null;
                 e.Handled = true;
                 return;
             }
         }
-        
+
         private void imageComboLanguage_SelectedIndexChanged(object sender, EventArgs e)
         {
             CurrentLanguage = (string)((ImageComboItem)imageComboLanguage.SelectedItem).Tag;
             Console.WriteLine("Switched to the language: {0}.", LanguageText?[CurrentLanguage + "LangLong"]);
-            RefreshLanguage(); 
+            RefreshLanguage();
         }
 
         private void RefreshLanguage()
@@ -480,43 +520,94 @@ namespace LCA_SYNC
 
             // Menu Items //////////////////// 
             // The English "File" is default if the language cannot be loaded:  
-            menuStrip1.Items[0].Text = getLanguageText("File", "File");  
-            menuStrip1.Items[1].Text = getLanguageText("Options", "Options"); 
-            menuStrip1.Items[2].Text = getLanguageText("About", "About"); 
+            menuStrip1.Items[0].Text = getLanguageText("File", "File");
+            menuStrip1.Items[1].Text = getLanguageText("Options", "Options");
+            menuStrip1.Items[2].Text = getLanguageText("About", "About");
 
-            loadConfigurationToolStripMenuItem.Text = getLanguageText("LoadConfig", "Load Configuration"); 
-            saveConfigurationToolStripMenuItem.Text = getLanguageText("SaveConfig", "Save Configuration"); 
+            loadConfigurationToolStripMenuItem.Text = getLanguageText("LoadConfig", "Load Configuration");
+            saveConfigurationToolStripMenuItem.Text = getLanguageText("SaveConfig", "Save Configuration");
 
-            temperatureUnitsToolStripMenuItem.Text = getLanguageText("TempUnits", "Temperature Units"); 
-            dateFormatToolStripMenuItem.Text = getLanguageText("DateFormat", "Date Format"); 
-            timeFormatToolStripMenuItem.Text = getLanguageText("TimeFormat", "Time Format"); 
-            mMDDYYYYToolStripMenuItem.Text = getLanguageText("DateFormatMDY", "mm/dd/yyyy"); 
-            dDMMYYYYToolStripMenuItem.Text = getLanguageText("DateFormatDMY", "dd/mm/yyyy"); 
-            TwelveHourToolStripMenuItem.Text = getLanguageText("12Hour", "12-hour"); 
-            TwentyFourHourToolStripMenuItem.Text = getLanguageText("24Hour", "24-hour"); 
+            temperatureUnitsToolStripMenuItem.Text = getLanguageText("TempUnits", "Temperature Units");
+            dateFormatToolStripMenuItem.Text = getLanguageText("DateFormat", "Date Format");
+            timeFormatToolStripMenuItem.Text = getLanguageText("TimeFormat", "Time Format");
+            mMDDYYYYToolStripMenuItem.Text = getLanguageText("DateFormatMDY", "mm/dd/yyyy");
+            dDMMYYYYToolStripMenuItem.Text = getLanguageText("DateFormatDMY", "dd/mm/yyyy");
+            TwelveHourToolStripMenuItem.Text = getLanguageText("12Hour", "12-hour");
+            TwentyFourHourToolStripMenuItem.Text = getLanguageText("24Hour", "24-hour");
 
             // Tab Control Items //////////////////// 
-            tabControl.TabPages[0].Text = getLanguageText("Status", "Status"); 
-            tabControl.TabPages[1].Text = getLanguageText("Config", "Config"); 
-            tabControl.TabPages[2].Text = getLanguageText("Sensors", "Sensors"); 
-            tabControl.TabPages[3].Text = getLanguageText("Data", "Data"); 
+            tabControl.TabPages[0].Text = getLanguageText("Status", "Status");
+            tabControl.TabPages[1].Text = getLanguageText("Config", "Config");
+            tabControl.TabPages[2].Text = getLanguageText("Sensors", "Sensors");
+            tabControl.TabPages[3].Text = getLanguageText("Data", "Data");
 
 
             // Config Page Items //////////////////// 
-            labelPackageName.Text = getLanguageText("PackageName", "Package Name"); 
-            labelSamplePeriod.Text = getLanguageText("SamplePeriod", "Sample Period"); 
-            labelTestDuration.Text = getLanguageText("TestDuration", "Test Duration"); 
-            labelConfigHr.Text = getLanguageText("HourAbbr", "Hr."); 
-            labelConfigMin.Text = getLanguageText("MinuteAbbr", "Min."); 
+            labelPackageName.Text = getLanguageText("PackageName", "Package Name");
+            labelSamplePeriod.Text = getLanguageText("SamplePeriod", "Sample Period");
+            labelTestDuration.Text = getLanguageText("TestDuration", "Test Duration");
+            labelConfigHr.Text = getLanguageText("HourAbbr", "Hr.");
+            labelConfigMin.Text = getLanguageText("MinuteAbbr", "Min.");
             labelConfigSec.Text = getLanguageText("SecondAbbr", "Sec.");
             labelConfigSec2.Text = getLanguageText("SecondAbbr", "Sec.");
+            checkBoxSyncTimeDate.Text = getLanguageText("SyncTimeDate", "Synchronize Time and Date");
+            radioButtonUseSysTime.Text = getLanguageText("UseSysTimeDate", "Use System Time/Date");
+            labelStartDelay.Text = getLanguageText("StartDelay", "Start Delay");
+            radioButtonStartDelayNone.Text = getLanguageText("None", "None");
+            radioButtonStartDelayOneMin.Text = getLanguageText("1Min", "1 Min.");
+            radioButtonStartDelayThreeMin.Text = getLanguageText("3Min", "3 Min.");
+
             buttonConfigDiscardChanges.Text = getLanguageText("DiscardChanges", "Discard Changes");
+
+            // Status Page Items //////////////////// 
+            buttonConnectDisconnect.Text = getLanguageText("ConnectDisconnect", "Connect/Disconnect");
+            buttonSync.Text = getLanguageText("Sync", "Sync");
+            buttonClearWindow.Text = getLanguageText("ClearWindow", "Clear Window");
+            RefreshStatusPageText(); 
+
+            if (serial.Arduino != null && serial.Arduino.TestStarted)
+                buttonStatusStartStop.Text = getLanguageText("StopTest", "Stop Test");
+            else
+                buttonStatusStartStop.Text = getLanguageText("StartTest", "Start Test");
 
             // Add the rest of the language support in the same way as above or by calling LanguageText when needed. 
 
-            UpdateTabText(); 
+            UpdateTabText();
         }
 
+        private void RefreshStatusPageText()
+        {
+            //RefreshControlsEnable();
+            ButtonStatusStartStopRefresh(); 
+            if (serial.Arduino == null)
+            {
+                labelStatusPackageName.Text = getLanguageText("PackageName", "Package Name");
+                labelStatusSerialPort.Text = getLanguageText("SerialPort", "Serial Port");
+                labelStatusTotalSensors.Text = getLanguageText("TotalSensors", "Total Sensors") + ":";
+                labelStatusMode.Text = getLanguageText("Mode", "Mode") + ":";
+                
+                labelStatusElapsedTime.Text = getLanguageText("ElapsedTime", "Elapsed Time") + ":";
+                labelStatusDataFile.Text = getLanguageText("CurrentDataFile", "Current Data File") + ":";
+
+            }
+            else
+            {
+                labelStatusPackageName.Text = (string)labelStatusPackageName.Tag;
+                labelStatusSerialPort.Text = "(" + (string)labelStatusSerialPort.Tag + ")";
+                labelStatusTotalSensors.Text = getLanguageText("TotalSensors", "Total Sensors") + ": " + (int?)labelStatusTotalSensors.Tag;
+                if (serial.Arduino.TestStarted)
+                {
+                    labelStatusMode.Text = getLanguageText("Mode", "Mode") + ": " + getLanguageText("Running", "Running");
+                }
+                else
+                {
+                    labelStatusMode.Text = getLanguageText("Mode", "Mode") + ": " + getLanguageText("Ready", "Ready");
+                }
+                
+                labelStatusElapsedTime.Text = getLanguageText("ElapsedTime", "Elapsed Time") + ":";
+                labelStatusDataFile.Text = getLanguageText("CurrentDataFile", "Current Data File") + ":";
+            }
+        }
 
         /// <summary>
         /// OnWeatherDataReceived event is catched in
@@ -527,8 +618,8 @@ namespace LCA_SYNC
         void arduinoBoard_NewDataReceived(object sender, EventArgs e)
         {
             // Hasn't been tested: 
-            Console.WriteLine("Message received from {0}.",((ArduinoBoard)sender).DisplayName /*, ((ArduinoBoard)sender).ReceivedData*/);
-            
+            Console.WriteLine("Message received from {0}.", ((ArduinoBoard)sender).DisplayName /*, ((ArduinoBoard)sender).ReceivedData*/);
+
 
             /*
             Dispatcher.BeginInvoke(new ThreadStart(DrawChart));
@@ -582,7 +673,7 @@ namespace LCA_SYNC
                     }
                     break;
                 case "TestDuration":
-                    numericUpDownTestDurationHours.Value = Math.Floor((decimal)serial.Arduino.TestDuration/60/60); // Get hours from total seconds 
+                    numericUpDownTestDurationHours.Value = Math.Floor((decimal)serial.Arduino.TestDuration / 60 / 60); // Get hours from total seconds 
                     numericUpDownTestDurationHours.Tag = numericUpDownTestDurationHours.Value;   // Tag is the value the arduino is set to 
 
                     numericUpDownTestDurationMinutes.Value = Math.Floor((decimal)serial.Arduino.TestDuration / 60) % 60; // Get minutes from total seconds 
@@ -594,10 +685,13 @@ namespace LCA_SYNC
                     //Console.WriteLine("{0}:{1}:{2}", Math.Floor((decimal)serial.Arduino.TestDuration / 60 / 60), Math.Floor((decimal)serial.Arduino.TestDuration / 60) % 60, (decimal)serial.Arduino.TestDuration % 60);
                     break;
                 case "SamplePeriod":
-                    numericUpDownSampleRate.Value = (decimal)serial.Arduino.SamplePeriod; 
+                    numericUpDownSampleRate.Value = (decimal)serial.Arduino.SamplePeriod;
                     numericUpDownSampleRate.Tag = (decimal)serial.Arduino.SamplePeriod;   // Tag is the value the arduino is set to 
                     break;
+                case "TestStarted":
+                    ButtonStatusStartStopRefresh();
 
+                    break;
                 default:
                     Console.WriteLine("In serial_ArduinoDataChanged, an unrecognized arduino variable was changed. ");
                     break;
@@ -607,6 +701,26 @@ namespace LCA_SYNC
 
             UpdateTabText();
         }
+
+        private void ButtonStatusStartStopRefresh()
+        {
+            if (serial.Arduino != null)
+            {
+                buttonStatusStartStop.Enabled = true; 
+                if (serial.Arduino.TestStarted)
+                    buttonStatusStartStop.Text = getLanguageText("StopTest", "Stop Test");
+                else
+                    buttonStatusStartStop.Text = getLanguageText("StartTest", "Start Test");
+            }
+            else  // No arduino connected, so the Start/Stop Test button should be disabled  
+            {
+                buttonStatusStartStop.Enabled = false;
+                buttonStatusStartStop.Text = getLanguageText("StartTest", "Start Test"); // It should say "Start Test" when disabled
+            }
+        }
+
+
+
 
         /// <summary>
         /// USBDeviceChanged event is caught in
@@ -724,9 +838,9 @@ namespace LCA_SYNC
                         // This isn't implemented yet in ArduinoBoard.cs or in the arduino code
                         if (radioButtonUseSysTime.Checked) // System time
                         {
-                            Response r = await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.TIME_DATE, ACTION.WRITEVAR, DateTime.Now);
-                            if (r.validity == ArduinoBoard.COMMERROR.VALID)
-                                checkBoxSyncTimeDate.Checked = false; // Does this verify that the time was set correctly first? 
+                            await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.TIME_DATE, ACTION.WRITEVAR, DateTime.Now);
+                            // If an exception is thrown in the method above, it shouldn't execute the line below 
+                            checkBoxSyncTimeDate.Checked = false; // Does this verify that the time was set correctly first? 
                         }
                         else  // Custom time 
                         {
@@ -855,30 +969,31 @@ namespace LCA_SYNC
             }
 
             await serial.ActivateAllArduinos();  // Activates (Ping + RefreshInfo) all arduinos that have not been added yet
-
+            RefreshControlsEnable();
         }
 
 
         private async void buttonStatusStartStop_Click(object sender, EventArgs e)
         {
-            // Doesn't work yet. Not implemented in ArduinoBoard.cs or in the arduino code  
+
+            bool success = false; 
 
             if ((bool)buttonStatusStartStop.Tag == false)  // Test is currently not running 
             {
-                Response resp = new Response("", ArduinoBoard.COMMERROR.NULL);
                 try
                 {
                     buttonStatusStartStop.Enabled = false;
-                    resp = await serial.Arduino.Communicate(DATACATEGORY.OTHER, SUBCATEGORY.START_TEST, ACTION.SENDCOMMAND);
+                    await serial.Arduino.Communicate(DATACATEGORY.OTHER, SUBCATEGORY.START_TEST, ACTION.SENDCOMMAND);
                     buttonStatusStartStop.Enabled = true;
+                    success = true; 
                 }
                 catch
                 {
-
+                    success = false; 
                 }
                 finally
                 {
-                    if (resp.validity == ArduinoBoard.COMMERROR.VALID)
+                    if (success)
                     {
                         buttonStatusStartStop.Tag = true;  // Test is running
                         buttonStatusStartStop.Text = getLanguageText("StopTest", "Stop Test");
@@ -888,20 +1003,20 @@ namespace LCA_SYNC
             }
             else
             {
-                Response resp = new Response("", ArduinoBoard.COMMERROR.NULL);
                 try
                 {
                     buttonStatusStartStop.Enabled = false;
-                    resp = await serial.Arduino.Communicate(DATACATEGORY.OTHER, SUBCATEGORY.STOP_TEST, ACTION.WRITEVAR);
+                    await serial.Arduino.Communicate(DATACATEGORY.OTHER, SUBCATEGORY.STOP_TEST, ACTION.WRITEVAR);
                     buttonStatusStartStop.Enabled = true;
+                    success = true; 
                 }
                 catch
                 {
-
+                    success = false; 
                 }
                 finally
                 {
-                    if (resp.validity == ArduinoBoard.COMMERROR.VALID)
+                    if (success)
                     {
                         buttonStatusStartStop.Tag = false;  // Test is stopped
                         buttonStatusStartStop.Text = getLanguageText("StartTest", "Start Test");

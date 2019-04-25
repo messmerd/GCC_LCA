@@ -81,7 +81,28 @@ namespace LCA_SYNC
                 }
 
             }
-            set {; }
+            private set
+            {
+                int oldArduinoValue = _Arduino;
+                if (value == null)
+                {
+                    _Arduino = -1; 
+                }
+                else
+                {
+                    _Arduino = LCAArduinos.IndexOf(value); // This should use the overrided Equals function of ArduinoBoard 
+                    if (_Arduino == -1)
+                    {
+                        _Arduino = LCAArduinos.Count;
+                        LCAArduinos.Add(value);
+                    }
+                }
+                if (oldArduinoValue != _Arduino)  // The value of _Arduino changed 
+                {
+                    ArduinoChanged.Invoke(this, new ArduinoEventArgs(oldArduinoValue, "ArduinoChanged"));
+                }
+                
+            }
 
             /*  // Causes stack overflow exception for some reason: 
             get {return Arduino; }
@@ -165,7 +186,7 @@ namespace LCA_SYNC
                     wop = "error";
                     break;
             }
-
+            
             if (Arduino?.Port?.PortName == port) //(Arduino != null && device.Equals(Arduino.mgmtBaseObj)) // If the added/removed device is the LCA Arduino in use
             {
                 Console.WriteLine("The LCA arduino device on port {0} that you were using was {1}.", port, wop);
@@ -245,6 +266,8 @@ namespace LCA_SYNC
         public event EventArrivedEventHandler USBPnPDeviceChanged;
         
         public event ArduinoEventHandler ArduinoDataChanged;
+
+        public event ArduinoEventHandler ArduinoChanged;
         
         /// <summary>
         /// Gets a list of <see cref="WeatherDataItem"/> which was
@@ -369,24 +392,26 @@ namespace LCA_SYNC
                         ard.OpenConnection();
                     }
                     //ard.LCAChanged += delegate { Console.WriteLine("Canceling delay."); try { source?.Cancel(); } catch (Exception ee) { Console.WriteLine(ee.Message); } };
-                    Response resp = new Response(null, ArduinoBoard.COMMERROR.NULL);
+                    //Response resp = new Response(null, ArduinoBoard.COMMERROR.NULL);
 
+                    bool success = false; 
                     try
                     {
                         Console.WriteLine("Now pinging arduino...");
                         //ard.SendPing(); // Old code. Commenting out to test new code:
-                        resp = await ard.Ping(5000);
-                        
+                        await ard.Ping(5000);
+                        success = true; 
                     }
                     catch (Exception ex)
                     {
                         Console.WriteLine("Back in ActivateArduino: "+ex.Message + " Inner exception: " + ex.InnerException);
+                        success = false; 
                     }
 
                     //Console.WriteLine("After Communicate. resp.data=" + resp.data + ", resp.validity=" + resp.validity.ToString());
                     //Console.WriteLine("Lock status after ping: _ActivateArduinoLock.IsHeld = {0}, _ActivateArduinoLock.IsHeldByCurrentThread = {1} ", _ActivateArduinoLock.IsHeld, _ActivateArduinoLock.IsHeldByCurrentThread);
 
-                    if (resp.validity != ArduinoBoard.COMMERROR.VALID)  //(!ard.lca)  // After 5 ms, if the arduino instance hasn't gotten a ping back telling that it's an LCA board
+                    if (success)  //(!ard.lca)  // After 5 ms, if the arduino instance hasn't gotten a ping back telling that it's an LCA board
                     {
                         if (LCAArduinos.ToList().Exists(a => a.Port.PortName == port))
                         {
@@ -409,27 +434,33 @@ namespace LCA_SYNC
 
                         Console.WriteLine("\n\nYES!!!! IT PINGED SUCCESSFULLY!!!!!\n\n");
 
-
+                        /*
+                        // The old way (sort of): 
                         LCAArduinos.Add(ard); // Usually, this would be done only after GetInfo()  (???), but I'm doing it now to test the UI since GetInfo is not implemented yet. 2/9/2019.
 
                         if (_Arduino == -1)  // If no arduino is in use
                         {
                             _Arduino = LCAArduinos.Count - 1; // Add this arduino as the one in use
                         }
+                        */
+
+                        Arduino = ard; // The new way of doing it. (Untested!)
 
                         // Claim position as the "current", in-use arduino here, if it is untaken. 
 
                         //Console.WriteLine("");
-
+                        success = false; 
                         try
                         {
-                            ArduinoBoard.COMMERROR result = await ard.RefreshInfo(); // It pinged successfully, so it's a real LCA arduino. It should get more info about itself and add itself to the 
-                                                                                        // await a delay? Delay for the length of a timeout.
-                                                                                        // after delay, check that info has been received (syncNeeded == false). If it hasn't, give error or something. 
+                            await ard.RefreshInfo(); // It pinged successfully, so it's a real LCA arduino. It should get more info about itself and add itself to the 
+                                                     // await a delay? Delay for the length of a timeout.
+                                                     // after delay, check that info has been received (syncNeeded == false). If it hasn't, give error or something. 
+                            success = true; 
                         }
                         catch (Exception ex)
                         {
                             Console.WriteLine(ex.Message + " Inner exception: " + ex.InnerException);
+                            success = false; 
                         }
 
 
@@ -635,7 +666,7 @@ namespace LCA_SYNC
 
     }
 
- 
+ /*
     public struct Response
     {
         public object data { get; }
@@ -645,7 +676,7 @@ namespace LCA_SYNC
             this.data = data;
             this.validity = validity;
         }
-    }
+    }*/
 
     
     

@@ -38,9 +38,18 @@
             this.labelStatusElapsedTime = new System.Windows.Forms.Label();
             this.labelStatusMode = new System.Windows.Forms.Label();
             this.labelStatusTotalSensors = new System.Windows.Forms.Label();
-            this.labelStatusComPort = new System.Windows.Forms.Label();
+            this.labelStatusSerialPort = new System.Windows.Forms.Label();
             this.labelStatusPackageName = new System.Windows.Forms.Label();
             this.ConfigPage = new System.Windows.Forms.TabPage();
+            this.panelStartDelay = new System.Windows.Forms.Panel();
+            this.labelStartDelay = new System.Windows.Forms.Label();
+            this.radioButtonStartDelayNone = new System.Windows.Forms.RadioButton();
+            this.radioButtonStartDelayThreeMin = new System.Windows.Forms.RadioButton();
+            this.radioButtonStartDelayOneMin = new System.Windows.Forms.RadioButton();
+            this.labelConfigSec2 = new System.Windows.Forms.Label();
+            this.radioButtonUseCustomTime = new System.Windows.Forms.RadioButton();
+            this.radioButtonUseSysTime = new System.Windows.Forms.RadioButton();
+            this.checkBoxSyncTimeDate = new System.Windows.Forms.CheckBox();
             this.label3 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
             this.labelPackageName = new System.Windows.Forms.Label();
@@ -82,26 +91,17 @@
             this.buttonArduinoSync = new System.Windows.Forms.Button();
             this.textBoxDebugWindow = new System.Windows.Forms.TextBox();
             this.buttonClearWindow = new System.Windows.Forms.Button();
-            this.checkBoxSyncTimeDate = new System.Windows.Forms.CheckBox();
-            this.radioButtonUseSysTime = new System.Windows.Forms.RadioButton();
-            this.radioButtonUseCustomTime = new System.Windows.Forms.RadioButton();
-            this.labelConfigSec2 = new System.Windows.Forms.Label();
-            this.radioButtonStartDelayNone = new System.Windows.Forms.RadioButton();
-            this.radioButtonStartDelayOneMin = new System.Windows.Forms.RadioButton();
-            this.radioButtonStartDelayThreeMin = new System.Windows.Forms.RadioButton();
-            this.panelStartDelay = new System.Windows.Forms.Panel();
-            this.labelStartDelay = new System.Windows.Forms.Label();
             this.mainBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.serialInterfaceBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.tabControl.SuspendLayout();
             this.StatusPage.SuspendLayout();
             this.ConfigPage.SuspendLayout();
+            this.panelStartDelay.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationSeconds)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationMinutes)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationHours)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownSampleRate)).BeginInit();
             this.menuStrip1.SuspendLayout();
-            this.panelStartDelay.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.mainBindingSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.serialInterfaceBindingSource)).BeginInit();
             this.SuspendLayout();
@@ -137,7 +137,7 @@
             this.StatusPage.Controls.Add(this.labelStatusElapsedTime);
             this.StatusPage.Controls.Add(this.labelStatusMode);
             this.StatusPage.Controls.Add(this.labelStatusTotalSensors);
-            this.StatusPage.Controls.Add(this.labelStatusComPort);
+            this.StatusPage.Controls.Add(this.labelStatusSerialPort);
             this.StatusPage.Controls.Add(this.labelStatusPackageName);
             this.StatusPage.Location = new System.Drawing.Point(4, 22);
             this.StatusPage.Name = "StatusPage";
@@ -208,15 +208,15 @@
             this.labelStatusTotalSensors.TabIndex = 2;
             this.labelStatusTotalSensors.Text = "Total Sensors: ";
             // 
-            // labelStatusComPort
+            // labelStatusSerialPort
             // 
-            this.labelStatusComPort.AutoSize = true;
-            this.labelStatusComPort.Font = new System.Drawing.Font("Microsoft Sans Serif", 20.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.labelStatusComPort.Location = new System.Drawing.Point(247, 19);
-            this.labelStatusComPort.Name = "labelStatusComPort";
-            this.labelStatusComPort.Size = new System.Drawing.Size(134, 31);
-            this.labelStatusComPort.TabIndex = 1;
-            this.labelStatusComPort.Text = "COM Port";
+            this.labelStatusSerialPort.AutoSize = true;
+            this.labelStatusSerialPort.Font = new System.Drawing.Font("Microsoft Sans Serif", 20.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.labelStatusSerialPort.Location = new System.Drawing.Point(247, 19);
+            this.labelStatusSerialPort.Name = "labelStatusSerialPort";
+            this.labelStatusSerialPort.Size = new System.Drawing.Size(140, 31);
+            this.labelStatusSerialPort.TabIndex = 1;
+            this.labelStatusSerialPort.Text = "Serial Port";
             // 
             // labelStatusPackageName
             // 
@@ -258,6 +258,101 @@
             this.ConfigPage.TabIndex = 1;
             this.ConfigPage.Text = "Config";
             this.ConfigPage.UseVisualStyleBackColor = true;
+            // 
+            // panelStartDelay
+            // 
+            this.panelStartDelay.Controls.Add(this.labelStartDelay);
+            this.panelStartDelay.Controls.Add(this.radioButtonStartDelayNone);
+            this.panelStartDelay.Controls.Add(this.radioButtonStartDelayThreeMin);
+            this.panelStartDelay.Controls.Add(this.radioButtonStartDelayOneMin);
+            this.panelStartDelay.Location = new System.Drawing.Point(323, 104);
+            this.panelStartDelay.Name = "panelStartDelay";
+            this.panelStartDelay.Size = new System.Drawing.Size(110, 73);
+            this.panelStartDelay.TabIndex = 36;
+            // 
+            // labelStartDelay
+            // 
+            this.labelStartDelay.AutoSize = true;
+            this.labelStartDelay.Location = new System.Drawing.Point(14, 0);
+            this.labelStartDelay.Name = "labelStartDelay";
+            this.labelStartDelay.Size = new System.Drawing.Size(59, 13);
+            this.labelStartDelay.TabIndex = 36;
+            this.labelStartDelay.Text = "Start Delay";
+            // 
+            // radioButtonStartDelayNone
+            // 
+            this.radioButtonStartDelayNone.AutoSize = true;
+            this.radioButtonStartDelayNone.Checked = true;
+            this.radioButtonStartDelayNone.Location = new System.Drawing.Point(14, 18);
+            this.radioButtonStartDelayNone.Name = "radioButtonStartDelayNone";
+            this.radioButtonStartDelayNone.Size = new System.Drawing.Size(51, 17);
+            this.radioButtonStartDelayNone.TabIndex = 33;
+            this.radioButtonStartDelayNone.TabStop = true;
+            this.radioButtonStartDelayNone.Text = "None";
+            this.radioButtonStartDelayNone.UseVisualStyleBackColor = true;
+            // 
+            // radioButtonStartDelayThreeMin
+            // 
+            this.radioButtonStartDelayThreeMin.AutoSize = true;
+            this.radioButtonStartDelayThreeMin.Location = new System.Drawing.Point(14, 52);
+            this.radioButtonStartDelayThreeMin.Name = "radioButtonStartDelayThreeMin";
+            this.radioButtonStartDelayThreeMin.Size = new System.Drawing.Size(54, 17);
+            this.radioButtonStartDelayThreeMin.TabIndex = 35;
+            this.radioButtonStartDelayThreeMin.Text = "3 Min.";
+            this.radioButtonStartDelayThreeMin.UseVisualStyleBackColor = true;
+            // 
+            // radioButtonStartDelayOneMin
+            // 
+            this.radioButtonStartDelayOneMin.AutoSize = true;
+            this.radioButtonStartDelayOneMin.Location = new System.Drawing.Point(14, 35);
+            this.radioButtonStartDelayOneMin.Name = "radioButtonStartDelayOneMin";
+            this.radioButtonStartDelayOneMin.Size = new System.Drawing.Size(54, 17);
+            this.radioButtonStartDelayOneMin.TabIndex = 34;
+            this.radioButtonStartDelayOneMin.Text = "1 Min.";
+            this.radioButtonStartDelayOneMin.UseVisualStyleBackColor = true;
+            // 
+            // labelConfigSec2
+            // 
+            this.labelConfigSec2.AutoSize = true;
+            this.labelConfigSec2.Location = new System.Drawing.Point(38, 122);
+            this.labelConfigSec2.Name = "labelConfigSec2";
+            this.labelConfigSec2.Size = new System.Drawing.Size(29, 13);
+            this.labelConfigSec2.TabIndex = 32;
+            this.labelConfigSec2.Text = "Sec.";
+            // 
+            // radioButtonUseCustomTime
+            // 
+            this.radioButtonUseCustomTime.AutoSize = true;
+            this.radioButtonUseCustomTime.Enabled = false;
+            this.radioButtonUseCustomTime.Location = new System.Drawing.Point(69, 249);
+            this.radioButtonUseCustomTime.Name = "radioButtonUseCustomTime";
+            this.radioButtonUseCustomTime.Size = new System.Drawing.Size(14, 13);
+            this.radioButtonUseCustomTime.TabIndex = 31;
+            this.radioButtonUseCustomTime.UseVisualStyleBackColor = true;
+            // 
+            // radioButtonUseSysTime
+            // 
+            this.radioButtonUseSysTime.AutoSize = true;
+            this.radioButtonUseSysTime.Checked = true;
+            this.radioButtonUseSysTime.Enabled = false;
+            this.radioButtonUseSysTime.Location = new System.Drawing.Point(69, 226);
+            this.radioButtonUseSysTime.Name = "radioButtonUseSysTime";
+            this.radioButtonUseSysTime.Size = new System.Drawing.Size(135, 17);
+            this.radioButtonUseSysTime.TabIndex = 30;
+            this.radioButtonUseSysTime.TabStop = true;
+            this.radioButtonUseSysTime.Text = "Use System Time/Date";
+            this.radioButtonUseSysTime.UseVisualStyleBackColor = true;
+            // 
+            // checkBoxSyncTimeDate
+            // 
+            this.checkBoxSyncTimeDate.AutoSize = true;
+            this.checkBoxSyncTimeDate.Location = new System.Drawing.Point(41, 202);
+            this.checkBoxSyncTimeDate.Name = "checkBoxSyncTimeDate";
+            this.checkBoxSyncTimeDate.Size = new System.Drawing.Size(157, 17);
+            this.checkBoxSyncTimeDate.TabIndex = 29;
+            this.checkBoxSyncTimeDate.Text = "Synchronize Time and Date";
+            this.checkBoxSyncTimeDate.UseVisualStyleBackColor = true;
+            this.checkBoxSyncTimeDate.CheckedChanged += new System.EventHandler(this.checkBoxSyncTimeDate_CheckedChanged);
             // 
             // label3
             // 
@@ -669,101 +764,6 @@
             this.buttonClearWindow.Text = "Clear Window";
             this.buttonClearWindow.UseVisualStyleBackColor = true;
             // 
-            // checkBoxSyncTimeDate
-            // 
-            this.checkBoxSyncTimeDate.AutoSize = true;
-            this.checkBoxSyncTimeDate.Location = new System.Drawing.Point(41, 202);
-            this.checkBoxSyncTimeDate.Name = "checkBoxSyncTimeDate";
-            this.checkBoxSyncTimeDate.Size = new System.Drawing.Size(157, 17);
-            this.checkBoxSyncTimeDate.TabIndex = 29;
-            this.checkBoxSyncTimeDate.Text = "Synchronize Time and Date";
-            this.checkBoxSyncTimeDate.UseVisualStyleBackColor = true;
-            this.checkBoxSyncTimeDate.CheckedChanged += new System.EventHandler(this.checkBoxSyncTimeDate_CheckedChanged);
-            // 
-            // radioButtonUseSysTime
-            // 
-            this.radioButtonUseSysTime.AutoSize = true;
-            this.radioButtonUseSysTime.Checked = true;
-            this.radioButtonUseSysTime.Enabled = false;
-            this.radioButtonUseSysTime.Location = new System.Drawing.Point(69, 226);
-            this.radioButtonUseSysTime.Name = "radioButtonUseSysTime";
-            this.radioButtonUseSysTime.Size = new System.Drawing.Size(135, 17);
-            this.radioButtonUseSysTime.TabIndex = 30;
-            this.radioButtonUseSysTime.TabStop = true;
-            this.radioButtonUseSysTime.Text = "Use System Time/Date";
-            this.radioButtonUseSysTime.UseVisualStyleBackColor = true;
-            // 
-            // radioButtonUseCustomTime
-            // 
-            this.radioButtonUseCustomTime.AutoSize = true;
-            this.radioButtonUseCustomTime.Enabled = false;
-            this.radioButtonUseCustomTime.Location = new System.Drawing.Point(69, 249);
-            this.radioButtonUseCustomTime.Name = "radioButtonUseCustomTime";
-            this.radioButtonUseCustomTime.Size = new System.Drawing.Size(14, 13);
-            this.radioButtonUseCustomTime.TabIndex = 31;
-            this.radioButtonUseCustomTime.UseVisualStyleBackColor = true;
-            // 
-            // labelConfigSec2
-            // 
-            this.labelConfigSec2.AutoSize = true;
-            this.labelConfigSec2.Location = new System.Drawing.Point(38, 122);
-            this.labelConfigSec2.Name = "labelConfigSec2";
-            this.labelConfigSec2.Size = new System.Drawing.Size(29, 13);
-            this.labelConfigSec2.TabIndex = 32;
-            this.labelConfigSec2.Text = "Sec.";
-            // 
-            // radioButtonStartDelayNone
-            // 
-            this.radioButtonStartDelayNone.AutoSize = true;
-            this.radioButtonStartDelayNone.Checked = true;
-            this.radioButtonStartDelayNone.Location = new System.Drawing.Point(14, 18);
-            this.radioButtonStartDelayNone.Name = "radioButtonStartDelayNone";
-            this.radioButtonStartDelayNone.Size = new System.Drawing.Size(51, 17);
-            this.radioButtonStartDelayNone.TabIndex = 33;
-            this.radioButtonStartDelayNone.TabStop = true;
-            this.radioButtonStartDelayNone.Text = "None";
-            this.radioButtonStartDelayNone.UseVisualStyleBackColor = true;
-            // 
-            // radioButtonStartDelayOneMin
-            // 
-            this.radioButtonStartDelayOneMin.AutoSize = true;
-            this.radioButtonStartDelayOneMin.Location = new System.Drawing.Point(14, 35);
-            this.radioButtonStartDelayOneMin.Name = "radioButtonStartDelayOneMin";
-            this.radioButtonStartDelayOneMin.Size = new System.Drawing.Size(54, 17);
-            this.radioButtonStartDelayOneMin.TabIndex = 34;
-            this.radioButtonStartDelayOneMin.Text = "1 Min.";
-            this.radioButtonStartDelayOneMin.UseVisualStyleBackColor = true;
-            // 
-            // radioButtonStartDelayThreeMin
-            // 
-            this.radioButtonStartDelayThreeMin.AutoSize = true;
-            this.radioButtonStartDelayThreeMin.Location = new System.Drawing.Point(14, 52);
-            this.radioButtonStartDelayThreeMin.Name = "radioButtonStartDelayThreeMin";
-            this.radioButtonStartDelayThreeMin.Size = new System.Drawing.Size(54, 17);
-            this.radioButtonStartDelayThreeMin.TabIndex = 35;
-            this.radioButtonStartDelayThreeMin.Text = "3 Min.";
-            this.radioButtonStartDelayThreeMin.UseVisualStyleBackColor = true;
-            // 
-            // panelStartDelay
-            // 
-            this.panelStartDelay.Controls.Add(this.labelStartDelay);
-            this.panelStartDelay.Controls.Add(this.radioButtonStartDelayNone);
-            this.panelStartDelay.Controls.Add(this.radioButtonStartDelayThreeMin);
-            this.panelStartDelay.Controls.Add(this.radioButtonStartDelayOneMin);
-            this.panelStartDelay.Location = new System.Drawing.Point(323, 104);
-            this.panelStartDelay.Name = "panelStartDelay";
-            this.panelStartDelay.Size = new System.Drawing.Size(110, 73);
-            this.panelStartDelay.TabIndex = 36;
-            // 
-            // labelStartDelay
-            // 
-            this.labelStartDelay.AutoSize = true;
-            this.labelStartDelay.Location = new System.Drawing.Point(14, 0);
-            this.labelStartDelay.Name = "labelStartDelay";
-            this.labelStartDelay.Size = new System.Drawing.Size(59, 13);
-            this.labelStartDelay.TabIndex = 36;
-            this.labelStartDelay.Text = "Start Delay";
-            // 
             // mainBindingSource
             // 
             this.mainBindingSource.DataSource = typeof(LCA_SYNC.Main);
@@ -794,14 +794,14 @@
             this.StatusPage.PerformLayout();
             this.ConfigPage.ResumeLayout(false);
             this.ConfigPage.PerformLayout();
+            this.panelStartDelay.ResumeLayout(false);
+            this.panelStartDelay.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationSeconds)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationMinutes)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationHours)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownSampleRate)).EndInit();
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
-            this.panelStartDelay.ResumeLayout(false);
-            this.panelStartDelay.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.mainBindingSource)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.serialInterfaceBindingSource)).EndInit();
             this.ResumeLayout(false);
@@ -858,7 +858,7 @@
         private System.Windows.Forms.TextBox textBoxDebugWindow;
         private System.Windows.Forms.Button buttonClearWindow;
         private System.Windows.Forms.Label labelStatusPackageName;
-        private System.Windows.Forms.Label labelStatusComPort;
+        private System.Windows.Forms.Label labelStatusSerialPort;
         private System.Windows.Forms.Label labelStatusMode;
         private System.Windows.Forms.Label labelStatusTotalSensors;
         private System.Windows.Forms.Label labelStatusDataFile;

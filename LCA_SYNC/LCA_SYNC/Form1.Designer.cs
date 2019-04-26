@@ -174,9 +174,9 @@
             this.labelStatusDataFile.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.labelStatusDataFile.Location = new System.Drawing.Point(24, 228);
             this.labelStatusDataFile.Name = "labelStatusDataFile";
-            this.labelStatusDataFile.Size = new System.Drawing.Size(160, 24);
+            this.labelStatusDataFile.Size = new System.Drawing.Size(180, 24);
             this.labelStatusDataFile.TabIndex = 5;
-            this.labelStatusDataFile.Text = "Current Data File: ";
+            this.labelStatusDataFile.Text = "Current Data File: __";
             // 
             // labelStatusElapsedTime
             // 
@@ -184,9 +184,9 @@
             this.labelStatusElapsedTime.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.labelStatusElapsedTime.Location = new System.Drawing.Point(24, 191);
             this.labelStatusElapsedTime.Name = "labelStatusElapsedTime";
-            this.labelStatusElapsedTime.Size = new System.Drawing.Size(137, 24);
+            this.labelStatusElapsedTime.Size = new System.Drawing.Size(182, 24);
             this.labelStatusElapsedTime.TabIndex = 4;
-            this.labelStatusElapsedTime.Text = "Elapsed Time: ";
+            this.labelStatusElapsedTime.Text = "Elapsed Time: __/__";
             // 
             // labelStatusMode
             // 
@@ -204,9 +204,9 @@
             this.labelStatusTotalSensors.Font = new System.Drawing.Font("Microsoft Sans Serif", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.labelStatusTotalSensors.Location = new System.Drawing.Point(24, 62);
             this.labelStatusTotalSensors.Name = "labelStatusTotalSensors";
-            this.labelStatusTotalSensors.Size = new System.Drawing.Size(135, 24);
+            this.labelStatusTotalSensors.Size = new System.Drawing.Size(155, 24);
             this.labelStatusTotalSensors.TabIndex = 2;
-            this.labelStatusTotalSensors.Text = "Total Sensors: ";
+            this.labelStatusTotalSensors.Text = "Total Sensors: __";
             // 
             // labelStatusSerialPort
             // 

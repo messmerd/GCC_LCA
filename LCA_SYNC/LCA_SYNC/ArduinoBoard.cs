@@ -259,12 +259,13 @@ namespace LCA_SYNC
                 }
                 catch (Exception e)
                 {
+                    Console.WriteLine("In SendData(byte[]).... Yeeting exception.");
                     throw new ArduinoCommunicationException("Exception in SerialPort.Write.", e);
                 }
             }
             else
             {
-                //Console.WriteLine("Arduino isn't open.");
+                Console.WriteLine("In SendData(byte[])... Arduino isn't open. Yeet.");
                 throw new ArduinoCommunicationException("The serial port is null or not open.");
             }
         }
@@ -301,6 +302,11 @@ namespace LCA_SYNC
                         bytelist.Add((byte)((byte)action | subcat));
                         bytelist.AddRange(StringToBytes((string)data)); 
                         SendData(bytelist.ToArray()); 
+                    }
+                    else if (subcat == (byte)SUBCATEGORY.START_DELAY && data != null)  // Write start delay 
+                    {
+                        // Add 4 to the start delay before sending to avoid sending 0x02 or 0x03 which are the special sot and eot bytes: 
+                        SendData(new byte[] { (byte)cat, (byte)((byte)action | subcat), Convert.ToByte((int)data + 4) }); 
                     }
                     else  // Default case. Used for reading and whatever else 
                     {
@@ -379,10 +385,7 @@ namespace LCA_SYNC
         }
 
 
-        /// <summary>
-        /// Raised when new  <see cref="WeatherDataItem"/>s are added
-        /// </summary>
-        public event EventHandler NewDataReceived;
+
 
         public async Task RefreshInfo()
         {
@@ -392,40 +395,11 @@ namespace LCA_SYNC
 
             Console.WriteLine("In RefreshInfo.");
             bool success = false; 
-            //Response results = new Response(null, COMMERROR.INVALID);
             try
             {
                 await Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.ALL, ACTION.READVAR);
                 Console.WriteLine("After Communicate in RefreshInfo"); //: results.data=" + results.data + ", results.validity=" + results.validity.ToString());
                 success = true; 
-                /*
-                if (results.validity == COMMERROR.VALID)  // Only update values if successful
-                {
-                    Console.WriteLine("I am here -1.");
-                    List<object> results2;
-                    results2 = results.data as List<object>;
-
-                    Console.WriteLine(results2[1]);
-                    //Console.WriteLine("I am here0.");
-                    TestDuration = (uint)results2[1];
-                    //Console.WriteLine("I am here1.");
-                    StartDelay = (byte)results2[2];
-                    SamplePeriod = (float)results2[3];
-                    //Console.WriteLine("I am here2.");
-                    PackageName = results2[0].ToString();
-                    //Console.WriteLine("I am here3.");
-                    //_displayName = _packageName + " (" + Port.PortName + ")";
-
-                    //;
-
-                    ArduinoDataChanged.Invoke(this, new ArduinoEventArgs("RefreshInfo"));
-                    Console.WriteLine("The RefreshInfo results are in. PackageName = {0}, TestDuration = {1}, StartDelay = {2}, SamplePeriod = {3}.", PackageName, TestDuration, StartDelay, SamplePeriod);
-                }
-
-                Console.WriteLine("At end of RefreshInfo.");
-
-                return results.validity;
-                */
             }
             catch (Exception e)
             {
@@ -434,11 +408,9 @@ namespace LCA_SYNC
             }
             finally
             {
-                if (success)
-                    ArduinoDataChanged.Invoke(this, new ArduinoEventArgs("RefreshInfo"));
+                //if (success)
+                //    ArduinoDataChanged.Invoke(this, new ArduinoEventArgs("RefreshInfo"));
             }
-            //return COMMERROR.INVALID;
-            
 
         }
 
@@ -496,7 +468,7 @@ namespace LCA_SYNC
                     noResponse = false;
                     Console.WriteLine("Canceled the delay for the response.");
                 }
-                catch (AggregateException ex)
+                catch (AggregateException ex)  // Hmmm. There could be a legit bad exception that it lets through
                 {
                     AggregateException aggregateException = ex.Flatten();
                     foreach (var inner_ex in ex.InnerExceptions)
@@ -508,8 +480,14 @@ namespace LCA_SYNC
                     }
                     if (noResponse)
                     {
+                        Console.WriteLine("In CommunicateRaw.... Yeeting AggregateException..");
                         throw ex;
                     }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("In CommunicateRaw.... Yeeting unknown exception.");
+                    throw ex; 
                 }
 
                 // These were both uncommented before:  (2/24/2019)
@@ -581,6 +559,7 @@ namespace LCA_SYNC
             }
             catch (Exception)
             {
+                Console.WriteLine("In Communicate (at beginning).....Yeeting an exception.  ");
                 throw;
             }
 
@@ -592,7 +571,7 @@ namespace LCA_SYNC
                     //throw new Exception("Unknown error");
                     //return new Response(resp.data, COMMERROR.OTHER);
                     throw new ArduinoCommunicationException("The response was of the NULL category.");
-
+                
                 case DATACATEGORY.PING:
                     Console.WriteLine("In Communicate, in PING category, resp.data=" + BytesToString(resp) + ". And the correct value is {0}", PINGVALUE);
                     Console.WriteLine("The comparison made to determine correctness: resp.data=" + BitConverter.ToString(resp.ToArray()) + " and {0}", BitConverter.ToString(StringToBytes(PINGVALUE).ToArray()));
@@ -602,9 +581,9 @@ namespace LCA_SYNC
                         lca = true;
                         if (resp[3] == 0x00 || resp[3] == 0x01)
                         {
-                            
+                            Console.WriteLine("Setting TestStarted.");
                             TestStarted = Convert.ToBoolean(resp[3]);
-                            return;// new Response(null, COMMERROR.VALID);
+                            return; // new Response(null, COMMERROR.VALID);
                         }
                         else
                         {
@@ -706,11 +685,15 @@ namespace LCA_SYNC
                             case SUBCATEGORY.START_DELAY:
                                 if (resp.Count == 4 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
                                 {
-                                    StartDelay = (byte)data; // Success. Can update this now. 
+                                    StartDelay = Convert.ToByte((int)data); // Success. Can update this now. 
                                     return;// new Response(resp, COMMERROR.VALID);
                                 }
                                 else
+                                {
+                                    Console.WriteLine("In Communicate------Yeeting an exception.");
                                     throw new ArduinoCommunicationException("The response didn't match the expected value.");
+                                }
+                                    
                             
                             // Implement the rest of the cases later 
                             default:
@@ -913,25 +896,27 @@ namespace LCA_SYNC
 
             if (_ReceivedBytes.Count != 0 && _ReceivedBytes.Last() == eotb && _ReceivedBytes.First() == sotb)
             {
+                // There are two main type of communication between PC and arduino: 2-way and 1-way. 
+                // As of 4/26/2019, only two-way communication has been implemented.
+                // One-way communication (arduino to PC) would be used for a real-time data feed, 
+                //      notifying the PC that a test has been started/stopped, error messages, etc.
+                // This Windows program would not ask for the information beforehand so it needs to be handled differently. 
+                // One-way communication should be implemented to have its own DATACATEGORY entry. 
 
-                // Cancel
-                // Before using the condition, this gave an error saying that the object didn't exist:
-                if (_ExpectedResponseCancellation != null)
+                if (_ExpectedResponseCancellation != null)  // In the future, also check that this is two-way communication 
                 {
-                    _ExpectedResponseCancellation?.Cancel();  // Data has been received, so cancel the delay in any thread waiting for this event
-                                                              // The entire data packet has been received. 
-                                                              //ProcessData(_ReceivedData);  // _ReceivedData should be copied once edited
-                                                              //_ReceivedData = ""; 
+                    _ExpectedResponseCancellation?.Cancel();  // Data has been received, so cancel the delay in any thread waiting for this event (ActivateArduino)
+                    // The entire data packet has been received. 
+                    // _ReceivedBytes should be copied
                 }
 
-
+                // if (one-way communication is used)
+                //      then call a special method to process the message 
             }
-
-            //Console.WriteLine("end hereeee");
 
         }
 
-        void ProcessData(String data)
+        void ProcessData(string data)
         {
             Console.WriteLine("In ProcessData.");
 
@@ -949,11 +934,12 @@ namespace LCA_SYNC
                 // If it can be expecting more than one kind of data at one time, then if it wasn't a ping response, that doesn't imply the ping is never received.
             }
 
-
+            /*
             if (NewDataReceived != null && _ExpectedResponseType != DATACATEGORY.PING) // If there is someone waiting for this event to be fired
             {
                 NewDataReceived(this, new EventArgs()); //Fire the event, indicating that new WeatherData was added to the list.
             }
+            */
         }
 
         public string BytesToString(List<byte> bytes)

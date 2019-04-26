@@ -51,7 +51,6 @@ namespace LCA_SYNC
 
             serial = SerialInterface.Create();
 
-            //serial.Arduino.NewDataReceived += arduinoBoard_NewDataReceived;  // !!!!!!!!!!!!!!!!!!!!!!!!!!!  Will need to implement this somehow. (From the Arduino side?)
             //serial.USBPnPDeviceChanged += serial_USBPnPDeviceChanged;
             //serial.LCAArduinos_Changed += serial_LCAArduinos_Changed;
             //serial.LCAArduinos.OnAdd += serial_LCAArduinos_Changed;
@@ -149,6 +148,26 @@ namespace LCA_SYNC
 
             RefreshControlsEnable();  // Refresh all GUI controls that require a sensor package to be connected
 
+            if (serial.Arduino == null)
+            {
+                // If no arduino is connected and selected, set Status page labels text to their default values
+                labelStatusPackageName.Text = getLanguageText("PackageName", "Package Name");
+                labelStatusSerialPort.Text = getLanguageText("SerialPort", "Serial Port");
+                labelStatusTotalSensors.Text = getLanguageText("TotalSensors", "Total Sensors") + ":";
+                labelStatusMode.Text = getLanguageText("Mode", "Mode") + ":";
+
+                labelStatusElapsedTime.Text = getLanguageText("ElapsedTime", "Elapsed Time") + ":";
+                labelStatusDataFile.Text = getLanguageText("CurrentDataFile", "Current Data File") + ":";
+
+                buttonConfigDiscardChanges_Click(this, new EventArgs()); // No ardunio connected, so discard user's config page changes  
+            }
+            else
+            {
+                // The serial port name only changes when Arduino changes, so I'll update the serial port text label here instead 
+                //      of the serial arduino data changed event handler.  
+                labelStatusSerialPort.Tag = serial.Arduino.Port?.PortName ?? "ERROR";
+                labelStatusSerialPort.Text = "(" + (string)labelStatusSerialPort.Tag + ")";
+            }
         }
 
         private void RefreshControlsEnable()
@@ -175,7 +194,6 @@ namespace LCA_SYNC
             ButtonStatusStartStopRefresh();  // Sets the Start/Stop Test button to what it should be 
             UpdateTabText(); 
             
-
         }
 
         private void RadioButtonStartDelayOption_CheckedChanged(object sender, EventArgs e)
@@ -211,12 +229,13 @@ namespace LCA_SYNC
             {
                 if (c > 255 || c < 32)  // If a character is not a character supported by the arduino 
                 {
-                    validInput = false;
+                    validInput = false;  
                 }
             }
 
             if (validInput)
             {
+                // Note: Other methods (like UpdateTabText) check this color to know if the input is valid
                 textBoxPackageName.BackColor = Color.White;
             }
             else
@@ -242,8 +261,6 @@ namespace LCA_SYNC
 
         private void NumericUpDownSampleRate_ValueChanged(object sender, EventArgs e)
         {
-            //Console.WriteLine("Value: {0}, Tag: {1}", numericUpDownSampleRate.Value, (decimal?)numericUpDownSampleRate?.Tag);
-
             if (Math.Floor(numericUpDownSampleRate.Value * 8) != numericUpDownSampleRate.Value * 8) // If the sample rate is not a multiple of 0.125 
             {
                 //Console.WriteLine("numericUpDownSampleRate: Not a multiple of 0.125");
@@ -270,8 +287,7 @@ namespace LCA_SYNC
                 (bool)radioButtonStartDelayThreeMin.Tag != radioButtonStartDelayThreeMin.Checked ||
                 checkBoxSyncTimeDate.Checked == true)
             {
-
-                //Console.WriteLine("Difference detected.");
+                // Difference detected
                 if (tabControl.TabPages[1].Text.Last() != '*')
                 {
                     tabControl.TabPages[1].Text += '*';
@@ -583,18 +599,18 @@ namespace LCA_SYNC
             {
                 labelStatusPackageName.Text = getLanguageText("PackageName", "Package Name");
                 labelStatusSerialPort.Text = getLanguageText("SerialPort", "Serial Port");
-                labelStatusTotalSensors.Text = getLanguageText("TotalSensors", "Total Sensors") + ":";
+                labelStatusTotalSensors.Text = getLanguageText("TotalSensors", "Total Sensors") + ": __"; // A placeholder
                 labelStatusMode.Text = getLanguageText("Mode", "Mode") + ":";
                 
-                labelStatusElapsedTime.Text = getLanguageText("ElapsedTime", "Elapsed Time") + ":";
-                labelStatusDataFile.Text = getLanguageText("CurrentDataFile", "Current Data File") + ":";
+                labelStatusElapsedTime.Text = getLanguageText("ElapsedTime", "Elapsed Time") + ": __/__";    // A placeholder
+                labelStatusDataFile.Text = getLanguageText("CurrentDataFile", "Current Data File") + ": __"; // A placeholder
 
             }
             else
             {
                 labelStatusPackageName.Text = (string)labelStatusPackageName.Tag;
                 labelStatusSerialPort.Text = "(" + (string)labelStatusSerialPort.Tag + ")";
-                labelStatusTotalSensors.Text = getLanguageText("TotalSensors", "Total Sensors") + ": " + (int?)labelStatusTotalSensors.Tag;
+                labelStatusTotalSensors.Text = getLanguageText("TotalSensors", "Total Sensors") + ": __"; // A placeholder
                 if (serial.Arduino.TestStarted)
                 {
                     labelStatusMode.Text = getLanguageText("Mode", "Mode") + ": " + getLanguageText("Running", "Running");
@@ -604,28 +620,9 @@ namespace LCA_SYNC
                     labelStatusMode.Text = getLanguageText("Mode", "Mode") + ": " + getLanguageText("Ready", "Ready");
                 }
                 
-                labelStatusElapsedTime.Text = getLanguageText("ElapsedTime", "Elapsed Time") + ":";
-                labelStatusDataFile.Text = getLanguageText("CurrentDataFile", "Current Data File") + ":";
+                labelStatusElapsedTime.Text = getLanguageText("ElapsedTime", "Elapsed Time") + ": __/__";  // A placeholder 
+                labelStatusDataFile.Text = getLanguageText("CurrentDataFile", "Current Data File") + ": __";  // A placeholder
             }
-        }
-
-        /// <summary>
-        /// OnWeatherDataReceived event is catched in
-        /// order to update the weather data display on the form
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        void arduinoBoard_NewDataReceived(object sender, EventArgs e)
-        {
-            // Hasn't been tested: 
-            Console.WriteLine("Message received from {0}.", ((ArduinoBoard)sender).DisplayName /*, ((ArduinoBoard)sender).ReceivedData*/);
-
-
-            /*
-            Dispatcher.BeginInvoke(new ThreadStart(DrawChart));
-            Dispatcher.BeginInvoke(new ThreadStart(() =>
-                weatherDataGrid.ItemsSource = weatherData.WeatherDataItems));
-            */
         }
 
         void serial_ArduinoDataChanged(object sender, ArduinoEventArgs e)
@@ -636,8 +633,11 @@ namespace LCA_SYNC
             switch ((string)e.Type)
             {
                 case "PackageName":
+                    Console.WriteLine("PackageName changed, so status page will be updated");
                     textBoxPackageName.Text = serial.Arduino.PackageName;
-                    textBoxPackageName.Tag = textBoxPackageName.Text;
+                    textBoxPackageName.Tag = serial.Arduino.PackageName;
+                    labelStatusPackageName.Tag = serial.Arduino.PackageName;
+                    labelStatusPackageName.Text = serial.Arduino.PackageName;
                     break;
                 case "StartDelay":
                     if (serial.Arduino.StartDelay == 0)  // No start delay 
@@ -671,7 +671,7 @@ namespace LCA_SYNC
                     {
                         Console.WriteLine("Unacceptable value for StartDelay.");
                     }
-                    break;
+                    break; 
                 case "TestDuration":
                     numericUpDownTestDurationHours.Value = Math.Floor((decimal)serial.Arduino.TestDuration / 60 / 60); // Get hours from total seconds 
                     numericUpDownTestDurationHours.Tag = numericUpDownTestDurationHours.Value;   // Tag is the value the arduino is set to 
@@ -689,16 +689,33 @@ namespace LCA_SYNC
                     numericUpDownSampleRate.Tag = (decimal)serial.Arduino.SamplePeriod;   // Tag is the value the arduino is set to 
                     break;
                 case "TestStarted":
+                    Console.WriteLine("TestStarted changed, so status page will be updated");
                     ButtonStatusStartStopRefresh();
+                    if (serial.Arduino.TestStarted)
+                    {
+                        labelStatusMode.Text = getLanguageText("Mode", "Mode") + ": " + getLanguageText("Running", "Running");
+                    }
+                    else
+                    {
+                        labelStatusMode.Text = getLanguageText("Mode", "Mode") + ": " + getLanguageText("Ready", "Ready");
+                    }
 
                     break;
                 default:
-                    Console.WriteLine("In serial_ArduinoDataChanged, an unrecognized arduino variable was changed. ");
+                    Console.WriteLine("In serial_ArduinoDataChanged, an unrecognized arduino variable was changed: {0}", (string)e.Type);
                     break;
             }
 
+
+            //// I'm putting these here since they don't have their own member variables in ArduinoBoard yet:
+            labelStatusTotalSensors.Text = getLanguageText("TotalSensors", "Total Sensors") + ": __"; // A placeholder
+            labelStatusElapsedTime.Text = getLanguageText("ElapsedTime", "Elapsed Time") + ": __/__";  // A placeholder 
+            labelStatusDataFile.Text = getLanguageText("CurrentDataFile", "Current Data File") + ": __";  // A placeholder
+            ///////
+
             arduinoListBinding.ResetBindings(false);
 
+            //RefreshStatusPageText();  // Refresh the text on the status page 
             UpdateTabText();
         }
 
@@ -788,7 +805,7 @@ namespace LCA_SYNC
             //((ManagementEventWatcher)sender).
 
         }
-        */ 
+        */
 
 
         /// <summary>
@@ -801,12 +818,11 @@ namespace LCA_SYNC
         /// <param name="e"></param>
         void serial_LCAArduinos_Changed(object sender, ListChangedEventArgs e)  // Maybe use arduinoList.DataSourceChanged event instead? 
         {
-            Console.Write("LCAArduinos has been changed: ");
-            Console.Write("ListChanagedType = {0}, ", e.ListChangedType.ToString());
-            Console.Write("OldIndex = {0}, ", e.OldIndex.ToString());
-            Console.WriteLine("NewIndex = {0}. ", e.NewIndex.ToString());
-            //Console.WriteLine("PropertyDescriptor = {0}.", e.PropertyDescriptor.ToString());  // This isn't displaying for some reason.. An exception?
 
+            // I think in general, serial_ArduinoDataChanged or serial_ArduinoChanged should be used instead. 
+            // I haven't been consistent with which event gets triggered first: serial_ArduinoChanged or serial_LCAArduinos_Changed.
+
+            Console.WriteLine("LCAArduinos has been changed. ");
         }
 
 
@@ -863,7 +879,7 @@ namespace LCA_SYNC
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error when syncing. Error message: ", ex.Message); 
+                Console.WriteLine("Error when syncing. Error message: {0}\nStack Trace: {1}", ex.Message, ex.StackTrace); 
             }
             finally
             {

@@ -86,7 +86,9 @@ namespace LCA_SYNC
                 int oldArduinoValue = _Arduino;
                 if (value == null)
                 {
-                    _Arduino = -1; 
+                    // Is the order of these two lines correct? 
+                    _Arduino = -1;
+                    if (oldArduinoValue != -1) LCAArduinos.RemoveAt(oldArduinoValue);
                 }
                 else
                 {
@@ -155,10 +157,6 @@ namespace LCA_SYNC
         {
             Console.WriteLine("USB PnP device changed");
 
-            // Need to find way to distinguish between adding and removing, b/c this event is triggered by both
-
-            //Console.WriteLine("weatherData_USBPnPDeviceChanged event");
-
             //Console.WriteLine("You have added or removed a USB device. weatherData_USBDeviceChanged.\nEventArgs={0}\nsender={1}",e.ToString(),sender.ToString());
             //Console.WriteLine(((ManagementBaseObject)(((EventArrivedEventArgs)e).Context))["TargetInstance"].ToString());
 
@@ -197,21 +195,34 @@ namespace LCA_SYNC
                 }
                 else if (wop == "deleted")
                 {
-                    // Handle errors here.
-                    // Remove device from LCAArduinos and Arduino? Or have some disabled or error state that it places it in? 
+                    // Handle errors here. Or are there no errors to handle?  
+                    Arduino = null; 
                 }
                 
-
                 // Update LCA Arduino List 
                 // Do code to stop from writing to port or start writing, or whatever
             }
-
-            Console.WriteLine("here");
-            if (LCAArduinos.ToList().Exists(a => a?.Port?.PortName == port)) //(LCAArduinos.ToList().Exists(a => a.Port.PortName == SerialInterface.GetPortName(device))) // If the added/removed device was an LCA Arduino not in use
+            else if (LCAArduinos.ToList().Exists(a => a?.Port?.PortName == port)) //(LCAArduinos.ToList().Exists(a => a.Port.PortName == SerialInterface.GetPortName(device))) // If the added/removed device was an LCA Arduino not in use
             {
                 Console.WriteLine("An LCA arduino device on port {0} that you were not using was {1}.", port, wop);
                 //Console.WriteLine(serial.Arduino.Port.PortName);
                 //MessageBox.Show("An LCA arduino device you were not using was " + wop + ".");
+
+                if (wop == "deleted")
+                {
+                    // Untested 
+                    // Want to remove the other ArduinoBoard object from the list without disturbing the currently in-use Arduino
+                    int remove_index = LCAArduinos.ToList().FindIndex(a => a?.Port?.PortName == port);
+                    int old_arduino_index = _Arduino;
+                    // If this condition is true, Arduino's position in the LCAArduinos list will change after removal: 
+                    if (remove_index < old_arduino_index && _Arduino != -1)  
+                    {
+                        LCAArduinos.RemoveAt(remove_index);
+                        _Arduino--; 
+                    }
+
+                        
+                }
 
                 // Update LCA Arduino List here
             }
@@ -222,7 +233,7 @@ namespace LCA_SYNC
                 if (wop == "created" && IsGenuineArduino(device))  // A new arduino device was added!
                 {
                     
-                    Thread.Sleep(TimeSpan.FromMilliseconds(5000));
+                    Thread.Sleep(TimeSpan.FromMilliseconds(2000));  // Give it a little time before trying to connect 
                     ActivateArduino(device); // Checks if it is an LCA arduino device, and adds it to LCAArduinos if it is
                 }
                 
@@ -260,7 +271,7 @@ namespace LCA_SYNC
         }
 
         /// <summary>
-        /// Raised when a USB device is connected
+        /// Raised when a USB PnP device is connected
         /// or disconnected from the computer. 
         /// </summary>
         public event EventArrivedEventHandler USBPnPDeviceChanged;
@@ -269,25 +280,6 @@ namespace LCA_SYNC
 
         public event ArduinoEventHandler ArduinoChanged;
         
-        /// <summary>
-        /// Gets a list of <see cref="WeatherDataItem"/> which was
-        /// previsously retrieved from an Arduino Board.
-        /// </summary>
-        /*
-        internal List<WeatherDataItem> WeatherDataItems
-        {
-            get { return weatherDataItems; }
-        }*/
-
-
-
-
-        public void PrintWow()
-        {
-            Console.WriteLine("Wow");
-        }
-
-
         public async Task ActivateAllArduinos()
         {
             // Activate (Ping + RefreshInfo) all arduinos that have not been added yet
@@ -299,7 +291,6 @@ namespace LCA_SYNC
 
         }
         
-
         public List<ManagementBaseObject> FindArduinos()  // Find all arduinos connected
         {
             // This method returns a list of arduino device management objects for all arduinos connected to the computer
@@ -342,7 +333,6 @@ namespace LCA_SYNC
 
             return result; 
         }
-
 
         public async Task ActivateArduino(ManagementBaseObject device)  // Verifies that an arduino is LCA, and activates it if it is
         {
@@ -392,32 +382,29 @@ namespace LCA_SYNC
                         ard.OpenConnection();
                     }
                     //ard.LCAChanged += delegate { Console.WriteLine("Canceling delay."); try { source?.Cancel(); } catch (Exception ee) { Console.WriteLine(ee.Message); } };
-                    //Response resp = new Response(null, ArduinoBoard.COMMERROR.NULL);
 
                     bool success = false; 
                     try
                     {
                         Console.WriteLine("Now pinging arduino...");
-                        //ard.SendPing(); // Old code. Commenting out to test new code:
                         await ard.Ping(5000);
                         success = true; 
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine("Back in ActivateArduino: "+ex.Message + " Inner exception: " + ex.InnerException);
+                        Console.WriteLine("Back in ActivateArduino: " + ex.Message + " Inner exception: " + ex.InnerException);
                         success = false; 
                     }
 
                     //Console.WriteLine("After Communicate. resp.data=" + resp.data + ", resp.validity=" + resp.validity.ToString());
                     //Console.WriteLine("Lock status after ping: _ActivateArduinoLock.IsHeld = {0}, _ActivateArduinoLock.IsHeldByCurrentThread = {1} ", _ActivateArduinoLock.IsHeld, _ActivateArduinoLock.IsHeldByCurrentThread);
 
-                    if (success)  //(!ard.lca)  // After 5 ms, if the arduino instance hasn't gotten a ping back telling that it's an LCA board
+                    if (!success)  // After 5 ms, if the arduino instance hasn't gotten a ping back telling that it's an LCA board
                     {
                         if (LCAArduinos.ToList().Exists(a => a.Port.PortName == port))
                         {
                             // One of the LCA arduinos is not responding!
                             // Set some kind of status variable in arduino instance? (Unresponsive, RunningTest, ComputerMode, etc.)
-                            //  
                             Console.WriteLine("Ping response not received, but the device on this port is thought to be a verified LCA arduino.");
                         }
                         else

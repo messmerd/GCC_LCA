@@ -1,21 +1,3 @@
-// To do: Arduino can only connect to computer when in main loop and not at the end of a test. 
-// Change it so that it can connect any time. May need to disable the serialEvent interrupt 
-// during SD card operations or reading sensors. How would this effect communication with
-// the computer? 
-
-// WARNING: Should stop using Timer0 b/c apparently millis() uses it.   
-/*
-// For the Due, maybe this would work:
-void serialEventRun(void)  // Must use this name
-{
-  //if (Serial.available()) serialEvent();
-  if (SerialUSB.available()) serialEvent();
-  if (Serial1.available()) serialEvent1();
-  if (Serial2.available()) serialEvent2();
-  if (Serial3.available()) serialEvent3();
-}
-// See: https://forum.arduino.cc/index.php?topic=205779.0 
-*/
 
 #include <SPI.h>
 #include <SD.h>
@@ -31,37 +13,33 @@ bool COMP_MODE;         // Whether in computer mode or not
 
 RTC_DS3231 rtc;         // Real-time clock (RTC) object
 
-//char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
-
 // Digital thermocouple chip select and data output pins:
 // Note: pins 50 and 51 appear to not work on this Mega (50, 51, and 52 are used for SPI apparently)
-#define MAXDO_0   48
-#define MAXCS_0   49
-#define MAXDO_1   46
-#define MAXCS_1   32 //47  // !!!!!!!!!!!!!!!!!!!!! (Used by RTC)
-#define MAXDO_2   44
-#define MAXCS_2   45
-#define MAXDO_3   42
-#define MAXCS_3   43
-#define MAXDO_4   40
-#define MAXCS_4   41
-#define MAXDO_5   38
-#define MAXCS_5   39
-#define MAXDO_6   36
-#define MAXCS_6   37
-#define MAXDO_7   34
-#define MAXCS_7   35
+#define MAXDO_0   45
+#define MAXCS_0   44
+#define MAXDO_1   43
+#define MAXCS_1   42
+#define MAXDO_2   41
+#define MAXCS_2   40
+#define MAXDO_3   39
+#define MAXCS_3   38
+#define MAXDO_4   37
+#define MAXCS_4   36
+#define MAXDO_5   35
+#define MAXCS_5   34
+#define MAXDO_6   33
+#define MAXCS_6   32
+#define MAXDO_7   31
+#define MAXCS_7   30
 
-#define MAXCLK    33              // Shared clock for all digital thermocouples
+#define MAXCLK    28              // Shared clock for all digital thermocouples
 
-#define LED_PIN 12                // Sample period LED 
-#define LED_PIN2 10               // CD (card detect) pin? 
+#define LED_PIN 22                // Sample period LED 
+#define LED_PIN2 23               // CD (card detect) pin? 
 #define PUSHBUTTON_PIN 2          // Start test pushbutton
 #define CD_PIN 13                 // Card detect pin 
 #define RTC_INT_PIN 47            // RTC interrupt pin 
 #define chipSelect 53             // For the SD card reader
-
-#define NUMSAMPLES 5              // This is a random sample amount
 
 #define SERIAL_COMM_TIME 300000   // The max time in microseconds needed for serial communications in one sample period (need to determine experimentally)
 
@@ -111,7 +89,7 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(PUSHBUTTON_PIN), pushbuttonPress, RISING);
 
   // This is only used for analog thermocouples currently, but we are no longer using them: 
-  analogReference(DEFAULT); // 5v on Uno and Mega. Note: Due uses 3.3 v reference which would cause analog thermocouples to not work (given the way things are currently set up)
+  //analogReference(DEFAULT); // 5v on Uno and Mega. Note: Due uses 3.3 v reference which would cause analog thermocouples to not work (given the way things are currently set up)
 
   samplePeriodReached = false; 
   testStarted = false; 

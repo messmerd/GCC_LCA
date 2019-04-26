@@ -38,7 +38,7 @@ bool ProcessData()
     case 0x01:  // Ping
       if (dataInPos==4 && dataIn[0]==sot && dataIn[1]==0x01 && dataIn[2]==0xF0 && dataIn[3]==eot) 
       {
-        byte byte_array[] = {0x02, 0x01, 0xF0, (byte)(testStarted), 0x03 };
+        byte byte_array[] = {sot, 0x01, 0xF0, (byte)(testStarted), eot };
         Serial.write(byte_array, 5);
         
         dataInPos = 0; 

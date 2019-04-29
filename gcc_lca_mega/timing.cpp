@@ -10,8 +10,14 @@ extern Config conf;     // An singleton object for working with the config file 
 extern bool samplePeriodReached;
 extern bool testStarted;
 extern unsigned long samples_elapsed;
+extern unsigned long last_sample; 
 extern unsigned int data_file_number; 
 extern char dataFileName[16]; 
+
+#define sot 0x02
+#define eot 0x03
+
+#define LED_PIN2 23               // CD (card detect) pin? 
 
 void setRTCSQWInput(float seconds)
 {
@@ -84,10 +90,13 @@ void pushbuttonPress()
 
 void startTest()
 {
+  EIMSK &= ~(1 << INT0);  // Disable pushbutton interrupt (just in case)
   testStarted = false; 
   samples_elapsed = 0;
+  last_sample = conf.test_duration/(conf.sample_period/8.0f); // The last sample before the test ends. 
   delay(conf.start_delay*1000); // Start delay
 
+  Timer1.stop();
   Timer1.initialize(10000); // set the timer. Needs to go off during or just after the sampling routine.  !!!!
   Timer1.start(); 
     
@@ -101,6 +110,12 @@ void startTest()
   
   while (!testStarted) {}  // Wait for program to sync with RTC pulse so that the first sample is not off by much 
   
+  Serial.write(sot);
+  Serial.write(0x6); // Test Started, OneWay 
+  Serial.write(eot);
+
+  //EIMSK |= (1 << INT0);  // Enable pushbutton interrupt (just in case)
+  digitalWrite(LED_PIN2, !digitalRead(LED_PIN2));
 }
 
 void stopTest()
@@ -109,7 +124,14 @@ void stopTest()
   Timer1.stop(); 
   testStarted = false; 
   data_file_number++;
+  strcpy(dataFileName, DATALOG_FILE_ROOT);
   strcat(dataFileName, String(data_file_number).c_str());
   strcat(dataFileName, ".txt");  // THERE IS A MAX LENGTH TO THIS, SO THERE'S A MAX NUMBER OF DATA FILES
   
+  Serial.write(sot);
+  Serial.write(0xE); // Test Ended, OneWay 
+  Serial.write(eot);
+
+  digitalWrite(LED_PIN2, !digitalRead(LED_PIN2));
+  EIMSK |= (1 << INT0);  // Enable pushbutton interrupt (just in case)
 }

@@ -9,7 +9,7 @@
 #define DATALOG_FILE_ROOT "/data"
 
 
-bool ProcessData();
+void ProcessData();
 void ProcessConfigRequest();
 void ProcessOtherCategory(); 
 

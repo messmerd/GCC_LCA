@@ -19,9 +19,10 @@ using Windows.Management;
 namespace LCA_SYNC
 {
 
-    public enum DATACATEGORY : byte { NULL=0x0, PING=0x1, CONFIG=0xF2, OTHER=0xF3, SENSORS=0x4, DATAFILE=0x5 };  
+    public enum DATACATEGORY : byte { NULL=0x0, PING=0x1, CONFIG=0xF2, OTHER=0xF3, SENSORS=0x4, DATAFILE=0x5, ONEWAY=0x6 };  
     public enum SUBCATEGORY : byte { ALL=0, START_TEST=0, PACKAGE_NAME=1, STOP_TEST=1, TEST_DUR=2, TIME_DATE=2, START_DELAY=3, SAMPLE_PERIOD=4, TEMP_UNITS=5, INIT_DATE=6, INIT_TIME=7, RESET_DT=8, LANGUAGE=9 };
     public enum ACTION : byte { READFILE=0, DELETEFILE=1, READVAR=32, WRITEVAR=96, SENDCOMMAND=96 };
+    public enum ONEWAYCATEGORY : byte { TEST_STARTED=0, TEST_ENDED=1, ELAPSED_SAMPLES=2, ERROR_OCCURRED=3 }; // Left-shifted 5 bits and OR'd with DATACATEGORY.ONEWAY 
     
     //public enum ARDUINOTYPE { UNO, MEGA, SERIAL_ADAPTER, };
 
@@ -88,7 +89,10 @@ namespace LCA_SYNC
                 {
                     // Is the order of these two lines correct? 
                     _Arduino = -1;
-                    if (oldArduinoValue != -1) LCAArduinos.RemoveAt(oldArduinoValue);
+                    if (oldArduinoValue != -1)
+                    {
+                        LCAArduinos.RemoveAt(oldArduinoValue);
+                    }   
                 }
                 else
                 {
@@ -307,7 +311,7 @@ namespace LCA_SYNC
                 {
                     string port = GetPortName(queryObj);
 
-                    if (IsGenuineArduino(queryObj))  // Genuine arduino 
+                    if (IsGenuineArduino(queryObj))  // Genuine arduino, not a fake arduino or other USB PnP device  
                     {
                         string ardType = GetArduinoType(GetVID(queryObj), GetPID(queryObj));
                         Console.WriteLine("Arduino detected at port {0}. Arduino type: {1}.", port, ardType);

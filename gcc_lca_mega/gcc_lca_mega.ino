@@ -51,7 +51,8 @@ unsigned int data_file_number = 0;
 bool dataReceived = false;
 byte dataIn[150];
 int dataInPos;
-byte sot, eot; 
+#define sot 0x02
+#define eot 0x03
 
 volatile bool testStarted;
 bool samplePeriodReached;
@@ -109,8 +110,6 @@ void setup()
   }
   dataInPos = 0;
   dataReceived = false;
-  sot = 0x02; //'\x02'; //'!';
-  eot = 0x03; //'\x03'; //'.';
 
   digitalWrite(LED_PIN2, digitalRead(CD_PIN));  // LED is on when SD card is inserted and off when it is not.
 
@@ -159,27 +158,10 @@ void setup()
 
   delay(500); // Just in case things need to settle
   
-  last_sample = conf.test_duration/(conf.sample_period/8.0f); // The last sample before the test ends. 
-
   digitalWrite(LED_PIN2,LOW);
   Timer1.attachInterrupt( Timer1_ISR ); // attach the service routine here
 
   testStarted = false;
-
-  // Old code: 
-  /*
-  while (!digitalRead(PUSHBUTTON_PIN)) {; };  // Start test when pushbutton is pressed. 
-
-  delay(conf.start_delay*1000); // Start delay
-
-  Timer1.initialize(10000); // set the timer. Needs to go off during or just after the sampling routine.  !!!!
-  Timer1.attachInterrupt( Timer1_ISR ); // attach the service routine here
-
-  setRTCSQWInput(5.0/1024);  // Should make the counter event happen almost immediately 
-
-  while (testStarted == false) // This will get changed in the interrupt once the clock pulse comes in. For synchronization purposes. 
-  {}
-  */
 
 }
 
@@ -199,7 +181,7 @@ void loop()
       // disable serial event interrupt? 
       //noInterrupts();                 //Disable interrupts  (!!!)
     
-      unsigned long _time00 = micros(); 
+      //unsigned long _time00 = micros(); 
 
       digitalWrite(LED_PIN, led_value); // Blink LED to signify the sample period being reached
       led_value=!led_value;
@@ -252,14 +234,12 @@ void loop()
 
     if (dataReceived) 
     {
+      digitalWrite(LED_PIN2, !digitalRead(LED_PIN2));
       //digitalWrite(LED_PIN2,HIGH);
       //noInterrupts();
       if (Serial)  // Problem with this line? Maybe remove the Serial condition? 
       {
-        if (ProcessData())
-        {
-  
-        }
+        ProcessData();
         //dataIn.clear();  // Not needed if you set dataInPos to 0. Will be overwritten.
         dataInPos = 0; 
         dataReceived = false;
@@ -278,13 +258,16 @@ void loop()
   }
   else  // Test has not started  
   {
+    //interrupts();  // Just in case 
+    //EIMSK |= (1 << INT0);  // Enable pushbutton interrupt (just in case)
+    
     // Communicate with computer here. Outside of the test here, there are no strict requirements for how much time serial communication can take
     if (dataReceived) 
     {
+      digitalWrite(LED_PIN2, !digitalRead(LED_PIN2));
       if (Serial)  // Problem with this line? Maybe remove the Serial condition? 
       {
-        if (ProcessData())
-        {}
+        ProcessData();
         //dataIn.clear();  // Not needed if you set dataInPos to 0. Will be overwritten.
         dataInPos = 0; 
         dataReceived = false;
@@ -340,7 +323,7 @@ void serialEvent(){   // Note: serialEvent() doesn't work on Arduino Due!!!
     {
       // Error. dataIn buffer is full.
     }
-    // if the incoming character is a newline, set a flag so the main loop can
+    // if the incoming character is eot, set a flag so the main loop can
     // do something about it:
     if (inByte == 0x03) {
       dataReceived = true;

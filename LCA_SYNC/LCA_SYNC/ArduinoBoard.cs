@@ -72,10 +72,10 @@ namespace LCA_SYNC
         private DATACATEGORY _ExpectedResponseType { get; set; }
         private System.Threading.CancellationTokenSource _ExpectedResponseCancellation { get; set; }
 
-        private string _ReceivedData;   // Stores last data received via Serial
-        public string ReceivedData
+        private List<byte> _ReceivedTwoWayData;   // Stores last data received via Serial
+        public List<byte> ReceivedTwoWayData
         {
-            get { return _ReceivedData; }
+            get { return _ReceivedTwoWayData; }
         }
 
         private List<byte> _ReceivedBytes;
@@ -151,10 +151,7 @@ namespace LCA_SYNC
             }
         }
 
-        //public static String PINGVALUE = "10" + "qlc9KNMKi0mAyT4oKlVky6w7gtHympiyzpdJhE8gj2PPgvO0am5zoSeqkOanME";  // "1" (PING) + 62-character random string from random.org + eot
-        private readonly string PINGVALUE = "\x02\x01\xF0qlc9KNMKi0mAyT4o\x03";  // Includes sot and eot.
-        //('\x01').ToString() + ('\xF0').ToString() + "qlc9KNMKi0mAyT4o";  // "10" (PING) + 62-character random string from random.org + eot
-                                                                            // !10qlc9KNMKi0mAyT4o.
+
 
         private bool _syncNeeded;
         public bool syncNeeded
@@ -187,7 +184,7 @@ namespace LCA_SYNC
             type = SerialInterface.GetArduinoType(vid, pid);
 
             _PackageName = "NULL";                   // to be found
-            _ReceivedData = "";
+            _ReceivedTwoWayData = new List<byte>();
             //_SendData = "";
             _syncNeeded = true;
             _ExpectedResponseType = DATACATEGORY.PING;  // Pinging the arduino is the 1st step
@@ -455,7 +452,8 @@ namespace LCA_SYNC
 
                 // try using the token.register thing
 
-                _ReceivedBytes.Clear();  // This should be ok b/c we have the commLock. What about RT comm???????????????????????????????
+                _ReceivedBytes.Clear();  // This should be ok b/c we have the commLock. What about OneWay comm???????????????????????????????
+                _ReceivedTwoWayData.Clear();
 
                 SendData(cat, subcat, action, data);
                 try
@@ -501,8 +499,8 @@ namespace LCA_SYNC
 
                 List<byte> resp_data_bytes = new List<byte>();
 
-                resp_data_bytes.AddRange(_ReceivedBytes);
-                _ReceivedBytes.Clear(); 
+                resp_data_bytes.AddRange(_ReceivedTwoWayData);
+                _ReceivedTwoWayData.Clear(); 
 
                 /*
                 foreach (var x in _ReceivedBytes)
@@ -573,8 +571,7 @@ namespace LCA_SYNC
                     throw new ArduinoCommunicationException("The response was of the NULL category.");
                 
                 case DATACATEGORY.PING:
-                    Console.WriteLine("In Communicate, in PING category, resp.data=" + BytesToString(resp) + ". And the correct value is {0}", PINGVALUE);
-                    Console.WriteLine("The comparison made to determine correctness: resp.data=" + BitConverter.ToString(resp.ToArray()) + " and {0}", BitConverter.ToString(StringToBytes(PINGVALUE).ToArray()));
+                    Console.WriteLine("In Communicate, in PING category, resp.data=" + BytesToString(resp));
                     if (resp.Count == 5 && resp[0] == sotb && resp[1] == 0x01 && resp[2] == 0xF0 && resp[4] == eotb)
                     {
                         _ExpectedResponseType = DATACATEGORY.NULL; // This assumes only one response type at a time
@@ -880,19 +877,12 @@ namespace LCA_SYNC
                 _Busy = false;  // 
                 return;
             }
-
-            _ReceivedData += data;
-            _ReceivedBytes.AddRange(data2);
-
+            finally
+            {
+                _ReceivedBytes.AddRange(data2);
+            }
 
             Console.WriteLine("In arduinoBoard_DataReceived  -----> Just received: {0}, and _ReceivedBytes={1} ", BitConverter.ToString(data2.ToArray()), BitConverter.ToString(_ReceivedBytes.ToArray()));
-            
-            /*
-            if (data != null && data.First() != '#')  // Just so that there isn't a bunch of spam
-            {
-                Console.WriteLine("Data received:   " + data);
-            }
-            */
 
             if (_ReceivedBytes.Count != 0 && _ReceivedBytes.Last() == eotb && _ReceivedBytes.First() == sotb)
             {
@@ -903,43 +893,59 @@ namespace LCA_SYNC
                 // This Windows program would not ask for the information beforehand so it needs to be handled differently. 
                 // One-way communication should be implemented to have its own DATACATEGORY entry. 
 
-                if (_ExpectedResponseCancellation != null)  // In the future, also check that this is two-way communication 
+                if (_ReceivedBytes.Count > 2 && (_ReceivedBytes[1] & 0x07) == (byte)DATACATEGORY.ONEWAY)  // if (one-way communication is used) 
                 {
-                    _ExpectedResponseCancellation?.Cancel();  // Data has been received, so cancel the delay in any thread waiting for this event (ActivateArduino)
-                    // The entire data packet has been received. 
-                    // _ReceivedBytes should be copied
+                    // Process one-way messages here
+                    List<byte> oneway_bytes = new List<byte>();
+                    oneway_bytes.AddRange(_ReceivedBytes);
+                    _ReceivedBytes.Clear();
+
+                    ProcessOneWayData(oneway_bytes);
+                }
+                else  // Two-way data received 
+                {
+                    _ReceivedTwoWayData.AddRange(_ReceivedBytes);
+                    _ReceivedBytes.Clear();
+                    if (_ExpectedResponseCancellation != null)  // In the future, also check that this is two-way communication 
+                    {
+                        _ExpectedResponseCancellation?.Cancel();  // Data has been received, so cancel the delay in any thread waiting for this event (ActivateArduino)
+                                                                  // The entire data packet has been received. 
+                                                                  // _ReceivedBytes should be copied
+                    }
                 }
 
-                // if (one-way communication is used)
-                //      then call a special method to process the message 
             }
 
         }
 
-        void ProcessData(string data)
+        void ProcessOneWayData(List<byte> data)
         {
-            Console.WriteLine("In ProcessData.");
+            Console.WriteLine("In ProcessOneWayData.");
 
-            data = data.TrimStart(sot).TrimEnd(eot);
-
-            if (_ExpectedResponseType == DATACATEGORY.PING && data.Equals(PINGVALUE))
+            if (data.Count >= 3)
             {
-                Console.WriteLine("Setting lca to true.");
-                _ExpectedResponseType = DATACATEGORY.NULL; // This assumes only one response type at a time
-                lca = true;
-
+                Console.WriteLine("OneWay category: {0}", (byte)(data[1] >> 3));
+                switch ((byte)(data[1] >> 3)) // Only look at upper 5 bits
+                {
+                    case (byte)ONEWAYCATEGORY.TEST_STARTED:     // Test has started 
+                        TestStarted = true;
+                        Console.WriteLine("Just changed TestStarted to true");
+                        break;
+                    case (byte)ONEWAYCATEGORY.TEST_ENDED:       // Test has ended 
+                        TestStarted = false;
+                        Console.WriteLine("Just changed TestStarted to false");
+                        break;
+                    default:
+                        Console.WriteLine("Unknown OneWay category.");
+                        break;
+                }
             }
             else
             {
-                // If it can be expecting more than one kind of data at one time, then if it wasn't a ping response, that doesn't imply the ping is never received.
+                Console.WriteLine("Wrong data length for OneWay data packet. ");
+                // Handle error
             }
 
-            /*
-            if (NewDataReceived != null && _ExpectedResponseType != DATACATEGORY.PING) // If there is someone waiting for this event to be fired
-            {
-                NewDataReceived(this, new EventArgs()); //Fire the event, indicating that new WeatherData was added to the list.
-            }
-            */
         }
 
         public string BytesToString(List<byte> bytes)

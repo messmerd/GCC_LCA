@@ -854,14 +854,14 @@ namespace LCA_SYNC
                         // This isn't implemented yet in ArduinoBoard.cs or in the arduino code
                         if (radioButtonUseSysTime.Checked) // System time
                         {
-                            await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.TIME_DATE, ACTION.WRITEVAR, DateTime.Now);
+                            await serial.Arduino.Communicate(DATACATEGORY.OTHER, SUBCATEGORY.TIME_DATE, ACTION.WRITEVAR, DateTime.Now, 600);
                             // If an exception is thrown in the method above, it shouldn't execute the line below 
                             checkBoxSyncTimeDate.Checked = false; // Does this verify that the time was set correctly first? 
                         }
                         else  // Custom time 
                         {
                             MessageBox.Show("Sorry, custom time and date is currently unsupported. ");
-                            //Response r = await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.TIME_DATE, ACTION.WRITEVAR, dateTimePickerCustomTime.Value);
+                            //Response r = await serial.Arduino.Communicate(DATACATEGORY.OTHER, SUBCATEGORY.TIME_DATE, ACTION.WRITEVAR, dateTimePickerCustomTime.Value);
                             //if (r.validity == ArduinoBoard.COMMERROR.VALID)
                             //  checkBoxSyncTimeDate.Checked = false;
                         }

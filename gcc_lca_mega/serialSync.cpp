@@ -11,8 +11,8 @@ extern Sensor* sensors;
 extern RTC_DS3231 rtc; 
 //extern char dataFileName[16];
 
-extern byte eot;
-extern byte sot;
+#define sot 0x02
+#define eot 0x03
 
 extern bool dataReceived;
 extern byte dataIn[150]; 
@@ -20,21 +20,24 @@ extern int dataInPos;
 
 extern bool testStarted; 
 
-bool ProcessData()
+#define LED_PIN2 23               // CD (card detect) pin? 
+
+void ProcessData()
 {
-  printToFile("log.txt", dataIn, true);  // For testing...
+  //printToFile("log.txt", dataIn, true);  // For testing...
   
   if (dataInPos < 3 || dataIn[0] != sot || dataIn[dataInPos-1] != eot) {
     dataReceived = false;
+    
     // Error occurred! 
-    return false;
+    return;
   }
 
   switch (dataIn[1] & 0x07)
   {
     case 0x00:  // Null/Error?
       // Error? 
-      return false; 
+      break; 
     case 0x01:  // Ping
       if (dataInPos==4 && dataIn[0]==sot && dataIn[1]==0x01 && dataIn[2]==0xF0 && dataIn[3]==eot) 
       {
@@ -44,26 +47,25 @@ bool ProcessData()
         dataInPos = 0; 
         dataReceived = false;
         
-        Serial.flush(); // ? 
-        
-        return true; // true means success(?)
-      } else {return false; }
+        Serial.flush(); // ?  
+      } 
+      break;
     case 0x02: // Config 
       ProcessConfigRequest(); 
       dataInPos = 0; 
       dataReceived = false;
-      return true;
+      break;
     case 0x03: // Other (commands and such)
       ProcessOtherCategory(); 
       dataInPos = 0; 
       dataReceived = false;
-      return true; 
+      break; 
 
     case 0x04: // Not implemented yet, so return error
-      return;
+      break;
     default:
       // Error occurred! 
-      return;
+      break;
   
   }
   return; 
@@ -252,6 +254,13 @@ void ProcessOtherCategory()
           Serial.write((byte)testStarted);
           Serial.write(eot); 
         }
+        else
+        {
+          // Error 
+          Serial.write(sot);
+          Serial.write((byte)(((byte)testStarted << 3) | 0x6)); // Test Started/Ended, OneWay 
+          Serial.write(eot);
+        }
       }
     }
     else if (subcat == 2 && !testStarted) // writing to the RTC  (can only be done when a test is not running!)
@@ -265,11 +274,19 @@ void ProcessOtherCategory()
           yr[i-8] = (char)dataIn[i];
         }
         rtc.adjust(DateTime ((uint16_t)atoi(yr), (uint8_t)(dataIn[6]-4), (uint8_t)(dataIn[7]-4), (uint8_t)(dataIn[3]-4), (uint8_t)(dataIn[4]-4), (uint8_t)(dataIn[5]-4)));
+        digitalWrite(LED_PIN2, !digitalRead(LED_PIN2));
         Serial.write(sot); 
         Serial.write(dataIn[1]);
         Serial.write(dataIn[2]);
         Serial.write(eot); 
       }
+      else
+      {
+        Serial.write(sot);
+        Serial.write(22); // Doesn't mean anything yet. Just here to know when an error occurs. 
+        Serial.write(eot); 
+      }
+      
     }
 
     

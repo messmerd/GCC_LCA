@@ -5,16 +5,28 @@ VisualStudioVersion = 15.0.28010.2048
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LCA_SYNC", "LCA_SYNC\LCA_SYNC.csproj", "{C7634044-7360-453E-A63B-3CBA1F9E90FE}"
 EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "LCA_SYNC_Installer", "LCA_SYNC_Installer\LCA_SYNC_Installer.vdproj", "{D07230C2-775E-4A68-9C3C-9927FF985B1C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|x86 = Debug|x86
 		Release|Any CPU = Release|Any CPU
+		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{C7634044-7360-453E-A63B-3CBA1F9E90FE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C7634044-7360-453E-A63B-3CBA1F9E90FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C7634044-7360-453E-A63B-3CBA1F9E90FE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C7634044-7360-453E-A63B-3CBA1F9E90FE}.Debug|x86.Build.0 = Debug|Any CPU
 		{C7634044-7360-453E-A63B-3CBA1F9E90FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C7634044-7360-453E-A63B-3CBA1F9E90FE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C7634044-7360-453E-A63B-3CBA1F9E90FE}.Release|x86.ActiveCfg = Release|Any CPU
+		{C7634044-7360-453E-A63B-3CBA1F9E90FE}.Release|x86.Build.0 = Release|Any CPU
+		{D07230C2-775E-4A68-9C3C-9927FF985B1C}.Debug|Any CPU.ActiveCfg = Debug
+		{D07230C2-775E-4A68-9C3C-9927FF985B1C}.Debug|x86.ActiveCfg = Debug
+		{D07230C2-775E-4A68-9C3C-9927FF985B1C}.Release|Any CPU.ActiveCfg = Release
+		{D07230C2-775E-4A68-9C3C-9927FF985B1C}.Release|x86.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

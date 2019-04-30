@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Main));
             this.buttonSync = new System.Windows.Forms.Button();
             this.tabControl = new System.Windows.Forms.TabControl();
             this.StatusPage = new System.Windows.Forms.TabPage();
@@ -68,7 +69,6 @@
             this.SensorsPage = new System.Windows.Forms.TabPage();
             this.DataPage = new System.Windows.Forms.TabPage();
             this.buttonConnectDisconnect = new System.Windows.Forms.Button();
-            this.arduinoList = new System.Windows.Forms.ComboBox();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.loadConfigurationToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -88,9 +88,10 @@
             this.LanguageIcons = new System.Windows.Forms.ImageList(this.components);
             this.imageList1 = new System.Windows.Forms.ImageList(this.components);
             this.imageComboLanguage = new System.Windows.Forms.ImageCombo();
-            this.buttonArduinoSync = new System.Windows.Forms.Button();
             this.textBoxDebugWindow = new System.Windows.Forms.TextBox();
             this.buttonClearWindow = new System.Windows.Forms.Button();
+            this.arduinoList = new System.Windows.Forms.ComboBox();
+            this.buttonArduinoSync = new System.Windows.Forms.Button();
             this.mainBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.serialInterfaceBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.tabControl.SuspendLayout();
@@ -554,19 +555,6 @@
             this.buttonConnectDisconnect.Text = "Connect/Disconnect";
             this.buttonConnectDisconnect.UseVisualStyleBackColor = true;
             // 
-            // arduinoList
-            // 
-            this.arduinoList.DataBindings.Add(new System.Windows.Forms.Binding("DropDownStyle", global::LCA_SYNC.Properties.Settings.Default, "DropDownList", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.arduinoList.DropDownStyle = global::LCA_SYNC.Properties.Settings.Default.DropDownList;
-            this.arduinoList.FormattingEnabled = true;
-            this.arduinoList.ImeMode = System.Windows.Forms.ImeMode.NoControl;
-            this.arduinoList.Location = new System.Drawing.Point(271, 42);
-            this.arduinoList.Name = "arduinoList";
-            this.arduinoList.Size = new System.Drawing.Size(184, 21);
-            this.arduinoList.TabIndex = 0;
-            this.arduinoList.TabStop = false;
-            this.arduinoList.SelectedIndexChanged += new System.EventHandler(this.comboBox1_SelectedIndexChanged);
-            // 
             // menuStrip1
             // 
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -729,20 +717,6 @@
             this.imageComboLanguage.TabIndex = 2;
             this.imageComboLanguage.TabStop = false;
             // 
-            // buttonArduinoSync
-            // 
-            this.buttonArduinoSync.BackColor = System.Drawing.SystemColors.ButtonFace;
-            this.buttonArduinoSync.BackgroundImage = global::LCA_SYNC.Properties.Resources.sync;
-            this.buttonArduinoSync.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
-            this.buttonArduinoSync.FlatAppearance.BorderColor = System.Drawing.Color.Black;
-            this.buttonArduinoSync.Location = new System.Drawing.Point(457, 33);
-            this.buttonArduinoSync.Name = "buttonArduinoSync";
-            this.buttonArduinoSync.Size = new System.Drawing.Size(31, 31);
-            this.buttonArduinoSync.TabIndex = 5;
-            this.buttonArduinoSync.TabStop = false;
-            this.buttonArduinoSync.UseVisualStyleBackColor = false;
-            this.buttonArduinoSync.Click += new System.EventHandler(this.buttonArduinoSync_Click);
-            // 
             // textBoxDebugWindow
             // 
             this.textBoxDebugWindow.BackColor = System.Drawing.SystemColors.Control;
@@ -763,6 +737,33 @@
             this.buttonClearWindow.TabStop = false;
             this.buttonClearWindow.Text = "Clear Window";
             this.buttonClearWindow.UseVisualStyleBackColor = true;
+            // 
+            // arduinoList
+            // 
+            this.arduinoList.DataBindings.Add(new System.Windows.Forms.Binding("DropDownStyle", global::LCA_SYNC.Properties.Settings.Default, "DropDownList", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.arduinoList.DropDownStyle = global::LCA_SYNC.Properties.Settings.Default.DropDownList;
+            this.arduinoList.FormattingEnabled = true;
+            this.arduinoList.ImeMode = System.Windows.Forms.ImeMode.NoControl;
+            this.arduinoList.Location = new System.Drawing.Point(271, 42);
+            this.arduinoList.Name = "arduinoList";
+            this.arduinoList.Size = new System.Drawing.Size(184, 21);
+            this.arduinoList.TabIndex = 0;
+            this.arduinoList.TabStop = false;
+            this.arduinoList.SelectedIndexChanged += new System.EventHandler(this.comboBox1_SelectedIndexChanged);
+            // 
+            // buttonArduinoSync
+            // 
+            this.buttonArduinoSync.BackColor = System.Drawing.SystemColors.ButtonFace;
+            this.buttonArduinoSync.BackgroundImage = global::LCA_SYNC.Properties.Resources.sync;
+            this.buttonArduinoSync.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            this.buttonArduinoSync.FlatAppearance.BorderColor = System.Drawing.Color.Black;
+            this.buttonArduinoSync.Location = new System.Drawing.Point(457, 33);
+            this.buttonArduinoSync.Name = "buttonArduinoSync";
+            this.buttonArduinoSync.Size = new System.Drawing.Size(31, 31);
+            this.buttonArduinoSync.TabIndex = 5;
+            this.buttonArduinoSync.TabStop = false;
+            this.buttonArduinoSync.UseVisualStyleBackColor = false;
+            this.buttonArduinoSync.Click += new System.EventHandler(this.buttonArduinoSync_Click);
             // 
             // mainBindingSource
             // 
@@ -786,6 +787,7 @@
             this.Controls.Add(this.tabControl);
             this.Controls.Add(this.buttonSync);
             this.Controls.Add(this.menuStrip1);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "Main";
             this.Text = "Low-Cost Array Sync";

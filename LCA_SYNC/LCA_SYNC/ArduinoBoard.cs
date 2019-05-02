@@ -1,82 +1,47 @@
-﻿// Not used anymore: 
-//#define DEBUG_MODE  // Uncomment for Debug mode; Comment for Arduino mode    !!!!
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO.Ports;
-using System.Configuration;
-using System.Configuration.Assemblies;
 using System.Management;
-using System.Text.RegularExpressions;
-using System.ComponentModel;
-using Windows.Management;
-//using Arduino_Serial_Interface;
 
 namespace LCA_SYNC
 {
 
-
     public class ArduinoBoard
     {
-        //private readonly object commLock = new object();
-        private SpinLock commLock = new SpinLock();
-        //private static bool gotLock;
-
-        static char eot; // End of text
-        static char sot; // Start of text 
-
-        static byte eotb;
-        static byte sotb;
-
-
-
-        public ManagementBaseObject mgmtBaseObj { get; set; }
-        public SerialPort Port { get; set; }
-
-        public event ArduinoEventHandler ArduinoDataChanged;
-        /*
-        public event ArduinoEventHandler SamplePeriodChanged;
-        public event ArduinoEventHandler TestDurationChanged;
-        public event ArduinoEventHandler StartDelayChanged;
-        public event ArduinoEventHandler PackageNameChanged;
-        */
-
-        public EventHandler LCAChanged { get; set; }
-        private bool _lca;  // Whether the device is a legit LCA arduino (true) or not (false)
-        public bool lca
-        {
-            get { return _lca; }
-            set
-            {
-                if (_lca != value)
-                {
-                    _lca = value;
-                    //LCAChanged?.Invoke(this, new EventArgs());  // Trying without this 
-                }
-            }
-        }
-        string type; // Mega, Uno, Nano, etc. 
-
-        string vid;
-        string pid;
-
-        public ArduinoBoard Self  // Is there a better way to do this in Form1? DataSource
+        // Is there a better way to do this in Form1? DataSource
+        public ArduinoBoard Self  
         {
             get { return this; }
         }
 
-        private DATACATEGORY _ExpectedResponseType { get; set; }
-        private System.Threading.CancellationTokenSource _ExpectedResponseCancellation { get; set; }
+        // Stores the Windows Management base object for the USB PnP device (the sensor package's arduino) 
+        public ManagementBaseObject mgmtBaseObj { get; set; }
+        // For sending and receiving data on the serial port 
+        public SerialPort Port { get; set; }
+
+        // Start-of-text byte, a magic number used at the start of every serial data transmission
+        static readonly byte sotb = 0x02;
+        // End-of-text byte, a magic number used at the end of every serial data transmission
+        static readonly byte eotb = 0x03;
+
+        // Used to limit program to only one two-way communication at a time
+        private SpinLock commLock = new SpinLock();   
+
+        // This event is raised whenever important arduino variables in this class are changed. ArduinoEventArgs provides 
+        public event ArduinoEventHandler ArduinoDataChanged;
+
+        string vid;  // The arduino's USB VID 
+        string pid;  // The arduino's USB PID 
+        string type; // The arduino type: Mega, Uno, Nano, etc. 
+
+
+        private CancellationTokenSource _ExpectedResponseCancellation { get; set; }
 
         private List<byte> _ReceivedTwoWayData;   // Stores last data received via Serial
-        public List<byte> ReceivedTwoWayData
-        {
-            get { return _ReceivedTwoWayData; }
-        }
 
         private List<byte> _ReceivedBytes;
 
@@ -138,7 +103,6 @@ namespace LCA_SYNC
                 if (oldSamplePeriod != _SamplePeriod) ArduinoDataChanged.Invoke(this, new ArduinoEventArgs(oldSamplePeriod, "SamplePeriod"));
             }
         }
-
         private bool _TestStarted; 
         public bool TestStarted
         {
@@ -151,33 +115,17 @@ namespace LCA_SYNC
             }
         }
 
+        // Maybe this should be used in ArduinoCommunicationException to describe the error, in addition to the text descriptions: 
+        // public enum COMMERROR { VALID = 0, NULL, INVALID, UNVALIDATED, TIMEOUT, PORTBUSY, INVALIDINPUT, PORTERROR, OTHER };
 
-
-        private bool _syncNeeded;
-        public bool syncNeeded
-        {
-            get { return _syncNeeded; }
-        } 
-
-        private bool _Busy;
-
-        public enum COMMERROR { VALID = 0, NULL, INVALID, UNVALIDATED, TIMEOUT, PORTBUSY, INVALIDINPUT, PORTERROR, OTHER };
-        private COMMERROR _ResponseValidity;
-
+        // The constructor: 
         public ArduinoBoard(ManagementBaseObject device)
         {
             Console.WriteLine("Creating a new arduino device (in constructor now)");
             _ExpectedResponseCancellation = new CancellationTokenSource();
-            lca = false;                            // to be determined...
             mgmtBaseObj = device;
             Port = new SerialPort(SerialInterface.GetPortName(device));
             Port.DataReceived += arduinoBoard_DataReceived;
-            
-            //Port.ErrorReceived += delegate { _ResponseValidity = COMMERROR.PORTERROR; _ExpectedResponseCancellation.Cancel(); };  // Untested - Could occur after data received event which could cause issues.
-            
-            // See  https://docs.microsoft.com/en-us/dotnet/api/system.io.ports.serialport.errorreceived?view=netframework-4.7.2 
-
-            //Console.WriteLine("In ArduinoBoard constructor, Port.PortName = "+Port.PortName);
 
             vid = SerialInterface.GetVID(device);
             pid = SerialInterface.GetPID(device);
@@ -185,16 +133,7 @@ namespace LCA_SYNC
 
             _PackageName = "NULL";                   // to be found
             _ReceivedTwoWayData = new List<byte>();
-            //_SendData = "";
-            _syncNeeded = true;
-            _ExpectedResponseType = DATACATEGORY.PING;  // Pinging the arduino is the 1st step
-            eot = '\x03'; //'.'; //'\x03';
-            sot = '\x02'; //'!'; // '\x02' 
-            eotb = 0x03;
-            sotb = 0x02;
 
-            _ResponseValidity = COMMERROR.NULL;
-            //_Busy = true;   // Assuming ping happens at start 
             _TestDuration = 0;
             _StartDelay = 0;
             _SamplePeriod = 0;
@@ -202,8 +141,6 @@ namespace LCA_SYNC
             _ReceivedBytes = new List<byte>();
             
             Port.Encoding = Encoding.GetEncoding(28591);
-            //Console.WriteLine(Port.Encoding.ToString());
-            //Console.WriteLine(Port.NewLine);
 
         }
 
@@ -212,47 +149,21 @@ namespace LCA_SYNC
             CloseConnection();
         }
 
-        private void SendData(string data)
-        {
-            // This method is untested. 2/17/2019. 
-            if (Port != null && Port.IsOpen) //&& !_Busy)
-            {
-                try
-                {
-                    //_Busy = true;
-                    Port.Write(sot + data + eot);
-                }
-                catch (Exception e)
-                {
-                    //Console.WriteLine(e.GetType().Name + ": " + e.Message);
-                    throw e;
-                }
-            }
-            else
-            {
-                //Console.WriteLine("Arduino isn't open.");
-                throw new ArduinoCommunicationException("The serial port is null or not open.");
-            }
-        }
 
         private void SendData(byte[] data)
         {
-            //data.Prepend((byte)sot).Append((byte)eot); // Add sot and eot to byte array
-
             if (Port != null && Port.IsOpen)
             {
                 try
                 {
                     List<byte> byte_list = new List<byte>();
-                    byte_list.Add((byte)sot);
+                    byte_list.Add(sotb);
                     byte_list.AddRange(data);
-                    byte_list.Add((byte)eot);
+                    byte_list.Add(eotb);
 
                     Port.Write(byte_list.ToArray(), 0, byte_list.Count);
 
                     Console.WriteLine("Just wrote: {0}", BitConverter.ToString(byte_list.ToArray()));
-
-                    //_Busy = true;
                 }
                 catch (Exception e)
                 {
@@ -275,11 +186,12 @@ namespace LCA_SYNC
             switch (cat)
             {
                 case DATACATEGORY.NULL:  // Should never be used. 0x00 might cause issues when sending?
-                    SendData(new byte[] { (byte)cat, 0x00 });  // cat = 0
+                    // cat = 0 
+                    SendData(new byte[] { (byte)cat, 0x00 });  
                     break;
                 case DATACATEGORY.PING:
-                    //Console.WriteLine("here");
-                    SendData(new byte[] { (byte)cat, 0xF0 });  // cat = 1
+                    // cat = 1 
+                    SendData(new byte[] { (byte)cat, 0xF0 });  
                     break;
                 case DATACATEGORY.CONFIG:
                     // cat = 2. The first hex is F just so that the byte isn't 0x02, which is sot (start of text). 
@@ -302,12 +214,12 @@ namespace LCA_SYNC
                     }
                     else if (subcat == (byte)SUBCATEGORY.START_DELAY && data != null)  // Write start delay 
                     {
-                        // Add 4 to the start delay before sending to avoid sending 0x02 or 0x03 which are the special sot and eot bytes: 
+                        // Add 4 to the start delay before sending to avoid sending 0x02 or 0x03 which are the special sotb and eotb bytes: 
                         SendData(new byte[] { (byte)cat, (byte)((byte)action | subcat), Convert.ToByte((int)data + 4) }); 
                     }
-                    else  // Default case. Used for reading and whatever else 
+                    else  // Else use the default case. Used for reading and whatever else 
                     {
-                        SendData(new byte[] { (byte)cat, (byte)((byte)action | subcat) });  // 
+                        SendData(new byte[] { (byte)cat, (byte)((byte)action | subcat) }); 
                     }
 
                     break;
@@ -321,6 +233,7 @@ namespace LCA_SYNC
                     {
                         if ((action == ACTION.SENDCOMMAND || action == ACTION.WRITEVAR) && data != null)
                         {
+                            // Set the time and date on the arduino's RTC (real-time clock)
                             DateTime dt = (DateTime)data;
                             List<byte> bytelist = new List<byte>();
                             bytelist.AddRange(new byte[] { (byte)cat, (byte)((byte)action | subcat), (byte)(dt.Hour + 4), (byte)(dt.Minute + 4), (byte)(dt.Second + 4), (byte)(dt.Month + 4), (byte)(dt.Day + 4) });
@@ -348,8 +261,6 @@ namespace LCA_SYNC
                     break;
                 default:
                     throw new ArduinoCommunicationException("Invalid transmission category.");
-                    //Console.WriteLine("Error. Invalid transmission category.");
-                    //break;
             }
 
         }
@@ -368,21 +279,16 @@ namespace LCA_SYNC
 
         public async Task Ping(double timeoutLength = -1)
         {
-            // Use ExpectedResponseType = DATACATEGORY.PING;  here???? 
             try
             {
+                // Ping the arduino and await its response 
                 await Communicate(DATACATEGORY.PING, 0, 0, null, timeoutLength);
-                //SendData("10");  // 10 is for ping. SendData does the rest. 
             }
             catch (Exception e)
             {
                 throw e;
-                //Console.WriteLine(e.GetType().Name + ": " + e.Message);
             }
         }
-
-
-
 
         public async Task RefreshInfo()
         {
@@ -390,12 +296,10 @@ namespace LCA_SYNC
             // List of data file filenames (if lastdatafile# - total#offiles > 0.5*total#offiles, then it would be less data needed to specify which files are present rather than missing (?))
             // ...
 
-            Console.WriteLine("In RefreshInfo.");
             bool success = false; 
             try
             {
                 await Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.ALL, ACTION.READVAR);
-                Console.WriteLine("After Communicate in RefreshInfo"); //: results.data=" + results.data + ", results.validity=" + results.validity.ToString());
                 success = true; 
             }
             catch (Exception e)
@@ -411,10 +315,11 @@ namespace LCA_SYNC
 
         }
 
-
         private double _GetTimeoutLength(DATACATEGORY cat, SUBCATEGORY subcat, ACTION action, object data = null)
         {
-            return 600.0; // Implement this later. 
+            // Different kinds of communication take different amounts of time, so maybe you'd want to adjust the timeout length based on that. 
+            // For now, this method is a placeholder 
+            return 600.0;   // 600 ms (placeholder)
         }
 
         private async Task<List<byte>> CommunicateRaw(DATACATEGORY cat, SUBCATEGORY subcat, ACTION action, object data = null, double timeoutLength = -1.0)
@@ -424,13 +329,13 @@ namespace LCA_SYNC
             bool gotLock = false;  // Wait.... this should be a member variable of the class, not a local variable? 
             try
             {
-                commLock.TryEnter(500, ref gotLock);  // Spin for up to 500 ms trying to enter into communication
+                // Spin for up to 500 ms trying to enter into communication 
+                commLock.TryEnter(500, ref gotLock);  
                 if (!gotLock)  // Don't enter the critical section if the lock wasn't acquired. 
                 {
                     Console.WriteLine("Could not enter critical section. Lock is held by another thread. ");
-                    throw new ArduinoCommunicationException("Serial Port is busy. Could not enter critical section.");
+                    throw new ArduinoCommunicationException("Serial port is busy. Could not enter critical section.");
                 } 
-
 
                 if (Port == null || !Port.IsOpen)
                 {
@@ -441,11 +346,11 @@ namespace LCA_SYNC
                 // The timeoutLength is the total time in milliseconds between just before the data is sent and right after the response is received. 
                 if (timeoutLength < 0.0) // If the user didn't specify a timeout length 
                 {
+                    // Use the recommended timeout length for the type of communication you're using 
                     timeoutLength = _GetTimeoutLength(cat, subcat, action, data);  // Returns a placeholder value for now
                 }
 
                 bool noResponse = true;
-                _ResponseValidity = COMMERROR.UNVALIDATED;  // If nothing happens to this, it will remain as UNVALIDATED after the response has been received.
                 
                 // New line:
                 if (_ExpectedResponseCancellation.IsCancellationRequested) { _ExpectedResponseCancellation = new CancellationTokenSource(); Console.WriteLine("Made new cancellation token."); }
@@ -502,25 +407,16 @@ namespace LCA_SYNC
                 resp_data_bytes.AddRange(_ReceivedTwoWayData);
                 _ReceivedTwoWayData.Clear(); 
 
-                /*
-                foreach (var x in _ReceivedBytes)
-                {
-                    resp_data_bytes.Add(x);
-                }*/
-
                 Console.WriteLine("################# CommunicateRaw. Received: {0}\nOR ALSO THE SAME AS............ : {1}", BytesToString(resp_data_bytes), BitConverter.ToString(resp_data_bytes.ToArray()));
 
-                //object resp_data = resp_data_bytes;
-                COMMERROR resp_valid = _ResponseValidity;  // Create local copy before giving up the lock
                 if (gotLock) { commLock.Exit(false); }
-                return resp_data_bytes;  // Should it be COMMERROR.UNVALIDATED rather than _ResponseValidity ?  Probably not 
+                return resp_data_bytes; 
 
             }
             catch (Exception e)
             {
                 Console.WriteLine("In CommunicateRaw: Exception caught: "+e.Message);
                 
-
                 // Only give up the lock if you actually acquired it
                 if (gotLock)
                 {
@@ -530,7 +426,6 @@ namespace LCA_SYNC
                 else
                 {
                     throw new ArduinoCommunicationException("Exception in CommunicateRaw. ", e);
-                    //return new Response("", COMMERROR.PORTBUSY);
                 }
             }
             finally
@@ -548,8 +443,6 @@ namespace LCA_SYNC
             // Throws an ArduinoCommunicationException if unsuccessful 
             Console.WriteLine("In Communicate. The current thread is {0}", Thread.CurrentThread.Name);
 
-            //Console.WriteLine(data==null ? "nope" : (((uint)data).ToString()));
-
             List<byte> resp = new List<byte>();
             try
             {
@@ -564,23 +457,18 @@ namespace LCA_SYNC
 
             switch (cat)
             {
-                case DATACATEGORY.NULL:  // I'm not sure what sorts of repsonses would be in this category, if any, since I don't know anything that would be sent in this category
-
-                    //throw new Exception("Unknown error");
-                    //return new Response(resp.data, COMMERROR.OTHER);
+                case DATACATEGORY.NULL:
+                    // I'm not sure what sorts of repsonses would be in this category, if any, since I don't know anything that would be sent in this category
                     throw new ArduinoCommunicationException("The response was of the NULL category.");
-                
                 case DATACATEGORY.PING:
                     Console.WriteLine("In Communicate, in PING category, resp.data=" + BytesToString(resp));
                     if (resp.Count == 5 && resp[0] == sotb && resp[1] == 0x01 && resp[2] == 0xF0 && resp[4] == eotb)
                     {
-                        _ExpectedResponseType = DATACATEGORY.NULL; // This assumes only one response type at a time
-                        lca = true;
                         if (resp[3] == 0x00 || resp[3] == 0x01)
                         {
                             Console.WriteLine("Setting TestStarted.");
                             TestStarted = Convert.ToBoolean(resp[3]);
-                            return; // new Response(null, COMMERROR.VALID);
+                            return; 
                         }
                         else
                         {
@@ -591,7 +479,6 @@ namespace LCA_SYNC
                     else
                     {
                         throw new ArduinoCommunicationException("Ping failed: Invalid response.");
-                        //return new Response("Ping failed", COMMERROR.INVALID);
                     }
 
                 case DATACATEGORY.CONFIG:
@@ -603,8 +490,6 @@ namespace LCA_SYNC
                             // Check for sot and eot ? When should that be done ?
                             if (resp.Count > 46 || resp.Count < 9) { throw new ArduinoCommunicationException("The response string is of the wrong length."); }
                             if (resp[1] != (byte)DATACATEGORY.CONFIG && resp[2] != (byte)((byte)action | (byte)subcat)) { throw new ArduinoCommunicationException("The response string contains the wrong request code."); }
-
-                            List<object> results = new List<object>();
 
                             int nullterm = resp.IndexOf(0x00, 3);
                             if (nullterm == -1)
@@ -619,7 +504,6 @@ namespace LCA_SYNC
                                     str += (char)resp[i];
                                 }
                                 PackageName = str;
-                                //results.Add(str);
                             }
 
                             int nullterm2 = resp.IndexOf(0x00, nullterm + 1);
@@ -629,21 +513,20 @@ namespace LCA_SYNC
                             }
                             else
                             {
+                                // DON't USE DEFAULT ENCODING - CHANGES DEPENDING ON COMPUTER
                                 TestDuration = uint.Parse(Encoding.Default.GetString(resp.GetRange(nullterm + 1, nullterm2 - nullterm - 1).ToArray()), System.Globalization.NumberStyles.HexNumber); 
-                                //results.Add(uint.Parse(Encoding.Default.GetString(resp.GetRange(nullterm + 1, nullterm2 - nullterm - 1).ToArray()), System.Globalization.NumberStyles.HexNumber));  // Don't include the null term. in the package name 
                             }
 
                             if (resp.Count < nullterm2 + 4) { throw new ArduinoCommunicationException("The response string is of the wrong length."); }
 
-                            //results.Add(new byte[] { 0x00, resp[nullterm + 1], resp[nullterm + 2], resp[nullterm + 3] }); //;.AddRange(resp.GetRange(nullterm + 1, 3))); // The test duration 
-                            StartDelay = (byte)(resp[nullterm2 + 1] - 0x4);  // The start delay in seconds as a byte (the 0x4 is to correct for avoiding sending sot or eot over serial)
-                            //results.Add((byte)(resp[nullterm2 + 1] - 0x4)); // The start delay in seconds as a byte (the 0x4 is to correct for avoiding sending sot or eot over serial)
-                            SamplePeriod = ((byte)(resp[nullterm2 + 2] - 0x4)) / 8.0f;  // The sample period in seconds as a float 
-                            //results.Add(((byte)(resp[nullterm2 + 2] - 0x4)) / 8.0f); // The sample period in seconds as a float  
+                            // The start delay in seconds as a byte (the 0x4 is to correct for avoiding sending sot or eot over serial. Arduino side adds 0x4 before sending.)
+                            StartDelay = (byte)(resp[nullterm2 + 1] - 0x4);
+                            // The sample period in seconds as a float
+                            SamplePeriod = ((byte)(resp[nullterm2 + 2] - 0x4)) / 8.0f;  
 
                             Console.WriteLine("Done parsing the config response.");
 
-                            return; // new Response(results, COMMERROR.VALID);
+                            return; 
                         }
                         else
                         {
@@ -659,7 +542,7 @@ namespace LCA_SYNC
                                 if (resp.Count == 4 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
                                 {
                                     PackageName = (string)data; // Success. Can update this now. 
-                                    return;// new Response(resp, COMMERROR.VALID);
+                                    return;
                                 }  
                                 else
                                     throw new ArduinoCommunicationException("The response didn't match the expected value.");
@@ -667,7 +550,7 @@ namespace LCA_SYNC
                                 if (resp.Count == 4 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
                                 {
                                     TestDuration = (uint)data; // Success. Can update this now. 
-                                    return;// new Response(resp, COMMERROR.VALID);
+                                    return;
                                 }
                                 else
                                     throw new ArduinoCommunicationException("The response didn't match the expected value.");
@@ -675,7 +558,7 @@ namespace LCA_SYNC
                                 if (resp.Count == 4 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
                                 {
                                     SamplePeriod = (float)data; // Success. Can update this now. 
-                                    return;// new Response(resp, COMMERROR.VALID);
+                                    return;
                                 }
                                 else
                                     throw new ArduinoCommunicationException("The response didn't match the expected value.");
@@ -683,7 +566,7 @@ namespace LCA_SYNC
                                 if (resp.Count == 4 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
                                 {
                                     StartDelay = Convert.ToByte((int)data); // Success. Can update this now. 
-                                    return;// new Response(resp, COMMERROR.VALID);
+                                    return;
                                 }
                                 else
                                 {
@@ -691,11 +574,9 @@ namespace LCA_SYNC
                                     throw new ArduinoCommunicationException("The response didn't match the expected value.");
                                 }
                                     
-                            
                             // Implement the rest of the cases later 
                             default:
                                 throw new ArduinoCommunicationException("Error, not implemented yet...");
-                                
                         }
                     }
                     else
@@ -703,7 +584,6 @@ namespace LCA_SYNC
                         // invalid action type 
                         throw new ArduinoCommunicationException("Invalid communication action type.");
                     }
-                    break;
                 case DATACATEGORY.OTHER:
                     if (action == ACTION.SENDCOMMAND || action == ACTION.WRITEVAR)
                     {
@@ -716,7 +596,7 @@ namespace LCA_SYNC
                                     if (resp[3] == 0x00 || resp[3] == 0x01) 
                                     {
                                         TestStarted = Convert.ToBoolean(resp[3]);
-                                        return;// new Response(resp, COMMERROR.VALID);
+                                        return;
                                     }
                                     else
                                         throw new ArduinoCommunicationException("The response didn't match the expected value.");
@@ -728,7 +608,7 @@ namespace LCA_SYNC
                             case SUBCATEGORY.TIME_DATE:
                                 if (resp.Count == 4 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
                                 {
-                                    return;// new Response(resp, COMMERROR.VALID);
+                                    return;
                                 }
                                 else
                                     throw new ArduinoCommunicationException("The response didn't match the expected value.");
@@ -743,7 +623,7 @@ namespace LCA_SYNC
                             if (resp.Count == 11 && resp[1] == (byte)cat && resp[2] == (byte)((byte)action | (byte)subcat))
                             {
                                 // Set local copy of Arduino's RTC time here 
-                                return;// new Response(resp, COMMERROR.VALID);
+                                throw new ArduinoCommunicationException("Error, not implemented yet...");
                             }
                             else
                                 throw new ArduinoCommunicationException("The response didn't match the expected value.");
@@ -758,17 +638,9 @@ namespace LCA_SYNC
                         // invalid action type 
                         throw new ArduinoCommunicationException("Invalid communication action type.");
                     }
-                    break;
                 default:
                     throw new ArduinoCommunicationException("The response is of an invalid category.");
-                    //return new Response(resp.data, COMMERROR.OTHER);
             }
-
-            
-
-
-
-
 
         }
 
@@ -777,34 +649,21 @@ namespace LCA_SYNC
         /// </summary>
         public void OpenConnection()
         {
-            // This method is throwing an exception. 1/28/2019.
-
             Port.ReadTimeout = 2000;  // ???
             Port.WriteTimeout = 1000; // Fixed the problem! yay 
-
-            //Port.NewLine = eot.ToString(); // ? 
 
             // SerialPort() defaults: COM1, 9600 baud rate, 8 data bits, 0 parity bits, no parity, 1 stop bit, no handshake
             // Arduino defaults:                            8 data bits, 0 parity bits, no parity, 1 stop bit, no handshake(?). Can be changed. 
 
             if (!Port.IsOpen)
             {
-                
-                //arduinoBoard.PortName =  ConfigurationSettings.AppSettings["ArduinoPort"];
-
-                // For debugging: Port.PortName = ConfigurationSettings.AppSettings["VirtualPort"]; // com0com virtual serial port
-
                 Port.Open();
                 Port.DiscardInBuffer(); // ? 
             }
             else
             {
                 throw new InvalidOperationException("The Serial Port is already open!");
-
             }
-
-
-
         }
 
         /// <summary>
@@ -819,14 +678,12 @@ namespace LCA_SYNC
         }
 
         /// <summary>
-        /// Reads weather data from the arduinoBoard serial port
+        /// Reads data from the arduinoBoard serial port
         /// </summary>
         void arduinoBoard_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
             
             //Console.WriteLine("In arduinoBoard_DataReceived. The current thread is " + Thread.CurrentThread.ManagedThreadId.ToString());
-
-            //string data = ((char)Port.ReadChar()).ToString();//Read 
 
             SerialPort p = (SerialPort)sender;
 
@@ -836,19 +693,11 @@ namespace LCA_SYNC
                 return;
             }
 
-            //Console.WriteLine(p.ReadBufferSize.ToString());
-
-            String data = null;
+            string data = null;
             List<byte> data2 = new List<byte>();
-
-            //Console.WriteLine("hereeeee");
 
             try
             {
-                //Port.StopBits = 0; 
-                //Port.Encoding = Encoding.Default;
-                //Console.WriteLine("Just before read, the encoding is: " + Port.Encoding.ToString() + " Stop bits: " + Port.StopBits);
-
                 // This is not really working well. 
                 while (p.BytesToRead > 0)
                 {
@@ -864,9 +713,6 @@ namespace LCA_SYNC
 
                 //data = Port.ReadTo(eot.ToString()); // Read until the EOT char. This is working well as of 2/9/2019.
                 //data += eot;
-
-                //data.Append(eot);
-                // Maybe read bytes at a time instead...? 
             }
             catch (Exception exc)
             {
@@ -874,7 +720,6 @@ namespace LCA_SYNC
                 Console.WriteLine("In arduino's DataReceived handler: " + exc.Message + " " + e.EventType + " _Busy=false");
                 // Other code here????
                 // Set state to unresponsive or timeout? 
-                _Busy = false;  // 
                 return;
             }
             finally

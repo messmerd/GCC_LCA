@@ -31,10 +31,10 @@ namespace LCA_SYNC
             }
             
             // Maybe this will fix the PnP event problem...
-            if (System.Windows.Forms.Application.MessageLoop)
+            if (Application.MessageLoop)
             {
                 // WinForms app
-                System.Windows.Forms.Application.Exit();
+                Application.Exit();
             }
             else
             {

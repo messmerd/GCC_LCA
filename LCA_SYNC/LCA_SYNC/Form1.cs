@@ -8,22 +8,6 @@ using System.Text;
 using System.IO;
 using System.Windows.Forms;
 
-//using System.Runtime;
-//using System.Runtime.InteropServices.WindowsRuntime;
-using Windows.Storage.Streams;
-using System.Threading;
-using System.Threading.Tasks;
-
-//using System.Runtime.CompilerServices;
-
-using Windows;
-using Windows.Devices.Enumeration;
-using Windows.Devices.Enumeration.Pnp;
-using Windows.Foundation;
-using System.Management;
-
-//using Arduino_Serial_Interface;
-
 namespace LCA_SYNC
 {
 
@@ -32,6 +16,9 @@ namespace LCA_SYNC
         SerialInterface serial;
         object[] deviceList;
         private BindingSource arduinoListBinding;
+
+
+        // Language variables: 
         private Dictionary<string, string> LanguageText;
         //private Dictionary<string, Image> LanguageIcons;
         private ImageList LanguageIcons;
@@ -48,11 +35,6 @@ namespace LCA_SYNC
             currentDomain.UnhandledException += new UnhandledExceptionEventHandler(Main_UnhandledException);
 
             serial = SerialInterface.Create();
-
-            //serial.USBPnPDeviceChanged += serial_USBPnPDeviceChanged;
-            //serial.LCAArduinos_Changed += serial_LCAArduinos_Changed;
-            //serial.LCAArduinos.OnAdd += serial_LCAArduinos_Changed;
-            //serial.LCAArduinos.OnRemove += serial_LCAArduinos_Changed;
 
             FormClosing += Main_FormClosing;  // Trying w/o this. B/c PnP watcher stopped working again for some reason
 
@@ -75,9 +57,6 @@ namespace LCA_SYNC
             labelSamplePeriod.MouseDown += UnfocusControls;
             labelTestDuration.MouseDown += UnfocusControls;
             labelStartDelay.MouseDown += UnfocusControls;
-
-
-            //deviceList = (serial.LCAArduinos.Select(a => a.displayName).Cast<object>().ToArray());
 
             // Status Page setup:
             buttonStatusStartStop.Tag = false;
@@ -111,7 +90,6 @@ namespace LCA_SYNC
             LanguageIcons.ImageSize = new Size(imageComboLanguage.ImageList.ImageSize.Height, imageComboLanguage.ImageList.ImageSize.Height);
             CurrentLanguage = "";
             LoadLanguages();
-            //RefreshLanguage(); 
 
             serial.ArduinoChanged += Serial_ArduinoChanged;
             serial.ArduinoDataChanged += serial_ArduinoDataChanged;
@@ -137,62 +115,7 @@ namespace LCA_SYNC
 
         }
 
-        private void Serial_ArduinoChanged(object sender, ArduinoEventArgs e)
-        {
-            // The ArduinoChanged event that this handler is subscribed to is triggered when SerialInterface.Arduino is changed. 
-            // SerialInterface.Arduino is the currently active ArduinoBoard object - the one that this synchronization program is connected to and interacting with. 
-
-            Console.WriteLine("SerialInterface.Arduino changed.");
-
-            RefreshControlsEnable();  // Refresh all GUI controls that require a sensor package to be connected
-
-            if (serial.Arduino == null)
-            {
-                // If no arduino is connected and selected, set Status page labels text to their default values
-                labelStatusPackageName.Text = getLanguageText("PackageName", "Package Name");
-                labelStatusSerialPort.Text = getLanguageText("SerialPort", "Serial Port");
-                labelStatusTotalSensors.Text = getLanguageText("TotalSensors", "Total Sensors") + ":";
-                labelStatusMode.Text = getLanguageText("Mode", "Mode") + ":";
-
-                labelStatusElapsedTime.Text = getLanguageText("ElapsedTime", "Elapsed Time") + ":";
-                labelStatusDataFile.Text = getLanguageText("CurrentDataFile", "Current Data File") + ":";
-
-                buttonConfigDiscardChanges_Click(this, new EventArgs()); // No ardunio connected, so discard user's config page changes  
-            }
-            else
-            {
-                // The serial port name only changes when Arduino changes, so I'll update the serial port text label here instead 
-                //      of the serial arduino data changed event handler.  
-                labelStatusSerialPort.Tag = serial.Arduino.Port?.PortName ?? "ERROR";
-                labelStatusSerialPort.Text = "(" + (string)labelStatusSerialPort.Tag + ")";
-            }
-        }
-
-        private void RefreshControlsEnable()
-        {
-            // This function refreshes all GUI controls that require a sensor package to be connected
-
-            //buttonConfigDiscardChanges_Click(this, new EventArgs());  // Clears changes made in the config page
-
-            bool enabled = serial.Arduino != null;
-            textBoxPackageName.Enabled = enabled;
-            numericUpDownSampleRate.Enabled = enabled;
-            numericUpDownTestDurationHours.Enabled = enabled;
-            numericUpDownTestDurationMinutes.Enabled = enabled;
-            numericUpDownTestDurationSeconds.Enabled = enabled;
-            radioButtonStartDelayNone.Enabled = enabled;
-            radioButtonStartDelayOneMin.Enabled = enabled;
-            radioButtonStartDelayThreeMin.Enabled = enabled;
-            checkBoxSyncTimeDate.Enabled = enabled;
-            radioButtonUseSysTime.Enabled = enabled;
-            radioButtonUseCustomTime.Enabled = enabled;
-            buttonStatusStartStop.Enabled = enabled;
-            //buttonSync.Enabled = enabled;
-
-            ButtonStatusStartStopRefresh();  // Sets the Start/Stop Test button to what it should be 
-            UpdateTabText(); 
-            
-        }
+        #region Controls Event Handlers
 
         private void RadioButtonStartDelayOption_CheckedChanged(object sender, EventArgs e)
         {
@@ -227,7 +150,7 @@ namespace LCA_SYNC
             {
                 if (c > 255 || c < 32)  // If a character is not a character supported by the arduino 
                 {
-                    validInput = false;  
+                    validInput = false;
                 }
             }
 
@@ -244,19 +167,6 @@ namespace LCA_SYNC
             UpdateTabText();
         }
 
-        private void UnfocusControls(object sender, MouseEventArgs e)
-        {
-            // Removes focus for controls if you click away 
-
-            //Console.WriteLine("In UnfocusControls. Still active: {0}, Clicked on: {1}.", ActiveControl?.Name, ((Control)sender)?.Name ); // sender?.GetType()?.Name);
-
-            if (ActiveControl?.Name != ((Control)sender)?.Name)
-            {
-                this.ActiveControl = null;
-            }
-
-        }
-
         private void NumericUpDownSampleRate_ValueChanged(object sender, EventArgs e)
         {
             if (Math.Floor(numericUpDownSampleRate.Value * 8) != numericUpDownSampleRate.Value * 8) // If the sample rate is not a multiple of 0.125 
@@ -270,6 +180,515 @@ namespace LCA_SYNC
             }
 
             UpdateTabText();
+        }
+
+        private void Main_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            // Maybe this will fix the problem...
+            if (serial != null && serial.pnpWatcher != null)
+            {
+                serial.pnpWatcher.EventArrived -= serial.pnpWatcherHandler; // According to Stack Overflow, unsubscribing twice won't cause an error 
+                serial.pnpWatcher.Stop();
+                serial.pnpWatcher.Dispose();
+            }
+        }
+
+        private void Main_UnhandledException(object sender, UnhandledExceptionEventArgs args)
+        {
+            // Another attempt at stopping the pnpWatcher from continuing to run after the program ends.
+            Exception e = (Exception)args.ExceptionObject;
+            Console.WriteLine("MyHandler caught : " + e.Message);
+            Console.WriteLine("Runtime terminating: {0}", args.IsTerminating);
+
+            // Maybe this will fix the problem...
+            if (serial != null && serial.pnpWatcher != null)
+            {
+                serial.pnpWatcher.EventArrived -= serial.pnpWatcherHandler; // According to Stack Overflow, unsubscribing twice won't cause an error 
+
+                serial.pnpWatcher.Stop();
+                serial.pnpWatcher.Dispose();
+            }
+        }
+
+        private void imageComboLanguage_DropDownClosed(object sender, EventArgs e)
+        {
+            // To unhighlight the selection 
+            this.ActiveControl = null;
+
+            //imageComboLanguage.Refresh();
+            //imageComboLanguage.Invalidate();
+            //imageComboLanguage.Update();
+
+        }
+
+        private void imageComboLanguage_KeyDown(object sender, KeyEventArgs e)
+        {
+            // Prevents the arrowkeys from changing the selection except when it is dropped down
+            if (!((ImageCombo)sender).DroppedDown && (e.KeyCode == Keys.Right || e.KeyCode == Keys.Left || e.KeyCode == Keys.Up || e.KeyCode == Keys.Down))
+            {
+                //TxtPass.Focus();
+                this.ActiveControl = null;
+                e.Handled = true;
+                return;
+            }
+        }
+
+        private void imageComboLanguage_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            CurrentLanguage = (string)((ImageComboItem)imageComboLanguage.SelectedItem).Tag;
+            Console.WriteLine("Switched to the language: {0}.", LanguageText?[CurrentLanguage + "LangLong"]);
+            RefreshLanguage();
+        }
+
+        // Click 'Sync'
+        private async void buttonSync_Click(object sender, EventArgs e)
+        {
+            // This method currently doesn't check to see if it syncs successfully... Might be a problem
+            UpdateTabText();
+            try
+            {
+                if (tabControl.TabPages[1].Text.Last() == '*')  // If config page needs synced 
+                {
+                    this.UseWaitCursor = true; // This isn't working for some reason 
+                    buttonSync.Enabled = false;
+                    if ((decimal?)numericUpDownSampleRate.Tag != numericUpDownSampleRate.Value)
+                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.SAMPLE_PERIOD, ACTION.WRITEVAR, (float)numericUpDownSampleRate.Value);
+                    if ((decimal?)numericUpDownTestDurationHours.Tag != numericUpDownTestDurationHours.Value || (decimal?)numericUpDownTestDurationMinutes.Tag != numericUpDownTestDurationMinutes.Value || (decimal?)numericUpDownTestDurationSeconds.Tag != numericUpDownTestDurationSeconds.Value)
+                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.TEST_DUR, ACTION.WRITEVAR, (uint)numericUpDownTestDurationHours.Value * 60 * 60 + (uint)numericUpDownTestDurationMinutes.Value * 60 + (uint)numericUpDownTestDurationSeconds.Value);
+                    if ((string)textBoxPackageName.Tag != textBoxPackageName.Text && textBoxPackageName.BackColor == Color.White)
+                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.PACKAGE_NAME, ACTION.WRITEVAR, textBoxPackageName.Text);
+                    if ((bool)radioButtonStartDelayNone.Tag != radioButtonStartDelayNone.Checked && radioButtonStartDelayNone.Checked)
+                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.START_DELAY, ACTION.WRITEVAR, 0);
+                    if ((bool)radioButtonStartDelayOneMin.Tag != radioButtonStartDelayOneMin.Checked && radioButtonStartDelayOneMin.Checked)
+                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.START_DELAY, ACTION.WRITEVAR, 60);
+                    if ((bool)radioButtonStartDelayThreeMin.Tag != radioButtonStartDelayThreeMin.Checked && radioButtonStartDelayThreeMin.Checked)
+                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.START_DELAY, ACTION.WRITEVAR, 180);
+                    if (checkBoxSyncTimeDate.Checked == true)
+                    {
+                        // This isn't implemented yet in ArduinoBoard.cs or in the arduino code
+                        if (radioButtonUseSysTime.Checked) // System time
+                        {
+                            await serial.Arduino.Communicate(DATACATEGORY.OTHER, SUBCATEGORY.TIME_DATE, ACTION.WRITEVAR, DateTime.Now, 600);
+                            // If an exception is thrown in the method above, it shouldn't execute the line below 
+                            checkBoxSyncTimeDate.Checked = false; // Does this verify that the time was set correctly first? 
+                        }
+                        else  // Custom time 
+                        {
+                            MessageBox.Show("Sorry, custom time and date is currently unsupported. ");
+                            //Response r = await serial.Arduino.Communicate(DATACATEGORY.OTHER, SUBCATEGORY.TIME_DATE, ACTION.WRITEVAR, dateTimePickerCustomTime.Value);
+                            //if (r.validity == ArduinoBoard.COMMERROR.VALID)
+                            //  checkBoxSyncTimeDate.Checked = false;
+                        }
+                    }
+
+                    // Start delay here 
+                }
+
+                if (tabControl.TabPages[2].Text.Last() == '*')  // If data page needs synced 
+                {
+                    this.UseWaitCursor = true;
+                    buttonSync.Enabled = false;
+                    // Implement later 
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error when syncing. Error message: {0}\nStack Trace: {1}", ex.Message, ex.StackTrace);
+            }
+            finally
+            {
+                this.UseWaitCursor = false;
+                UpdateTabText();
+            }
+
+
+        }
+
+        private async void arduinoList_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            // For switching between arduinos. Not tested yet!!
+
+            if (arduinoList.Items.Count > 0)
+            {
+                bool success = false;
+                try
+                {
+                    await ((ArduinoBoard)arduinoList.SelectedItem).RefreshInfo();
+                    success = true;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("RefreshInfo() failed for the newly-selected arduino: {0}", ex.Message);
+                }
+
+                if (success)
+                {
+                    serial.Arduino = (ArduinoBoard)arduinoList.SelectedItem;
+                }
+
+            }
+        }
+
+        private async void buttonArduinoSync_Click(object sender, EventArgs e)
+        {
+            // Untested 
+            // RefreshInfo for all arduinos already added: 
+            foreach (var ard in serial.LCAArduinos)
+            {
+                await ard.RefreshInfo();
+            }
+
+            await serial.ActivateAllArduinos();  // Activates (Ping + RefreshInfo) all arduinos that have not been added yet
+            RefreshControlsEnable();
+        }
+
+        private async void buttonStatusStartStop_Click(object sender, EventArgs e)
+        {
+
+            bool success = false;
+
+            if ((bool)buttonStatusStartStop.Tag == false)  // Test is currently not running 
+            {
+                try
+                {
+                    buttonStatusStartStop.Enabled = false;
+                    await serial.Arduino.Communicate(DATACATEGORY.OTHER, SUBCATEGORY.START_TEST, ACTION.SENDCOMMAND);
+                    buttonStatusStartStop.Enabled = true;
+                    success = true;
+                }
+                catch
+                {
+                    success = false;
+                }
+                finally
+                {
+                    if (success)
+                    {
+                        buttonStatusStartStop.Tag = true;  // Test is running
+                        buttonStatusStartStop.Text = getLanguageText("StopTest", "Stop Test");
+                    }
+                    buttonStatusStartStop.Enabled = true;
+                }
+            }
+            else
+            {
+                try
+                {
+                    buttonStatusStartStop.Enabled = false;
+                    await serial.Arduino.Communicate(DATACATEGORY.OTHER, SUBCATEGORY.STOP_TEST, ACTION.WRITEVAR);
+                    buttonStatusStartStop.Enabled = true;
+                    success = true;
+                }
+                catch
+                {
+                    success = false;
+                }
+                finally
+                {
+                    if (success)
+                    {
+                        buttonStatusStartStop.Tag = false;  // Test is stopped
+                        buttonStatusStartStop.Text = getLanguageText("StartTest", "Start Test");
+                    }
+                    buttonStatusStartStop.Enabled = true;
+                }
+            }
+
+        }
+
+        private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show(getLanguageText("AboutPageText", "Created at Grove City College for 2018-2019 Senior Capstone Project. "));
+        }
+
+        private void TempUnitsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (((ToolStripMenuItem)sender).Checked == false)  // If it was not checked before it was clicked 
+            {
+                ((ToolStripMenuItem)sender).Checked = true;    // Check it 
+
+                // Uncheck other menu items 
+                if (cToolStripMenuItem != (ToolStripMenuItem)sender)
+                {
+                    cToolStripMenuItem.Checked = false;
+                }
+                if (fToolStripMenuItem != (ToolStripMenuItem)sender)
+                {
+                    fToolStripMenuItem.Checked = false;
+                }
+                if (kToolStripMenuItem != (ToolStripMenuItem)sender)
+                {
+                    kToolStripMenuItem.Checked = false;
+                }
+
+                // Update any controls relying on the temperature unit setting here 
+            }
+
+        }
+
+        private void DateFormatOptionToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (((ToolStripMenuItem)sender).Checked == false)  // If it was not checked before it was clicked 
+            {
+                ((ToolStripMenuItem)sender).Checked = true;    // Check it 
+
+                // Uncheck other menu items 
+                if (mMDDYYYYToolStripMenuItem != (ToolStripMenuItem)sender)
+                {
+                    mMDDYYYYToolStripMenuItem.Checked = false;
+                }
+                if (dDMMYYYYToolStripMenuItem != (ToolStripMenuItem)sender)
+                {
+                    dDMMYYYYToolStripMenuItem.Checked = false;
+                }
+
+                // Update any controls relying on the date format setting here 
+            }
+        }
+
+        private void TimeFormatOptionToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (((ToolStripMenuItem)sender).Checked == false)  // If it was not checked before it was clicked 
+            {
+                ((ToolStripMenuItem)sender).Checked = true;    // Check it 
+
+                // Uncheck other menu items 
+                if (TwelveHourToolStripMenuItem != (ToolStripMenuItem)sender)
+                {
+                    TwelveHourToolStripMenuItem.Checked = false;
+                }
+                if (TwentyFourHourToolStripMenuItem != (ToolStripMenuItem)sender)
+                {
+                    TwentyFourHourToolStripMenuItem.Checked = false;
+                }
+
+                // Update any controls relying on the time format setting here 
+            }
+        }
+
+        private void checkBoxSyncTimeDate_CheckedChanged(object sender, EventArgs e)
+        {
+            if (checkBoxSyncTimeDate.Checked == false)
+            {
+                radioButtonUseSysTime.Enabled = false;
+                radioButtonUseCustomTime.Enabled = false;
+                dateTimePickerCustomTime.Enabled = false;
+            }
+            else
+            {
+                radioButtonUseSysTime.Enabled = true;
+                radioButtonUseCustomTime.Enabled = true;
+                dateTimePickerCustomTime.Enabled = true;
+            }
+            UpdateTabText();
+        }
+
+        private void buttonConfigDiscardChanges_Click(object sender, EventArgs e)
+        {
+            numericUpDownSampleRate.Value = (decimal)numericUpDownSampleRate.Tag;
+
+            numericUpDownTestDurationHours.Value = (decimal)numericUpDownTestDurationHours.Tag;
+            numericUpDownTestDurationMinutes.Value = (decimal)numericUpDownTestDurationMinutes.Tag;
+            numericUpDownTestDurationSeconds.Value = (decimal)numericUpDownTestDurationSeconds.Tag;
+
+            textBoxPackageName.Text = (string)textBoxPackageName.Tag;
+
+            radioButtonStartDelayNone.Checked = (bool)radioButtonStartDelayNone.Tag;
+            radioButtonStartDelayOneMin.Checked = (bool)radioButtonStartDelayOneMin.Tag;
+            radioButtonStartDelayThreeMin.Checked = (bool)radioButtonStartDelayThreeMin.Tag;
+
+            checkBoxSyncTimeDate.Checked = (bool)checkBoxSyncTimeDate.Tag;
+
+            UpdateTabText();
+        }
+
+        #endregion
+
+        #region Other Event Handlers 
+
+        private void Serial_ArduinoChanged(object sender, ArduinoEventArgs e)
+        {
+            // The ArduinoChanged event that this handler is subscribed to is triggered when SerialInterface.Arduino is changed. 
+            // SerialInterface.Arduino is the currently active ArduinoBoard object - the one that this synchronization program is connected to and interacting with. 
+
+            Console.WriteLine("SerialInterface.Arduino changed.");
+
+            RefreshControlsEnable();  // Refresh all GUI controls that require a sensor package to be connected
+
+            if (serial.Arduino == null)
+            {
+                // If no arduino is connected and selected, set Status page labels text to their default values
+                labelStatusPackageName.Text = getLanguageText("PackageName", "Package Name");
+                labelStatusSerialPort.Text = getLanguageText("SerialPort", "Serial Port");
+                labelStatusTotalSensors.Text = getLanguageText("TotalSensors", "Total Sensors") + ":";
+                labelStatusMode.Text = getLanguageText("Mode", "Mode") + ":";
+
+                labelStatusElapsedTime.Text = getLanguageText("ElapsedTime", "Elapsed Time") + ":";
+                labelStatusDataFile.Text = getLanguageText("CurrentDataFile", "Current Data File") + ":";
+
+                buttonConfigDiscardChanges_Click(this, new EventArgs()); // No ardunio connected, so discard user's config page changes  
+            }
+            else
+            {
+                // The serial port name only changes when Arduino changes, so I'll update the serial port text label here instead 
+                //      of the serial arduino data changed event handler.  
+                labelStatusSerialPort.Tag = serial.Arduino.Port?.PortName ?? "ERROR";
+                labelStatusSerialPort.Text = "(" + (string)labelStatusSerialPort.Tag + ")";
+            }
+        }
+
+        private void UnfocusControls(object sender, MouseEventArgs e)
+        {
+            // Removes focus for controls if you click away 
+
+            //Console.WriteLine("In UnfocusControls. Still active: {0}, Clicked on: {1}.", ActiveControl?.Name, ((Control)sender)?.Name ); // sender?.GetType()?.Name);
+
+            if (ActiveControl?.Name != ((Control)sender)?.Name)
+            {
+                this.ActiveControl = null;
+            }
+
+        }
+
+        private void serial_ArduinoDataChanged(object sender, ArduinoEventArgs e)
+        {
+            // Can do more here: 
+            // Use e.Reason for the reason the event was called 
+
+            switch ((string)e.Type)
+            {
+                case "PackageName":
+                    Console.WriteLine("PackageName changed, so status page will be updated");
+                    textBoxPackageName.Text = serial.Arduino.PackageName;
+                    textBoxPackageName.Tag = serial.Arduino.PackageName;
+                    labelStatusPackageName.Tag = serial.Arduino.PackageName;
+                    labelStatusPackageName.Text = serial.Arduino.PackageName;
+                    break;
+                case "StartDelay":
+                    if (serial.Arduino.StartDelay == 0)  // No start delay 
+                    {
+                        radioButtonStartDelayNone.Checked = true;
+                        radioButtonStartDelayNone.Tag = true;
+                        radioButtonStartDelayOneMin.Checked = false;
+                        radioButtonStartDelayOneMin.Tag = false;
+                        radioButtonStartDelayThreeMin.Checked = false;
+                        radioButtonStartDelayThreeMin.Tag = false;
+                    }
+                    else if (serial.Arduino.StartDelay == 60)  // One minute 
+                    {
+                        radioButtonStartDelayNone.Checked = false;
+                        radioButtonStartDelayNone.Tag = false;
+                        radioButtonStartDelayOneMin.Checked = true;
+                        radioButtonStartDelayOneMin.Tag = true;
+                        radioButtonStartDelayThreeMin.Checked = false;
+                        radioButtonStartDelayThreeMin.Tag = false;
+                    }
+                    else if (serial.Arduino.StartDelay == 60 * 3) // Three minutes
+                    {
+                        radioButtonStartDelayNone.Checked = false;
+                        radioButtonStartDelayNone.Tag = false;
+                        radioButtonStartDelayOneMin.Checked = false;
+                        radioButtonStartDelayOneMin.Tag = false;
+                        radioButtonStartDelayThreeMin.Checked = true;
+                        radioButtonStartDelayThreeMin.Tag = true;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Unacceptable value for StartDelay.");
+                    }
+                    break;
+                case "TestDuration":
+                    numericUpDownTestDurationHours.Value = Math.Floor((decimal)serial.Arduino.TestDuration / 60 / 60); // Get hours from total seconds 
+                    numericUpDownTestDurationHours.Tag = numericUpDownTestDurationHours.Value;   // Tag is the value the arduino is set to 
+
+                    numericUpDownTestDurationMinutes.Value = Math.Floor((decimal)serial.Arduino.TestDuration / 60) % 60; // Get minutes from total seconds 
+                    numericUpDownTestDurationMinutes.Tag = numericUpDownTestDurationMinutes.Value;   // Tag is the value the arduino is set to 
+
+                    numericUpDownTestDurationSeconds.Value = (decimal)serial.Arduino.TestDuration % 60; // Get seconds from total seconds 
+                    numericUpDownTestDurationSeconds.Tag = numericUpDownTestDurationSeconds.Value;   // Tag is the value the arduino is set to 
+
+                    //Console.WriteLine("{0}:{1}:{2}", Math.Floor((decimal)serial.Arduino.TestDuration / 60 / 60), Math.Floor((decimal)serial.Arduino.TestDuration / 60) % 60, (decimal)serial.Arduino.TestDuration % 60);
+                    break;
+                case "SamplePeriod":
+                    numericUpDownSampleRate.Value = (decimal)serial.Arduino.SamplePeriod;
+                    numericUpDownSampleRate.Tag = (decimal)serial.Arduino.SamplePeriod;   // Tag is the value the arduino is set to 
+                    break;
+                case "TestStarted":
+                    Console.WriteLine("TestStarted changed, so status page will be updated");
+                    ButtonStatusStartStopRefresh();
+                    if (serial.Arduino.TestStarted)
+                    {
+                        labelStatusMode.Text = getLanguageText("Mode", "Mode") + ": " + getLanguageText("Running", "Running");
+                    }
+                    else
+                    {
+                        labelStatusMode.Text = getLanguageText("Mode", "Mode") + ": " + getLanguageText("Ready", "Ready");
+                    }
+
+                    break;
+                default:
+                    Console.WriteLine("In serial_ArduinoDataChanged, an unrecognized arduino variable was changed: {0}", (string)e.Type);
+                    break;
+            }
+
+
+            //// I'm putting these here since they don't have their own member variables in ArduinoBoard yet:
+            labelStatusTotalSensors.Text = getLanguageText("TotalSensors", "Total Sensors") + ": __"; // A placeholder
+            labelStatusElapsedTime.Text = getLanguageText("ElapsedTime", "Elapsed Time") + ": __/__";  // A placeholder 
+            labelStatusDataFile.Text = getLanguageText("CurrentDataFile", "Current Data File") + ": __";  // A placeholder
+            ///////
+
+            arduinoListBinding.ResetBindings(false);
+
+            //RefreshStatusPageText();  // Refresh the text on the status page 
+            UpdateTabText();
+        }
+
+        /// <summary>
+        /// LCAArduinos_Changed event is caught in
+        /// order to update anything when LCAArduinos
+        /// list is changed or values within it are 
+        /// changed.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void serial_LCAArduinos_Changed(object sender, ListChangedEventArgs e)  // Maybe use arduinoList.DataSourceChanged event instead? 
+        {
+
+            // I think in general, serial_ArduinoDataChanged or serial_ArduinoChanged should be used instead. 
+            // I haven't been consistent with which event gets triggered first: serial_ArduinoChanged or serial_LCAArduinos_Changed.
+
+            Console.WriteLine("LCAArduinos has been changed. ");
+        }
+
+        #endregion
+
+        #region Other Methods
+
+        private void RefreshControlsEnable()
+        {
+            // This function refreshes all GUI controls that require a sensor package to be connected
+
+            //buttonConfigDiscardChanges_Click(this, new EventArgs());  // Clears changes made in the config page
+
+            bool enabled = serial.Arduino != null;
+            textBoxPackageName.Enabled = enabled;
+            numericUpDownSampleRate.Enabled = enabled;
+            numericUpDownTestDurationHours.Enabled = enabled;
+            numericUpDownTestDurationMinutes.Enabled = enabled;
+            numericUpDownTestDurationSeconds.Enabled = enabled;
+            radioButtonStartDelayNone.Enabled = enabled;
+            radioButtonStartDelayOneMin.Enabled = enabled;
+            radioButtonStartDelayThreeMin.Enabled = enabled;
+            checkBoxSyncTimeDate.Enabled = enabled;
+            radioButtonUseSysTime.Enabled = enabled;
+            radioButtonUseCustomTime.Enabled = enabled;
+            buttonStatusStartStop.Enabled = enabled;
+            //buttonSync.Enabled = enabled;
+
+            ButtonStatusStartStopRefresh();  // Sets the Start/Stop Test button to what it should be 
+            UpdateTabText();
+
         }
 
         private void UpdateTabText()
@@ -310,34 +729,6 @@ namespace LCA_SYNC
                 buttonSync.Enabled = false;
             }
 
-        }
-
-        private void Main_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            // Maybe this will fix the problem...
-            if (serial != null && serial.pnpWatcher != null)
-            {
-                serial.pnpWatcher.EventArrived -= serial.pnpWatcherHandler; // According to Stack Overflow, unsubscribing twice won't cause an error 
-                serial.pnpWatcher.Stop();
-                serial.pnpWatcher.Dispose();
-            }
-        }
-
-        private void Main_UnhandledException(object sender, UnhandledExceptionEventArgs args)
-        {
-            // Another attempt at stopping the pnpWatcher from continuing to run after the program ends.
-            Exception e = (Exception)args.ExceptionObject;
-            Console.WriteLine("MyHandler caught : " + e.Message);
-            Console.WriteLine("Runtime terminating: {0}", args.IsTerminating);
-
-            // Maybe this will fix the problem...
-            if (serial != null && serial.pnpWatcher != null)
-            {
-                serial.pnpWatcher.EventArrived -= serial.pnpWatcherHandler; // According to Stack Overflow, unsubscribing twice won't cause an error 
-
-                serial.pnpWatcher.Stop();
-                serial.pnpWatcher.Dispose();
-            }
         }
 
         private void LoadLanguages()
@@ -496,36 +887,6 @@ namespace LCA_SYNC
             }
         }
 
-        private void imageComboLanguage_DropDownClosed(object sender, EventArgs e)
-        {
-            // To unhighlight the selection 
-            this.ActiveControl = null;
-
-            //imageComboLanguage.Refresh();
-            //imageComboLanguage.Invalidate();
-            //imageComboLanguage.Update();
-
-        }
-
-        private void imageComboLanguage_KeyDown(object sender, KeyEventArgs e)
-        {
-            // Prevents the arrowkeys from changing the selection except when it is dropped down
-            if (!((ImageCombo)sender).DroppedDown && (e.KeyCode == Keys.Right || e.KeyCode == Keys.Left || e.KeyCode == Keys.Up || e.KeyCode == Keys.Down))
-            {
-                //TxtPass.Focus();
-                this.ActiveControl = null;
-                e.Handled = true;
-                return;
-            }
-        }
-
-        private void imageComboLanguage_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            CurrentLanguage = (string)((ImageComboItem)imageComboLanguage.SelectedItem).Tag;
-            Console.WriteLine("Switched to the language: {0}.", LanguageText?[CurrentLanguage + "LangLong"]);
-            RefreshLanguage();
-        }
-
         private void RefreshLanguage()
         {
             // This method refreshes the text in GUI controls to match the CurrentLanguage. 
@@ -577,7 +938,7 @@ namespace LCA_SYNC
             buttonConnectDisconnect.Text = getLanguageText("ConnectDisconnect", "Connect/Disconnect");
             buttonSync.Text = getLanguageText("Sync", "Sync");
             buttonClearWindow.Text = getLanguageText("ClearWindow", "Clear Window");
-            RefreshStatusPageText(); 
+            RefreshStatusPageText();
 
             if (serial.Arduino != null && serial.Arduino.TestStarted)
                 buttonStatusStartStop.Text = getLanguageText("StopTest", "Stop Test");
@@ -592,14 +953,14 @@ namespace LCA_SYNC
         private void RefreshStatusPageText()
         {
             //RefreshControlsEnable();
-            ButtonStatusStartStopRefresh(); 
+            ButtonStatusStartStopRefresh();
             if (serial.Arduino == null)
             {
                 labelStatusPackageName.Text = getLanguageText("PackageName", "Package Name");
                 labelStatusSerialPort.Text = getLanguageText("SerialPort", "Serial Port");
                 labelStatusTotalSensors.Text = getLanguageText("TotalSensors", "Total Sensors") + ": __"; // A placeholder
                 labelStatusMode.Text = getLanguageText("Mode", "Mode") + ":";
-                
+
                 labelStatusElapsedTime.Text = getLanguageText("ElapsedTime", "Elapsed Time") + ": __/__";    // A placeholder
                 labelStatusDataFile.Text = getLanguageText("CurrentDataFile", "Current Data File") + ": __"; // A placeholder
 
@@ -617,111 +978,17 @@ namespace LCA_SYNC
                 {
                     labelStatusMode.Text = getLanguageText("Mode", "Mode") + ": " + getLanguageText("Ready", "Ready");
                 }
-                
+
                 labelStatusElapsedTime.Text = getLanguageText("ElapsedTime", "Elapsed Time") + ": __/__";  // A placeholder 
                 labelStatusDataFile.Text = getLanguageText("CurrentDataFile", "Current Data File") + ": __";  // A placeholder
             }
-        }
-
-        void serial_ArduinoDataChanged(object sender, ArduinoEventArgs e)
-        {
-            // Can do more here: 
-            // Use e.Reason for the reason the event was called 
-
-            switch ((string)e.Type)
-            {
-                case "PackageName":
-                    Console.WriteLine("PackageName changed, so status page will be updated");
-                    textBoxPackageName.Text = serial.Arduino.PackageName;
-                    textBoxPackageName.Tag = serial.Arduino.PackageName;
-                    labelStatusPackageName.Tag = serial.Arduino.PackageName;
-                    labelStatusPackageName.Text = serial.Arduino.PackageName;
-                    break;
-                case "StartDelay":
-                    if (serial.Arduino.StartDelay == 0)  // No start delay 
-                    {
-                        radioButtonStartDelayNone.Checked = true;
-                        radioButtonStartDelayNone.Tag = true;
-                        radioButtonStartDelayOneMin.Checked = false;
-                        radioButtonStartDelayOneMin.Tag = false;
-                        radioButtonStartDelayThreeMin.Checked = false;
-                        radioButtonStartDelayThreeMin.Tag = false;
-                    }
-                    else if (serial.Arduino.StartDelay == 60)  // One minute 
-                    {
-                        radioButtonStartDelayNone.Checked = false;
-                        radioButtonStartDelayNone.Tag = false;
-                        radioButtonStartDelayOneMin.Checked = true;
-                        radioButtonStartDelayOneMin.Tag = true;
-                        radioButtonStartDelayThreeMin.Checked = false;
-                        radioButtonStartDelayThreeMin.Tag = false;
-                    }
-                    else if (serial.Arduino.StartDelay == 60 * 3) // Three minutes
-                    {
-                        radioButtonStartDelayNone.Checked = false;
-                        radioButtonStartDelayNone.Tag = false;
-                        radioButtonStartDelayOneMin.Checked = false;
-                        radioButtonStartDelayOneMin.Tag = false;
-                        radioButtonStartDelayThreeMin.Checked = true;
-                        radioButtonStartDelayThreeMin.Tag = true;
-                    }
-                    else
-                    {
-                        Console.WriteLine("Unacceptable value for StartDelay.");
-                    }
-                    break; 
-                case "TestDuration":
-                    numericUpDownTestDurationHours.Value = Math.Floor((decimal)serial.Arduino.TestDuration / 60 / 60); // Get hours from total seconds 
-                    numericUpDownTestDurationHours.Tag = numericUpDownTestDurationHours.Value;   // Tag is the value the arduino is set to 
-
-                    numericUpDownTestDurationMinutes.Value = Math.Floor((decimal)serial.Arduino.TestDuration / 60) % 60; // Get minutes from total seconds 
-                    numericUpDownTestDurationMinutes.Tag = numericUpDownTestDurationMinutes.Value;   // Tag is the value the arduino is set to 
-
-                    numericUpDownTestDurationSeconds.Value = (decimal)serial.Arduino.TestDuration % 60; // Get seconds from total seconds 
-                    numericUpDownTestDurationSeconds.Tag = numericUpDownTestDurationSeconds.Value;   // Tag is the value the arduino is set to 
-
-                    //Console.WriteLine("{0}:{1}:{2}", Math.Floor((decimal)serial.Arduino.TestDuration / 60 / 60), Math.Floor((decimal)serial.Arduino.TestDuration / 60) % 60, (decimal)serial.Arduino.TestDuration % 60);
-                    break;
-                case "SamplePeriod":
-                    numericUpDownSampleRate.Value = (decimal)serial.Arduino.SamplePeriod;
-                    numericUpDownSampleRate.Tag = (decimal)serial.Arduino.SamplePeriod;   // Tag is the value the arduino is set to 
-                    break;
-                case "TestStarted":
-                    Console.WriteLine("TestStarted changed, so status page will be updated");
-                    ButtonStatusStartStopRefresh();
-                    if (serial.Arduino.TestStarted)
-                    {
-                        labelStatusMode.Text = getLanguageText("Mode", "Mode") + ": " + getLanguageText("Running", "Running");
-                    }
-                    else
-                    {
-                        labelStatusMode.Text = getLanguageText("Mode", "Mode") + ": " + getLanguageText("Ready", "Ready");
-                    }
-
-                    break;
-                default:
-                    Console.WriteLine("In serial_ArduinoDataChanged, an unrecognized arduino variable was changed: {0}", (string)e.Type);
-                    break;
-            }
-
-
-            //// I'm putting these here since they don't have their own member variables in ArduinoBoard yet:
-            labelStatusTotalSensors.Text = getLanguageText("TotalSensors", "Total Sensors") + ": __"; // A placeholder
-            labelStatusElapsedTime.Text = getLanguageText("ElapsedTime", "Elapsed Time") + ": __/__";  // A placeholder 
-            labelStatusDataFile.Text = getLanguageText("CurrentDataFile", "Current Data File") + ": __";  // A placeholder
-            ///////
-
-            arduinoListBinding.ResetBindings(false);
-
-            //RefreshStatusPageText();  // Refresh the text on the status page 
-            UpdateTabText();
         }
 
         private void ButtonStatusStartStopRefresh()
         {
             if (serial.Arduino != null)
             {
-                buttonStatusStartStop.Enabled = true; 
+                buttonStatusStartStop.Enabled = true;
                 if (serial.Arduino.TestStarted)
                     buttonStatusStartStop.Text = getLanguageText("StopTest", "Stop Test");
                 else
@@ -734,405 +1001,8 @@ namespace LCA_SYNC
             }
         }
 
-
-
-
-        /// <summary>
-        /// USBDeviceChanged event is caught in
-        /// order to prevent send/receive errors
-        /// and allow the program to connect to
-        /// the Arduino automatically.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        /*
-        void serial_USBPnPDeviceChanged(object sender, EventArgs e)
-        {
-
-            // Need to find way to distinguish between adding and removing, b/c this event is triggered by both
-
-            //Console.WriteLine("weatherData_USBPnPDeviceChanged event");
-
-            //Console.WriteLine("You have added or removed a USB device. weatherData_USBDeviceChanged.\nEventArgs={0}\nsender={1}",e.ToString(),sender.ToString());
-            //Console.WriteLine(((ManagementBaseObject)(((EventArrivedEventArgs)e).Context))["TargetInstance"].ToString());
-
-            
-            string wclass = ((EventArrivedEventArgs)e).NewEvent.SystemProperties["__Class"].Value.ToString();
-            string wop = string.Empty;
-            switch (wclass)
-            {
-                case "__InstanceModificationEvent":
-                    wop = "modified";
-                    break;
-                case "__InstanceCreationEvent":
-                    wop = "created";
-                    break;
-                case "__InstanceDeletionEvent":
-                    wop = "deleted";
-                    break;
-            }
-
-            ManagementBaseObject device = (ManagementBaseObject)(((EventArrivedEventArgs)e).NewEvent)["TargetInstance"]; 
-
-            if (serial.Arduino != null && device.Equals(serial.Arduino.mgmtBaseObj)) // If the added/removed device is the LCA Arduino in use
-            {
-                Console.WriteLine("The LCA arduino device you were using was {0}.", wop);
-                //Console.WriteLine(serial.Arduino.Port.PortName);
-                MessageBox.Show("The LCA arduino device you were using was " + wop + ".");
-
-                // Update LCA Arduino List here
-                // Do code to stop from writing to port or start writing, or whatever
-            }
-            else if (serial.LCAArduinos.ToList().Exists(a => a.Port.PortName == SerialInterface.GetPortName(device))) // If the added/removed device was an LCA Arduino not in use
-            {
-                Console.WriteLine("An LCA arduino device you were not using was {0}.", wop);
-                //Console.WriteLine(serial.Arduino.Port.PortName);
-                MessageBox.Show("An LCA arduino device you were not using was " + wop + ".");
-
-                // Update LCA Arduino List here
-            }
-            else  // The added/removed device was not an LCA Arduino (an LCA Arduino device previously known by the program)
-            {
-                Console.WriteLine("A non-LCA-Arduino device was {0}.", wop);
-                //Console.WriteLine(serial.Arduino.Port.PortName);
-                MessageBox.Show("A non-LCA-Arduino device was " + wop + ".");
-
-                // Nothing else needs done since non-LCA-Arduino devices are irrelevant
-            }
-            //((ManagementBaseObject)e["TargetInstance"])["Name"]
-            //((ManagementEventWatcher)sender).
-
-        }
-        */
-
-
-        /// <summary>
-        /// LCAArduinos_Changed event is caught in
-        /// order to update anything when LCAArduinos
-        /// list is changed or values within it are 
-        /// changed.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        void serial_LCAArduinos_Changed(object sender, ListChangedEventArgs e)  // Maybe use arduinoList.DataSourceChanged event instead? 
-        {
-
-            // I think in general, serial_ArduinoDataChanged or serial_ArduinoChanged should be used instead. 
-            // I haven't been consistent with which event gets triggered first: serial_ArduinoChanged or serial_LCAArduinos_Changed.
-
-            Console.WriteLine("LCAArduinos has been changed. ");
-        }
-
-
-        // Click 'Sync'
-        private async void buttonSync_Click(object sender, EventArgs e)
-        {
-            // This method currently doesn't check to see if it syncs successfully... Might be a problem
-            UpdateTabText();
-            try
-            {
-                if (tabControl.TabPages[1].Text.Last() == '*')  // If config page needs synced 
-                {
-                    this.UseWaitCursor = true; // This isn't working for some reason 
-                    buttonSync.Enabled = false;
-                    if ((decimal?)numericUpDownSampleRate.Tag != numericUpDownSampleRate.Value)
-                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.SAMPLE_PERIOD, ACTION.WRITEVAR, (float)numericUpDownSampleRate.Value);
-                    if ((decimal?)numericUpDownTestDurationHours.Tag != numericUpDownTestDurationHours.Value || (decimal?)numericUpDownTestDurationMinutes.Tag != numericUpDownTestDurationMinutes.Value || (decimal?)numericUpDownTestDurationSeconds.Tag != numericUpDownTestDurationSeconds.Value)
-                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.TEST_DUR, ACTION.WRITEVAR, (uint)numericUpDownTestDurationHours.Value * 60 * 60 + (uint)numericUpDownTestDurationMinutes.Value * 60 + (uint)numericUpDownTestDurationSeconds.Value);
-                    if ((string)textBoxPackageName.Tag != textBoxPackageName.Text && textBoxPackageName.BackColor == Color.White)
-                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.PACKAGE_NAME, ACTION.WRITEVAR, textBoxPackageName.Text);
-                    if ((bool)radioButtonStartDelayNone.Tag != radioButtonStartDelayNone.Checked && radioButtonStartDelayNone.Checked)
-                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.START_DELAY, ACTION.WRITEVAR, 0);
-                    if ((bool)radioButtonStartDelayOneMin.Tag != radioButtonStartDelayOneMin.Checked && radioButtonStartDelayOneMin.Checked)
-                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.START_DELAY, ACTION.WRITEVAR, 60);
-                    if ((bool)radioButtonStartDelayThreeMin.Tag != radioButtonStartDelayThreeMin.Checked && radioButtonStartDelayThreeMin.Checked)
-                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.START_DELAY, ACTION.WRITEVAR, 180);
-                    if (checkBoxSyncTimeDate.Checked == true)
-                    {
-                        // This isn't implemented yet in ArduinoBoard.cs or in the arduino code
-                        if (radioButtonUseSysTime.Checked) // System time
-                        {
-                            await serial.Arduino.Communicate(DATACATEGORY.OTHER, SUBCATEGORY.TIME_DATE, ACTION.WRITEVAR, DateTime.Now, 600);
-                            // If an exception is thrown in the method above, it shouldn't execute the line below 
-                            checkBoxSyncTimeDate.Checked = false; // Does this verify that the time was set correctly first? 
-                        }
-                        else  // Custom time 
-                        {
-                            MessageBox.Show("Sorry, custom time and date is currently unsupported. ");
-                            //Response r = await serial.Arduino.Communicate(DATACATEGORY.OTHER, SUBCATEGORY.TIME_DATE, ACTION.WRITEVAR, dateTimePickerCustomTime.Value);
-                            //if (r.validity == ArduinoBoard.COMMERROR.VALID)
-                            //  checkBoxSyncTimeDate.Checked = false;
-                        }
-                    }
-
-                    // Start delay here 
-                }
-
-                if (tabControl.TabPages[2].Text.Last() == '*')  // If data page needs synced 
-                {
-                    this.UseWaitCursor = true;
-                    buttonSync.Enabled = false;
-                    // Implement later 
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error when syncing. Error message: {0}\nStack Trace: {1}", ex.Message, ex.StackTrace); 
-            }
-            finally
-            {
-                this.UseWaitCursor = false; 
-                UpdateTabText();
-            }
-            
-
-        }
-
-        private void button1_Click_1(object sender, EventArgs e)
-        {
-
-        }
-
-        private void radioButton1_CheckedChanged(object sender, EventArgs e)
-        {
-
-        }
-
-        private void label1_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        /*
-        public static TResult Await<TResult>(this IAsyncOperation<TResult> operation)
-        {
-            try
-            {
-                return operation.GetResults();
-            }
-            finally
-            {
-                operation.Close();
-            }
-        }
-        */
-        
-        private void tabPage1_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void toolStripContainer1_TopToolStripPanel_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void buttonRoundSync_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
-        {
-
-        }
-
-        // Untested: 
-        private async void buttonArduinoSync_Click(object sender, EventArgs e)
-        {
-         
-            // RefreshInfo for all arduinos already added: 
-            foreach (var ard in serial.LCAArduinos)
-            {
-                await ard.RefreshInfo();
-            }
-
-            await serial.ActivateAllArduinos();  // Activates (Ping + RefreshInfo) all arduinos that have not been added yet
-            RefreshControlsEnable();
-        }
-
-
-        private async void buttonStatusStartStop_Click(object sender, EventArgs e)
-        {
-
-            bool success = false; 
-
-            if ((bool)buttonStatusStartStop.Tag == false)  // Test is currently not running 
-            {
-                try
-                {
-                    buttonStatusStartStop.Enabled = false;
-                    await serial.Arduino.Communicate(DATACATEGORY.OTHER, SUBCATEGORY.START_TEST, ACTION.SENDCOMMAND);
-                    buttonStatusStartStop.Enabled = true;
-                    success = true; 
-                }
-                catch
-                {
-                    success = false; 
-                }
-                finally
-                {
-                    if (success)
-                    {
-                        buttonStatusStartStop.Tag = true;  // Test is running
-                        buttonStatusStartStop.Text = getLanguageText("StopTest", "Stop Test");
-                    }
-                    buttonStatusStartStop.Enabled = true;
-                }
-            }
-            else
-            {
-                try
-                {
-                    buttonStatusStartStop.Enabled = false;
-                    await serial.Arduino.Communicate(DATACATEGORY.OTHER, SUBCATEGORY.STOP_TEST, ACTION.WRITEVAR);
-                    buttonStatusStartStop.Enabled = true;
-                    success = true; 
-                }
-                catch
-                {
-                    success = false; 
-                }
-                finally
-                {
-                    if (success)
-                    {
-                        buttonStatusStartStop.Tag = false;  // Test is stopped
-                        buttonStatusStartStop.Text = getLanguageText("StartTest", "Start Test");
-                    }
-                    buttonStatusStartStop.Enabled = true;
-                }
-            }
-            
-        }
-
-        private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            MessageBox.Show(getLanguageText("AboutPageText", "Created at Grove City College for 2018-2019 Senior Capstone Project. "));
-        }
-
-        private void TempUnitsToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (((ToolStripMenuItem)sender).Checked == false)  // If it was not checked before it was clicked 
-            {
-                ((ToolStripMenuItem)sender).Checked = true;    // Check it 
-
-                // Uncheck other menu items 
-                if (cToolStripMenuItem != (ToolStripMenuItem)sender)
-                {
-                    cToolStripMenuItem.Checked = false; 
-                }
-                if (fToolStripMenuItem != (ToolStripMenuItem)sender)
-                {
-                    fToolStripMenuItem.Checked = false;
-                }
-                if (kToolStripMenuItem != (ToolStripMenuItem)sender)
-                {
-                    kToolStripMenuItem.Checked = false;
-                }
-
-                // Update any controls relying on the temperature unit setting here 
-            }
-
-        }
-
-        private void DateFormatOptionToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (((ToolStripMenuItem)sender).Checked == false)  // If it was not checked before it was clicked 
-            {
-                ((ToolStripMenuItem)sender).Checked = true;    // Check it 
-
-                // Uncheck other menu items 
-                if (mMDDYYYYToolStripMenuItem != (ToolStripMenuItem)sender)
-                {
-                    mMDDYYYYToolStripMenuItem.Checked = false;
-                }
-                if (dDMMYYYYToolStripMenuItem != (ToolStripMenuItem)sender)
-                {
-                    dDMMYYYYToolStripMenuItem.Checked = false;
-                }
-
-                // Update any controls relying on the date format setting here 
-            }
-        }
-
-        private void TimeFormatOptionToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (((ToolStripMenuItem)sender).Checked == false)  // If it was not checked before it was clicked 
-            {
-                ((ToolStripMenuItem)sender).Checked = true;    // Check it 
-
-                // Uncheck other menu items 
-                if (TwelveHourToolStripMenuItem != (ToolStripMenuItem)sender)
-                {
-                    TwelveHourToolStripMenuItem.Checked = false;
-                }
-                if (TwentyFourHourToolStripMenuItem != (ToolStripMenuItem)sender)
-                {
-                    TwentyFourHourToolStripMenuItem.Checked = false;
-                }
-
-                // Update any controls relying on the time format setting here 
-            }
-        }
-
-        private void checkBoxSyncTimeDate_CheckedChanged(object sender, EventArgs e)
-        {
-            if (checkBoxSyncTimeDate.Checked == false)
-            {
-                radioButtonUseSysTime.Enabled = false;
-                radioButtonUseCustomTime.Enabled = false;
-                dateTimePickerCustomTime.Enabled = false; 
-            }
-            else
-            {
-                radioButtonUseSysTime.Enabled = true;
-                radioButtonUseCustomTime.Enabled = true;
-                dateTimePickerCustomTime.Enabled = true;
-            }
-            UpdateTabText(); 
-        }
-
-
-        private void label2_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
-        {
-
-        }
-
-        private void buttonConfigDiscardChanges_Click(object sender, EventArgs e)
-        {
-            numericUpDownSampleRate.Value = (decimal)numericUpDownSampleRate.Tag; 
-
-            numericUpDownTestDurationHours.Value = (decimal)numericUpDownTestDurationHours.Tag;
-            numericUpDownTestDurationMinutes.Value = (decimal)numericUpDownTestDurationMinutes.Tag;
-            numericUpDownTestDurationSeconds.Value = (decimal)numericUpDownTestDurationSeconds.Tag;
-
-            textBoxPackageName.Text = (string)textBoxPackageName.Tag;
-
-            radioButtonStartDelayNone.Checked = (bool)radioButtonStartDelayNone.Tag;
-            radioButtonStartDelayOneMin.Checked = (bool)radioButtonStartDelayOneMin.Tag;
-            radioButtonStartDelayThreeMin.Checked = (bool)radioButtonStartDelayThreeMin.Tag;
-
-            checkBoxSyncTimeDate.Checked = (bool)checkBoxSyncTimeDate.Tag; 
-
-            UpdateTabText();
-        }
-
-        private void label4_Click(object sender, EventArgs e)
-        {
-
-        }
-        
+        #endregion
 
     }
-
-    
-
-
 
 }

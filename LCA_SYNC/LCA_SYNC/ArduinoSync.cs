@@ -1,20 +1,11 @@
-﻿
-// Not used anymore: 
-//#define DEBUG_MODE  // Uncomment for Debug mode; Comment for Arduino mode    !!!!
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.IO.Ports;
-using System.Configuration;
-using System.Configuration.Assemblies;
 using System.Management;
 using System.Text.RegularExpressions;
 using System.ComponentModel;
-using Windows.Management;
 
 namespace LCA_SYNC
 {
@@ -23,10 +14,8 @@ namespace LCA_SYNC
     public enum SUBCATEGORY : byte { ALL=0, START_TEST=0, PACKAGE_NAME=1, STOP_TEST=1, TEST_DUR=2, TIME_DATE=2, START_DELAY=3, SAMPLE_PERIOD=4, TEMP_UNITS=5, INIT_DATE=6, INIT_TIME=7, RESET_DT=8, LANGUAGE=9 };
     public enum ACTION : byte { READFILE=0, DELETEFILE=1, READVAR=32, WRITEVAR=96, SENDCOMMAND=96 };
     public enum ONEWAYCATEGORY : byte { TEST_STARTED=0, TEST_ENDED=1, ELAPSED_SAMPLES=2, ERROR_OCCURRED=3 }; // Left-shifted 5 bits and OR'd with DATACATEGORY.ONEWAY 
-    
-    //public enum ARDUINOTYPE { UNO, MEGA, SERIAL_ADAPTER, };
-
-// enum for arduino operating states? (Unresponsive, RunningTest, ComputerMode, etc.)
+    // public enum ARDUINOTYPE { UNO, MEGA, SERIAL_ADAPTER, ... };
+    // Make an enum for arduino operating states? (Unresponsive, Running, Ready, etc.)
 
 /// <summary>
 /// Encapsulates the communication to and from 
@@ -35,11 +24,6 @@ namespace LCA_SYNC
 /// </summary>
     public class SerialInterface
     {
-        /// <summary>
-        /// Interface for the Serial Port at which an Arduino Board
-        /// is connected.
-        /// </summary>
-
         private static SerialInterface singleton;
 
         public static SerialInterface Create()
@@ -82,7 +66,7 @@ namespace LCA_SYNC
                 }
 
             }
-            private set
+            set
             {
                 int oldArduinoValue = _Arduino;
                 if (value == null)
@@ -121,20 +105,15 @@ namespace LCA_SYNC
         }
 
         private static SpinLock _ActivateArduinoLock;
-        //private static object ;
 
-        //public EventHandler LCAArduinos_Changed { get; set; }
         private BindingList<ArduinoBoard> _LCAArduinos;
-        
         public BindingList<ArduinoBoard> LCAArduinos
         {
             get { return _LCAArduinos; }
             set
             {
-                
                 _LCAArduinos = value;
-                // Notify/update anything (i.e. UI elements, data transfers) depending on LCAArduinos here:
-                //LCAArduinos_Changed?.Invoke(this, new EventArgs());
+                // Note: BindingList has events that are invoked when things happen to it, and they can be useful for this program's GUI  
             }
             
         }
@@ -144,33 +123,38 @@ namespace LCA_SYNC
 
         private SerialInterface()  // Default constructor
         {
-            //
-            Arduino = null;
             LCAArduinos = new BindingList<ArduinoBoard>();
+            _Arduino = -1;
+            Arduino = null;
+            
             pnpWatcher = null;
             pnpWatcherHandler = null;
             USBPnPDeviceChanged += SerialInterface_USBPnPDeviceChanged;
-            _Arduino = -1;
-            _ActivateArduinoLock = new SpinLock();
-            //_GotActivateArduinoLock = false; 
-            //startPnPWatcher();
 
+            _ActivateArduinoLock = new SpinLock();
         }
 
+        /// <summary>
+        /// USBDeviceChanged event is caught in
+        /// order to prevent send/receive errors
+        /// and allow the program to connect to
+        /// the Arduino automatically.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void SerialInterface_USBPnPDeviceChanged(object sender, EventArrivedEventArgs e)
         {
             Console.WriteLine("USB PnP device changed");
 
-            //Console.WriteLine("You have added or removed a USB device. weatherData_USBDeviceChanged.\nEventArgs={0}\nsender={1}",e.ToString(),sender.ToString());
             //Console.WriteLine(((ManagementBaseObject)(((EventArrivedEventArgs)e).Context))["TargetInstance"].ToString());
 
             ManagementBaseObject device = (ManagementBaseObject)e.NewEvent["TargetInstance"];  // Is this right?
             string wclass = e.NewEvent.SystemProperties["__Class"].Value.ToString(); 
             string port = GetPortName(device);
 
-            Console.WriteLine(wclass);
-            Console.WriteLine(port);
-            Console.WriteLine(Arduino?.Port?.PortName == port);
+            //Console.WriteLine(wclass);
+            //Console.WriteLine(port);
+            //Console.WriteLine(Arduino?.Port?.PortName == port);
 
             string wop = string.Empty;
             switch (wclass)
@@ -189,7 +173,7 @@ namespace LCA_SYNC
                     break;
             }
             
-            if (Arduino?.Port?.PortName == port) //(Arduino != null && device.Equals(Arduino.mgmtBaseObj)) // If the added/removed device is the LCA Arduino in use
+            if (Arduino?.Port?.PortName == port)  // If the added/removed device is the LCA Arduino in use 
             {
                 Console.WriteLine("The LCA arduino device on port {0} that you were using was {1}.", port, wop);
 
@@ -199,22 +183,18 @@ namespace LCA_SYNC
                 }
                 else if (wop == "deleted")
                 {
-                    // Handle errors here. Or are there no errors to handle?  
-                    Arduino = null; 
-                }
-                
-                // Update LCA Arduino List 
-                // Do code to stop from writing to port or start writing, or whatever
+                    // Handle errors here. Code to stop from writing to port or start writing, or whatever?
+                    // Or are there no errors to handle?  
+                    Arduino = null; // This also updates the LCA Arduino list and invokes the event ArduinoChanged 
+                } 
             }
-            else if (LCAArduinos.ToList().Exists(a => a?.Port?.PortName == port)) //(LCAArduinos.ToList().Exists(a => a.Port.PortName == SerialInterface.GetPortName(device))) // If the added/removed device was an LCA Arduino not in use
+            else if (LCAArduinos.ToList().Exists(a => a?.Port?.PortName == port))  // If the added/removed device was an LCA Arduino not in use
             {
                 Console.WriteLine("An LCA arduino device on port {0} that you were not using was {1}.", port, wop);
-                //Console.WriteLine(serial.Arduino.Port.PortName);
-                //MessageBox.Show("An LCA arduino device you were not using was " + wop + ".");
 
                 if (wop == "deleted")
                 {
-                    // Untested 
+                    // This part is untested 
                     // Want to remove the other ArduinoBoard object from the list without disturbing the currently in-use Arduino
                     int remove_index = LCAArduinos.ToList().FindIndex(a => a?.Port?.PortName == port);
                     int old_arduino_index = _Arduino;
@@ -223,12 +203,8 @@ namespace LCA_SYNC
                     {
                         LCAArduinos.RemoveAt(remove_index);
                         _Arduino--; 
-                    }
-
-                        
+                    }     
                 }
-
-                // Update LCA Arduino List here
             }
             else  // The added/removed device was not an LCA Arduino (an LCA Arduino device previously known by the program)
             {
@@ -236,47 +212,40 @@ namespace LCA_SYNC
 
                 if (wop == "created" && IsGenuineArduino(device))  // A new arduino device was added!
                 {
-                    
-                    Thread.Sleep(TimeSpan.FromMilliseconds(2000));  // Give it a little time before trying to connect 
-                    ActivateArduino(device); // Checks if it is an LCA arduino device, and adds it to LCAArduinos if it is
+                    Thread.Sleep(TimeSpan.FromMilliseconds(2000));  // Give it a little time before trying to connect. Want the Arduino to go through its setup routine first.  
+                    ActivateArduino(device); // Checks if it is an LCA arduino device in the LCAArduinos list (which it shouldn't be), and adds it to LCAArduinos if it is not 
                 }
                 
             }
-            //((ManagementBaseObject)e["TargetInstance"])["Name"]
-            //((ManagementEventWatcher)sender).
 
-            Console.WriteLine("done with USB PnP device change.");
-
+            Console.WriteLine("Done with USB PnP device change.");
         }
 
         public void StartPnPWatcher()
         {
             // This code detects when a new PnP (Plug-n-Play) device is added or removed.
             
-            String scope = "root\\CIMV2";
+            string scope = "root\\CIMV2";
             ManagementScope scopeObject = new ManagementScope(scope);
             WqlEventQuery queryObject = 
                 new WqlEventQuery("__InstanceOperationEvent", 
-                new TimeSpan(0, 0, 1), 
+                new TimeSpan(0, 0, 0, 0, 500), 
                 "TargetInstance isa \"Win32_PnPEntity\"");
 
             pnpWatcher = new ManagementEventWatcher();
             pnpWatcher.Scope = scopeObject;
             pnpWatcher.Query = queryObject;
+            // The ManagementEventWatcher pnpWatcher is now set up to look for changes to USB PnP devices and invoke the EventArrived event within 500 ms. 
 
-            //pnpWatcherHandler = new EventArrivedEventHandler(USBPnPDeviceChanged);
-
-            pnpWatcher.EventArrived += USBPnPDeviceChanged; // pnpWatcherHandler;
-
+            pnpWatcher.EventArrived += USBPnPDeviceChanged; // Subscribe to the event where a USB PnP device is added/removed/modified 
             pnpWatcher.Options.Timeout = new TimeSpan(0, 0, 5);
-            //new EventArrivedEventHandler(USBDeviceChanged);
-            pnpWatcher.Start();
 
+            pnpWatcher.Start();  // Start watching for USB PnP device changes 
+            // pnpWatcher is stopped when the program closes. 
         }
 
         /// <summary>
-        /// Raised when a USB PnP device is connected
-        /// or disconnected from the computer. 
+        /// Raised when a USB PnP device is added/removed/modified.  
         /// </summary>
         public event EventArrivedEventHandler USBPnPDeviceChanged;
         
@@ -286,37 +255,35 @@ namespace LCA_SYNC
         
         public async Task ActivateAllArduinos()
         {
-            // Activate (Ping + RefreshInfo) all arduinos that have not been added yet
+            // This method activates (Ping + Adding to LCAArduino + RefreshInfo) all arduinos that have not been added yet
             foreach (ManagementBaseObject dev in FindArduinos())
             {
                 await ActivateArduino(dev);  // ActivateArduino does nothing for arduinos already added
 
             }
-
         }
         
         public List<ManagementBaseObject> FindArduinos()  // Find all arduinos connected
         {
-            // This method returns a list of arduino device management objects for all arduinos connected to the computer
+            // This method returns a list of Arduino device management objects for all Arduinos connected to the computer
             List<ManagementBaseObject> result = new List<ManagementBaseObject>();
 
             // Use WMI to get info
             ManagementObjectSearcher searcher = new ManagementObjectSearcher("root\\CIMV2", "SELECT * FROM Win32_PnPEntity WHERE ClassGuid=\"{4d36e978-e325-11ce-bfc1-08002be10318}\"");
 
-            // Search all USB PnP (Plug-n-Play) devices for arduinos
+            // Search all USB PnP (Plug-n-Play) devices for Arduinos
             foreach (ManagementObject queryObj in searcher.Get())
             {
-                //PNPDeviceID = USB\VID_1A86&PID_7523\5&1A63D808&0&2
+                // Device IDs look like this: PNPDeviceID = USB\VID_1A86&PID_7523\5&1A63D808&0&2
                 if (null != queryObj["PNPDeviceID"])
                 {
-                    string port = GetPortName(queryObj);
+                    string port = GetPortName(queryObj);  // "COM3", "COM4", etc.  
 
-                    if (IsGenuineArduino(queryObj))  // Genuine arduino, not a fake arduino or other USB PnP device  
+                    if (IsGenuineArduino(queryObj))  // If it's a genuine arduino, not a fake arduino or other USB PnP device  
                     {
-                        string ardType = GetArduinoType(GetVID(queryObj), GetPID(queryObj));
-                        Console.WriteLine("Arduino detected at port {0}. Arduino type: {1}.", port, ardType);
-
+                        string ardType = GetArduinoType(GetVID(queryObj), GetPID(queryObj));  // Mega, Due, Uno, etc. 
                         result.Add(queryObj);
+                        Console.WriteLine("Arduino detected at port {0}. Arduino type: {1}.", port, ardType);
                     }
                     else
                     {
@@ -340,7 +307,7 @@ namespace LCA_SYNC
 
         public async Task ActivateArduino(ManagementBaseObject device)  // Verifies that an arduino is LCA, and activates it if it is
         {
-            string port = GetPortName(device);
+            string port = GetPortName(device);  // "COM3", "COM4", etc.   
             bool ardExists = LCAArduinos.ToList().Exists(a => a.Port.PortName == port);  // Gives ArduinoBoard if one with that port exists, else null
 
             if (ardExists) // If an LCA arduino with the port specified doesn't exist in the LCAArduinos list, create an ArduinoBoard 
@@ -348,15 +315,11 @@ namespace LCA_SYNC
                 return; 
             }
 
-            Console.WriteLine("Currently verifying arduino on port " + port + "...");
+            Console.WriteLine("Currently verifying arduino on port {0}...", port);
             
             try
             {
-                
-
-                //CancellationTokenSource source = new CancellationTokenSource();  // Can/should this be used? 
-
-                // Now awaiting this:  (2/24/2019)
+                // CancellationTokenSource source = new CancellationTokenSource();  // Can/should this be used? 
                 await Task.Run(async delegate
                 {
                     Console.WriteLine("Lock status before TryEnter: _ActivateArduinoLock.IsHeld = {0}, _ActivateArduinoLock.IsHeldByCurrentThread = {1} ", _ActivateArduinoLock.IsHeld, _ActivateArduinoLock.IsHeldByCurrentThread);
@@ -378,21 +341,20 @@ namespace LCA_SYNC
                     
                     Console.WriteLine("Created a new arduino device. _GotActivateArduinoLock = {0}", _GotActivateArduinoLock);
                     Console.WriteLine("Lock status after TryEnter: _ActivateArduinoLock.IsHeld = {0}, _ActivateArduinoLock.IsHeldByCurrentThread = {1} ", _ActivateArduinoLock.IsHeld, _ActivateArduinoLock.IsHeldByCurrentThread); 
-                    //ArduinoBoard ard = new ArduinoBoard(device);
-                    //ard.ExpectedResponseType = DATACATEGORY.PING;  // Getting ready to ping it  // Set ExpectedResponseType to DATACATEGORY.PING in constructor.
+
                     ard.ArduinoDataChanged += delegate (object sender, ArduinoEventArgs e) { ArduinoDataChanged.Invoke(sender, e); };  // Pass event from arduinos' event handlers to SerialInterface's ArduinoDataChanged event handler 
-                    if (!ard.Port.IsOpen)  // ?
+                    if (!ard.Port.IsOpen)  // 
                     {
                         ard.OpenConnection();
                     }
-                    //ard.LCAChanged += delegate { Console.WriteLine("Canceling delay."); try { source?.Cancel(); } catch (Exception ee) { Console.WriteLine(ee.Message); } };
 
                     bool success = false; 
                     try
                     {
                         Console.WriteLine("Now pinging arduino...");
-                        await ard.Ping(5000);
-                        success = true; 
+                        await ard.Ping(5000);  // The timeout is 5 seconds for this ping. 
+                        // Sending a ping let's us verify that the Arduino is from one of our sensor packages and that this program can communicate with it. 
+                        success = true; // If there's no response to the ping or there's another error, ard.Ping() will throw and exception and success will never be set to true.
                     }
                     catch (Exception ex)
                     {
@@ -400,52 +362,51 @@ namespace LCA_SYNC
                         success = false; 
                     }
 
-                    //Console.WriteLine("After Communicate. resp.data=" + resp.data + ", resp.validity=" + resp.validity.ToString());
                     //Console.WriteLine("Lock status after ping: _ActivateArduinoLock.IsHeld = {0}, _ActivateArduinoLock.IsHeldByCurrentThread = {1} ", _ActivateArduinoLock.IsHeld, _ActivateArduinoLock.IsHeldByCurrentThread);
 
-                    if (!success)  // After 5 ms, if the arduino instance hasn't gotten a ping back telling that it's an LCA board
+                    if (!success)  // If there's some sort of error and a correct ping response is not received before the timeout 
                     {
-                        if (LCAArduinos.ToList().Exists(a => a.Port.PortName == port))
+                        if (LCAArduinos.ToList().Exists(a => a.Port.PortName == port))  // If we've previously connected to this arduino, but now it isn't responding 
                         {
+                            // Note: This case should never happen to the ping that happens in this method because this method only executes fully if the arduino is not already in LCAArduinos 
                             // One of the LCA arduinos is not responding!
-                            // Set some kind of status variable in arduino instance? (Unresponsive, RunningTest, ComputerMode, etc.)
+                            // Set some kind of status variable in arduino instance? (Unresponsive, Running, Ready, etc.)
                             Console.WriteLine("Ping response not received, but the device on this port is thought to be a verified LCA arduino.");
                         }
-                        else
+                        else // The unresponsive arduino is not in LCAArduinos
                         {
+                            // Get rid of the ArduinoBoard object ard. 
+                            // The arduino is not responding to the ping, so it could be either unresponsive or not an arduino from one of our sensor packages.
+                            // In either case, it is not an arduino we want to add to LCAArduinos if we cannot communicate with it. 
                             ard.Port.Close();
                             ard.Port = null;  // "Destroy" its serial port (unecessary?)
                             ard = null;       // "Destroy" the arduino instance, since ping was not received 
                             Console.WriteLine("Ping response not received. The ArduinoBoard instance was set to null.");
                         }
-
                     }
                     else
                     {
-
                         Console.WriteLine("\n\nYES!!!! IT PINGED SUCCESSFULLY!!!!!\n\n");
 
-                        /*
-                        // The old way (sort of): 
-                        LCAArduinos.Add(ard); // Usually, this would be done only after GetInfo()  (???), but I'm doing it now to test the UI since GetInfo is not implemented yet. 2/9/2019.
-
-                        if (_Arduino == -1)  // If no arduino is in use
+                        if (Arduino == null)  // If there is no LCA arduino currently in use
                         {
-                            _Arduino = LCAArduinos.Count - 1; // Add this arduino as the one in use
+                            // Adds the arduino to LCAArduinos if it is not there already, and sets the arduino as the one currently in use. 
+                            Arduino = ard; 
                         }
-                        */
+                        else
+                        {
+                            // Adds the arduino to the list of available LCA arduino devices. It's just not the one we're currently using. 
+                            LCAArduinos.Add(ard);  
+                        }
+                        
 
-                        Arduino = ard; // The new way of doing it. (Untested!)
-
-                        // Claim position as the "current", in-use arduino here, if it is untaken. 
-
-                        //Console.WriteLine("");
                         success = false; 
                         try
                         {
-                            await ard.RefreshInfo(); // It pinged successfully, so it's a real LCA arduino. It should get more info about itself and add itself to the 
-                                                     // await a delay? Delay for the length of a timeout.
-                                                     // after delay, check that info has been received (syncNeeded == false). If it hasn't, give error or something. 
+                            // It already pinged successfully, so it's a real LCA arduino. Now we want more information about it. 
+                            // So RefreshInfo gets more info about the arduino in order to have something to show in the GUI 
+                            await ard.RefreshInfo();
+                            // If there's no response or there's another error, ard.RefreshInfo() will throw and exception and success will never be set to true.
                             success = true; 
                         }
                         catch (Exception ex)
@@ -453,10 +414,6 @@ namespace LCA_SYNC
                             Console.WriteLine(ex.Message + " Inner exception: " + ex.InnerException);
                             success = false; 
                         }
-
-
-                        // In arduino instance, add arduino to LCAArduinos, and also to Arduino if that was claimed earlier. (once data received)
-                        // In arduino instance, destroy this thread (if possible) to prevent it from sitting here doing nothing until it times out. 
                     }
                     Console.WriteLine("About to exit lock. _ActivateArduinoLock.IsHeld = {0}, _ActivateArduinoLock.IsHeldByCurrentThread = {1} ", _ActivateArduinoLock.IsHeld, _ActivateArduinoLock.IsHeldByCurrentThread);
                     if (_GotActivateArduinoLock) { _ActivateArduinoLock.Exit(false); }
@@ -464,24 +421,16 @@ namespace LCA_SYNC
                     return;
                 });
 
-
-                
-
-
                 //Console.WriteLine("End of ActivateArduino.\n\n");
-
-
             }
             catch (Exception e)
             {
                 Console.WriteLine("In ActivateArduino, caught: {0}", e.Message);
-                
             }
             finally
             {
                 //if (_GotActivateArduinoLock) { _ActivateArduinoLock.Exit(); }
             }
-
 
         }
 
@@ -502,22 +451,25 @@ namespace LCA_SYNC
 
         public static string GetPortName(ManagementBaseObject dev)
         {
+            // Gets the port name ("COM1", "COM2", etc.) from the ManagementBaseObject for the USB PnP device 
             return new Regex(@"\((COM\d+)\)").Match(dev["Name"].ToString()).Groups[1].Value;
         }
 
         public static string GetVID(ManagementBaseObject dev)
         {
+            // Gets the USB VID (vendor ID) from the ManagementBaseObject for the USB PnP device 
             return new Regex(@"(VID_)([0-9a-fA-F]+)").Match(dev["PNPDeviceID"].ToString()).Groups[2].Value.ToLower();
         }
 
         public static string GetPID(ManagementBaseObject dev)
         {
+            // Gets the USB PID (product ID) from the ManagementBaseObject for the USB PnP device 
             return new Regex(@"(PID_)([0-9a-fA-F]+)").Match(dev["PNPDeviceID"].ToString()).Groups[2].Value.ToLower();
         }
 
         public static string GetArduinoType(string vid, string pid)
         {
-            // Maybe return an enum instead? And then make another funtion for getting the string from the enum?
+            // Maybe return an enum instead? And then make another funtion for getting the string from the enum? 
             if (vid.ToLower() == "2341" || vid.ToLower() == "1b4f")  // Has the official Arduino LLC USB PID or Sparkfun USB PID (?)
             {
                 switch (pid.ToLower())
@@ -545,9 +497,8 @@ namespace LCA_SYNC
                     default:
                         return "UNKNOWN";
                 }
-
             }
-            else  // Does not have the official Arduino ESB PID. (Could be an old Arduino, fake Arduino, or not an Arduino.)
+            else  // Does not have the official Arduino USB PID. (Could be an old Arduino, fake Arduino, or not an Arduino.)
             {
                 return "OTHER/NON-ARDUINO";
             }
@@ -556,120 +507,12 @@ namespace LCA_SYNC
 
         public static bool IsGenuineArduino(ManagementBaseObject dev)
         {
-            // The 0403 VID was used by older Arduinos which use FTDI
+            // The 0403 VID was used by older Arduinos which use FTDI 
             // Now, Arduinos use the 2341 VID. 
             string vid = GetVID(dev);
             return vid == "2341" || vid == "1b4f" || (vid == "0403" && dev["Description"].ToString().Contains("Arduino"));
         }
 
-        /* // I'm going to remove support for fake arduinos since we won't be using them anyway
-        public static bool IsFakeArduino(ManagementBaseObject dev)
-        {
-            return GetVID(dev) == "1a86" || dev["Description"].ToString().Contains("CH340") || dev["Manufacturer"].ToString().Contains("wch.cn") || dev["Service"].ToString().Contains("CH341SER_A64"); 
-        }
-        */
-
-
     }
-
-    /*
-    public class ListWithEvents<T> : List<T>
-    {
-
-        public event EventHandler OnAdd;
-        public event EventHandler OnRemove;
-
-        public void Add(T item)
-        {
-            base.Add(item);
-            OnAdd?.Invoke(this, null);
-        }
-
-        public bool Remove(T item)
-        {
-            bool result = base.Remove(item);
-            OnRemove?.Invoke(this, null);
-            return result; 
-        }
-
-
-    }
-
-    public class SyncList<T> : System.ComponentModel.BindingList<T>
-    {
-
-        private System.ComponentModel.ISynchronizeInvoke _SyncObject;
-        private System.Action<System.ComponentModel.ListChangedEventArgs> _FireEventAction;
-
-        public SyncList() : this(null)
-        {
-        }
-
-        public SyncList(System.ComponentModel.ISynchronizeInvoke syncObject)
-        {
-
-            _SyncObject = syncObject;
-            _FireEventAction = FireEvent;
-        }
-
-        protected override void OnListChanged(System.ComponentModel.ListChangedEventArgs args)
-        {
-            if (_SyncObject == null)
-            {
-                FireEvent(args);
-            }
-            else
-            {
-                _SyncObject.Invoke(_FireEventAction, new object[] { args });
-            }
-        }
-
-        private void FireEvent(System.ComponentModel.ListChangedEventArgs args)
-        {
-            base.OnListChanged(args);
-        }
-    }
-    */ 
-
-
-    class ConfigDataItem
-    {
-
-        string packageName { get; set; } = "Package Name";
-        UInt32 testDuration { get; set; } = 1200;  // Variable type? 
-        UInt16 startDelay { get; set; } = 0;
-        double sampleRate { get; set; } = 1.0;
-        char temperatureUnits { get; set; } = 'C';
-        DateTime initialDateTime { get; set; } = DateTime.Now; // This is different from arduino code (date and time combined)
-        bool resetDateTime { get; set; } = true;
-
-        /*
-        package_name = root["pkg_name"] | "Untitled";    // Package name 
-  test_duration = root["test_dur"] | 1200;         // 1200 second (20 minute) default test duration
-  start_delay = root["start_delay"] | 0;           // 0 second default start delay
-  sample_rate = root["smpl_rate"] | 1.0;           // 1 second default sample rate
-  temp_units = root["temp_units"] | 'C';           // Celcius is default 
-  initial_date = root["init_date"] | "01/01/2000"; // 01/01/2000 initial date (DD/MM/YYYY)
-  initial_time = root["init_time"] | "00:00:00";   // 00:00:00 initial time
-  reset_date_time = root["reset_date_time"] | 1;   // Time and date are reset by default.  
-    */
-
-
-    }
-
- /*
-    public struct Response
-    {
-        public object data { get; }
-        public ArduinoBoard.COMMERROR validity { get; }
-        public Response(object data, ArduinoBoard.COMMERROR validity)
-        {
-            this.data = data;
-            this.validity = validity;
-        }
-    }*/
-
-    
-    
 
 }

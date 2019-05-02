@@ -228,7 +228,6 @@
             this.labelStatusPackageName.Size = new System.Drawing.Size(199, 31);
             this.labelStatusPackageName.TabIndex = 0;
             this.labelStatusPackageName.Text = "Package Name";
-            this.labelStatusPackageName.Click += new System.EventHandler(this.label4_Click);
             // 
             // ConfigPage
             // 
@@ -523,7 +522,6 @@
             this.labelSamplePeriod.Size = new System.Drawing.Size(75, 13);
             this.labelSamplePeriod.TabIndex = 13;
             this.labelSamplePeriod.Text = "Sample Period";
-            this.labelSamplePeriod.Click += new System.EventHandler(this.label2_Click);
             // 
             // SensorsPage
             // 
@@ -543,7 +541,6 @@
             this.DataPage.TabIndex = 3;
             this.DataPage.Text = "Data";
             this.DataPage.UseVisualStyleBackColor = true;
-            this.DataPage.Click += new System.EventHandler(this.tabPage1_Click);
             // 
             // buttonConnectDisconnect
             // 
@@ -749,7 +746,7 @@
             this.arduinoList.Size = new System.Drawing.Size(184, 21);
             this.arduinoList.TabIndex = 0;
             this.arduinoList.TabStop = false;
-            this.arduinoList.SelectedIndexChanged += new System.EventHandler(this.comboBox1_SelectedIndexChanged);
+            this.arduinoList.SelectedIndexChanged += new System.EventHandler(this.arduinoList_SelectedIndexChanged);
             // 
             // buttonArduinoSync
             // 

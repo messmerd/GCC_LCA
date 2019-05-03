@@ -41,8 +41,6 @@ RTC_DS3231 rtc;         // Real-time clock (RTC) object
 #define RTC_INT_PIN 47            // RTC interrupt pin 
 #define chipSelect 53             // For the SD card reader
 
-#define SERIAL_COMM_TIME 300000   // The max time in microseconds needed for serial communications in one sample period (need to determine experimentally)
-
 unsigned long samples_elapsed = 0; 
 unsigned long last_sample = 0; 
 
@@ -156,7 +154,7 @@ void setup()
 
   // NEED TO CHECK THAT CONFIG STUFF IS VALID - especially the sample rate
 
-  delay(500); // Just in case things need to settle
+  //delay(500); // Just in case things need to settle
   
   digitalWrite(LED_PIN2,LOW);
   Timer1.attachInterrupt( Timer1_ISR ); // attach the service routine here
@@ -174,9 +172,11 @@ void loop()
   {
     if (samplePeriodReached) // (_timer >= _timer_max)   // One sample period has passed
     {  
+      noInterrupts();
       EIMSK &= ~(1 << INT0);  // Disable pushbutton interrupt 
       //TIMSK1 &= ~(1<<OCIE1A);   //timer1 disable the interrupt
       Timer1.stop(); 
+      interrupts(); 
       
       // disable serial event interrupt? 
       //noInterrupts();                 //Disable interrupts  (!!!)
@@ -212,7 +212,7 @@ void loop()
       //Serial.println(TCNT5); 
       //printToFile(dataFileName, datStr, true);
 
-      //delay(100);  // needed for prints? 
+      noInterrupts(); 
     
       samples_elapsed++;
     
@@ -230,11 +230,13 @@ void loop()
 
       //interrupts();                 //Enable interrupts  (!!!)
       EIMSK |= (1 << INT0);  // Enable pushbutton interrupt 
+
+      interrupts(); 
     }
 
     if (dataReceived) 
     {
-      digitalWrite(LED_PIN2, !digitalRead(LED_PIN2));
+      //digitalWrite(LED_PIN, !digitalRead(LED_PIN));
       //digitalWrite(LED_PIN2,HIGH);
       //noInterrupts();
       if (Serial)  // Problem with this line? Maybe remove the Serial condition? 
@@ -264,7 +266,7 @@ void loop()
     // Communicate with computer here. Outside of the test here, there are no strict requirements for how much time serial communication can take
     if (dataReceived) 
     {
-      digitalWrite(LED_PIN2, !digitalRead(LED_PIN2));
+      //digitalWrite(LED_PIN, !digitalRead(LED_PIN));
       if (Serial)  // Problem with this line? Maybe remove the Serial condition? 
       {
         ProcessData();
@@ -277,36 +279,6 @@ void loop()
   
 }
 
-
-
-// Increments _timer every millisecond. After _timer reaches _timer_max, the sample period has been reached. 
-//ISR(TIMER1_COMPA_vect){    //This is the interrupt request
-//  _timer++;
-//}
-
-void Timer1_ISR()
-{
-  
-  if (testStarted && !samplePeriodReached)
-  {
-    if (missedClock)
-    {
-      // Error! Clock signal not received after its sample period 
-      // isSerialSafeRegion = true;  // ?? (for sending error)
-      //Serial.println("---sampling error!");
-    }
-    else if (inSerialSafeRegion)
-    {
-      // Set Timer1 to 2*SERIAL_COMM_TIME:
-      Timer1.setPeriod(2*SERIAL_COMM_TIME); // In microseconds 
-      inSerialSafeRegion = false; 
-      missedClock = true; // If the clock is not missed, sampling routine in the main loop will set this to false 
-    }
-    
-  }
-  
-  //_timer++;
-}
 
 void serialEvent(){   // Note: serialEvent() doesn't work on Arduino Due!!!
   //delay(100); 

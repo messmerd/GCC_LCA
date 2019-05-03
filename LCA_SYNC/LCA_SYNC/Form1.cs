@@ -113,6 +113,8 @@ namespace LCA_SYNC
             serial.ActivateAllArduinos();
             RefreshControlsEnable();
 
+            textBoxPackageName.Enabled = true;
+
         }
 
         #region Controls Event Handlers
@@ -308,7 +310,7 @@ namespace LCA_SYNC
         {
             // For switching between arduinos. Not tested yet!!
 
-            if (arduinoList.Items.Count > 0)
+            if (arduinoList.Items.Count > 0 && serial.Arduino != (ArduinoBoard)arduinoList.SelectedItem)
             {
                 bool success = false;
                 try

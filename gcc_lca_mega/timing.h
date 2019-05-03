@@ -9,10 +9,12 @@
 #define DEBUG_FILE "/debug.txt"
 #define DATALOG_FILE_ROOT "/data"
 
+#define SERIAL_COMM_TIME 300000   // The max time in microseconds needed for serial communications in one sample period (need to determine experimentally)
+
 void setRTCSQWInput(float seconds); 
 void setCounter5(float seconds); 
 void pushbuttonPress(); 
-void startTest();
+void startTest(bool sendSerialResponse);
 void stopTest();
 
 #endif 

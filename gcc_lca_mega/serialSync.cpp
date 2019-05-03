@@ -92,11 +92,6 @@ void ProcessConfigRequest()
         Serial.write(dataIn[2]);
         Serial.print(conf.package_name);  // Using null terminator to mark end of string
         Serial.write(0x00);
-        //byte bytebuffer[3];  // Stores bottom 3 bytes of long. 
-        //bytebuffer[0] = (conf.test_duration >> 16);
-        //bytebuffer[1] = (conf.test_duration >> 8);
-        //bytebuffer[2] = conf.test_duration;
-        //Serial.write(bytebuffer, 3); // Send as 3 bytes
         Serial.print(conf.test_duration, HEX);
         Serial.write(0x00);
         Serial.write((byte)(conf.start_delay + 0x4));
@@ -112,7 +107,7 @@ void ProcessConfigRequest()
   {
     if (subcat == 1) // Package name
     {
-      conf.package_name.reserve(32);
+      conf.package_name.reserve(33);
       conf.package_name = "";
       int i = 3;
       for (i; i<dataInPos-1; i++)
@@ -238,12 +233,7 @@ void ProcessOtherCategory()
       {
         if (subcat == 0 && !testStarted)
         {
-          startTest(); 
-          Serial.write(sot); 
-          Serial.write(dataIn[1]);
-          Serial.write(dataIn[2]);
-          Serial.write((byte)testStarted);
-          Serial.write(eot); 
+          startTest(true); // Sends a response message in startTest method
         }
         else if (subcat == 1 && testStarted) 
         {
@@ -273,8 +263,7 @@ void ProcessOtherCategory()
         {
           yr[i-8] = (char)dataIn[i];
         }
-        rtc.adjust(DateTime ((uint16_t)atoi(yr), (uint8_t)(dataIn[6]-4), (uint8_t)(dataIn[7]-4), (uint8_t)(dataIn[3]-4), (uint8_t)(dataIn[4]-4), (uint8_t)(dataIn[5]-4)));
-        digitalWrite(LED_PIN2, !digitalRead(LED_PIN2));
+        rtc.adjust(DateTime((uint16_t)atoi(yr), (uint8_t)(dataIn[6]-4), (uint8_t)(dataIn[7]-4), (uint8_t)(dataIn[3]-4), (uint8_t)(dataIn[4]-4), (uint8_t)(dataIn[5]-4)));
         Serial.write(sot); 
         Serial.write(dataIn[1]);
         Serial.write(dataIn[2]);

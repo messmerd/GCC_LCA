@@ -138,6 +138,8 @@ namespace LCA_SYNC
             _StartDelay = 0;
             _SamplePeriod = 0;
 
+            _TestStarted = false; 
+
             _ReceivedBytes = new List<byte>();
             
             Port.Encoding = Encoding.GetEncoding(28591);
@@ -595,7 +597,7 @@ namespace LCA_SYNC
                                 {
                                     if (resp[3] == 0x00 || resp[3] == 0x01) 
                                     {
-                                        TestStarted = Convert.ToBoolean(resp[3]);
+                                        TestStarted = Convert.ToBoolean(resp[3] & 0x01);
                                         return;
                                     }
                                     else
@@ -772,13 +774,13 @@ namespace LCA_SYNC
                 Console.WriteLine("OneWay category: {0}", (byte)(data[1] >> 3));
                 switch ((byte)(data[1] >> 3)) // Only look at upper 5 bits
                 {
-                    case (byte)ONEWAYCATEGORY.TEST_STARTED:     // Test has started 
-                        TestStarted = true;
-                        Console.WriteLine("Just changed TestStarted to true");
-                        break;
                     case (byte)ONEWAYCATEGORY.TEST_ENDED:       // Test has ended 
                         TestStarted = false;
                         Console.WriteLine("Just changed TestStarted to false");
+                        break;
+                    case (byte)ONEWAYCATEGORY.TEST_STARTED:     // Test has started 
+                        TestStarted = true;
+                        Console.WriteLine("Just changed TestStarted to true");
                         break;
                     default:
                         Console.WriteLine("Unknown OneWay category.");

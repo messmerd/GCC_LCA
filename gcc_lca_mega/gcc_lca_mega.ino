@@ -5,13 +5,14 @@
 #include "Adafruit_MAX31855.h"
 #include "RTClib.h" 
 #include "TimerOne.h" 
+#include "serialSync.h"
 #include "timing.h"
 
 extern Config conf;     // An singleton object for working with the config file and sensor file
 
 bool COMP_MODE;         // Whether in computer mode or not 
 
-RTC_DS3231 rtc;         // Real-time clock (RTC) object
+RTC_DS3231 rtc;         // Real-time clock (RTC) object - Uses I2C (Wire, not Wire1)
 
 // Digital thermocouple chip select and data output pins:
 // Note: pins 50 and 51 appear to not work on this Mega (50, 51, and 52 are used for SPI apparently)
@@ -39,7 +40,7 @@ RTC_DS3231 rtc;         // Real-time clock (RTC) object
 #define PUSHBUTTON_PIN 2          // Start test pushbutton
 #define CD_PIN 13                 // Card detect pin 
 #define RTC_INT_PIN 47            // RTC interrupt pin 
-#define chipSelect 53             // For the SD card reader
+//#define chipSelect 53             // For the SD card module - SD card module uses SPI. Use hardware chip select (pin 53)
 
 unsigned long samples_elapsed = 0; 
 unsigned long last_sample = 0; 
@@ -64,8 +65,8 @@ char dataFileName[16] = DATALOG_FILE_ROOT;  // There's a max length to this! "da
 String dataString;
 
 //void initTimer0(double seconds);
-bool ProcessData();
-void Timer1_ISR();
+//bool ProcessData();
+//void Timer1_ISR();
 
 
 // Initialize the digital thermocouples: 
@@ -118,7 +119,7 @@ void setup()
 
   // Initialize SD library
   // Note: SD card must be formatted as FAT16 or FAT32 
-  while (!SD.begin(chipSelect)) {
+  while (!SD.begin()) {
     //Serial.println(F("fail init. SD"));
     delay(1000);
   }
@@ -149,7 +150,7 @@ void setup()
   pinMode(RTC_INT_PIN, INPUT_PULLUP);
   rtc.writeSqwPinMode(DS3231_SquareWave1kHz); // For sample interrupts 
   
-  conf.read2(true);   // Read from config file, setting the date and time if needed
+  conf.read(true);   // Read from config file, setting the date and time if needed
   //Serial.println();
 
   // NEED TO CHECK THAT CONFIG STUFF IS VALID - especially the sample rate
@@ -234,7 +235,7 @@ void loop()
       interrupts(); 
     }
 
-    if (dataReceived) 
+    if (dataReceived && inSerialSafeRegion) 
     {
       //digitalWrite(LED_PIN, !digitalRead(LED_PIN));
       //digitalWrite(LED_PIN2,HIGH);

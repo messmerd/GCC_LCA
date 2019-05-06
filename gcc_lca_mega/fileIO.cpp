@@ -1,5 +1,4 @@
 
-#include "ArduinoJson.h"
 #include "fileIO.h"	
 #include "RTClib.h"
 #include <SPI.h>
@@ -20,7 +19,7 @@ Config::Config() // Create default constructor later
 
 
 // Reads from SD card's config file, updates values of config variables stored on Arduino, and also sets RTC if needed. 
-boolean Config::read2(boolean setRTC)
+boolean Config::read(boolean setRTC)
 {
   // Open file for reading
   File file = SD.open(CONFIG_FILE);

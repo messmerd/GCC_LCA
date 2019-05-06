@@ -64,7 +64,7 @@
             this.numericUpDownTestDurationMinutes = new System.Windows.Forms.NumericUpDown();
             this.numericUpDownTestDurationHours = new System.Windows.Forms.NumericUpDown();
             this.labelTestDuration = new System.Windows.Forms.Label();
-            this.numericUpDownSampleRate = new System.Windows.Forms.NumericUpDown();
+            this.numericUpDownSamplePeriod = new System.Windows.Forms.NumericUpDown();
             this.labelSamplePeriod = new System.Windows.Forms.Label();
             this.SensorsPage = new System.Windows.Forms.TabPage();
             this.DataPage = new System.Windows.Forms.TabPage();
@@ -101,7 +101,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationSeconds)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationMinutes)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationHours)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownSampleRate)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownSamplePeriod)).BeginInit();
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.mainBindingSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.serialInterfaceBindingSource)).BeginInit();
@@ -249,7 +249,7 @@
             this.ConfigPage.Controls.Add(this.numericUpDownTestDurationMinutes);
             this.ConfigPage.Controls.Add(this.numericUpDownTestDurationHours);
             this.ConfigPage.Controls.Add(this.labelTestDuration);
-            this.ConfigPage.Controls.Add(this.numericUpDownSampleRate);
+            this.ConfigPage.Controls.Add(this.numericUpDownSamplePeriod);
             this.ConfigPage.Controls.Add(this.labelSamplePeriod);
             this.ConfigPage.Location = new System.Drawing.Point(4, 22);
             this.ConfigPage.Name = "ConfigPage";
@@ -486,29 +486,29 @@
             this.labelTestDuration.TabIndex = 15;
             this.labelTestDuration.Text = "Test Duration";
             // 
-            // numericUpDownSampleRate
+            // numericUpDownSamplePeriod
             // 
-            this.numericUpDownSampleRate.DecimalPlaces = 3;
-            this.numericUpDownSampleRate.Increment = new decimal(new int[] {
+            this.numericUpDownSamplePeriod.DecimalPlaces = 3;
+            this.numericUpDownSamplePeriod.Increment = new decimal(new int[] {
             125,
             0,
             0,
             196608});
-            this.numericUpDownSampleRate.Location = new System.Drawing.Point(41, 139);
-            this.numericUpDownSampleRate.Maximum = new decimal(new int[] {
+            this.numericUpDownSamplePeriod.Location = new System.Drawing.Point(41, 139);
+            this.numericUpDownSamplePeriod.Maximum = new decimal(new int[] {
             600,
             0,
             0,
             65536});
-            this.numericUpDownSampleRate.Minimum = new decimal(new int[] {
+            this.numericUpDownSamplePeriod.Minimum = new decimal(new int[] {
             1000,
             0,
             0,
             196608});
-            this.numericUpDownSampleRate.Name = "numericUpDownSampleRate";
-            this.numericUpDownSampleRate.Size = new System.Drawing.Size(57, 20);
-            this.numericUpDownSampleRate.TabIndex = 14;
-            this.numericUpDownSampleRate.Value = new decimal(new int[] {
+            this.numericUpDownSamplePeriod.Name = "numericUpDownSamplePeriod";
+            this.numericUpDownSamplePeriod.Size = new System.Drawing.Size(57, 20);
+            this.numericUpDownSamplePeriod.TabIndex = 14;
+            this.numericUpDownSamplePeriod.Value = new decimal(new int[] {
             1000,
             0,
             0,
@@ -798,7 +798,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationSeconds)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationMinutes)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownTestDurationHours)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownSampleRate)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDownSamplePeriod)).EndInit();
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.mainBindingSource)).EndInit();
@@ -822,7 +822,7 @@
         private System.Windows.Forms.BindingSource mainBindingSource;
         private System.Windows.Forms.BindingSource serialInterfaceBindingSource;
         private System.Windows.Forms.Label labelSamplePeriod;
-        private System.Windows.Forms.NumericUpDown numericUpDownSampleRate;
+        private System.Windows.Forms.NumericUpDown numericUpDownSamplePeriod;
         private System.Windows.Forms.NumericUpDown numericUpDownTestDurationSeconds;
         private System.Windows.Forms.NumericUpDown numericUpDownTestDurationMinutes;
         private System.Windows.Forms.NumericUpDown numericUpDownTestDurationHours;

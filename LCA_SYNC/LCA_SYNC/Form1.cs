@@ -58,21 +58,10 @@ namespace LCA_SYNC
             labelTestDuration.MouseDown += UnfocusControls;
             labelStartDelay.MouseDown += UnfocusControls;
 
-            // Status Page setup:
-            buttonStatusStartStop.Tag = false;
-
             // Config Page setup: 
-            numericUpDownSampleRate.Tag = (decimal)1;           // The tag will store the arduino's current value
-            numericUpDownTestDurationHours.Tag = (decimal)0;    // The tag will store the arduino's current value
-            numericUpDownTestDurationMinutes.Tag = (decimal)0;  // The tag will store the arduino's current value
-            numericUpDownTestDurationSeconds.Tag = (decimal)30; // The tag will store the arduino's current value
-            radioButtonStartDelayNone.Tag = true;               // Checked by default 
-            radioButtonStartDelayOneMin.Tag = false;            // Unchecked by default 
-            radioButtonStartDelayThreeMin.Tag = false;          // Unchecked by default 
             checkBoxSyncTimeDate.Tag = false;                   // Unchecked by default 
-            textBoxPackageName.Tag = "";
             textBoxPackageName.TextChanged += TextBoxPackageName_TextChanged;
-            numericUpDownSampleRate.ValueChanged += NumericUpDownSampleRate_ValueChanged;
+            numericUpDownSamplePeriod.ValueChanged += NumericUpDownSampleRate_ValueChanged;
             numericUpDownTestDurationHours.ValueChanged += NumericUpDownTestDuration_ValueChanged;
             numericUpDownTestDurationMinutes.ValueChanged += NumericUpDownTestDuration_ValueChanged;
             numericUpDownTestDurationSeconds.ValueChanged += NumericUpDownTestDuration_ValueChanged;
@@ -171,10 +160,10 @@ namespace LCA_SYNC
 
         private void NumericUpDownSampleRate_ValueChanged(object sender, EventArgs e)
         {
-            if (Math.Floor(numericUpDownSampleRate.Value * 8) != numericUpDownSampleRate.Value * 8) // If the sample rate is not a multiple of 0.125 
+            if (Math.Floor(numericUpDownSamplePeriod.Value * 8) != numericUpDownSamplePeriod.Value * 8) // If the sample rate is not a multiple of 0.125 
             {
                 //Console.WriteLine("numericUpDownSampleRate: Not a multiple of 0.125");
-                numericUpDownSampleRate.Value = Math.Round(numericUpDownSampleRate.Value * 8) / 8; // Set it to the nearest multiple of 0.125 
+                numericUpDownSamplePeriod.Value = Math.Round(numericUpDownSamplePeriod.Value * 8) / 8; // Set it to the nearest multiple of 0.125 
             }
             else  // Valid input
             {
@@ -245,6 +234,11 @@ namespace LCA_SYNC
         // Click 'Sync'
         private async void buttonSync_Click(object sender, EventArgs e)
         {
+            if (serial.Arduino == null)
+            {
+                return;  // Just to be safe 
+            }
+
             // This method currently doesn't check to see if it syncs successfully... Might be a problem
             UpdateTabText();
             try
@@ -253,17 +247,17 @@ namespace LCA_SYNC
                 {
                     this.UseWaitCursor = true; // This isn't working for some reason 
                     buttonSync.Enabled = false;
-                    if ((decimal?)numericUpDownSampleRate.Tag != numericUpDownSampleRate.Value)
-                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.SAMPLE_PERIOD, ACTION.WRITEVAR, (float)numericUpDownSampleRate.Value);
-                    if ((decimal?)numericUpDownTestDurationHours.Tag != numericUpDownTestDurationHours.Value || (decimal?)numericUpDownTestDurationMinutes.Tag != numericUpDownTestDurationMinutes.Value || (decimal?)numericUpDownTestDurationSeconds.Tag != numericUpDownTestDurationSeconds.Value)
+                    if ((decimal?)serial.Arduino.SamplePeriod != numericUpDownSamplePeriod.Value)
+                        await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.SAMPLE_PERIOD, ACTION.WRITEVAR, (float)numericUpDownSamplePeriod.Value);
+                    if (Math.Floor((decimal)serial.Arduino.TestDuration / 60 / 60) != numericUpDownTestDurationHours.Value || Math.Floor((decimal)serial.Arduino.TestDuration / 60) % 60 != numericUpDownTestDurationMinutes.Value || (decimal)serial.Arduino.TestDuration % 60 != numericUpDownTestDurationSeconds.Value)
                         await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.TEST_DUR, ACTION.WRITEVAR, (uint)numericUpDownTestDurationHours.Value * 60 * 60 + (uint)numericUpDownTestDurationMinutes.Value * 60 + (uint)numericUpDownTestDurationSeconds.Value);
-                    if ((string)textBoxPackageName.Tag != textBoxPackageName.Text && textBoxPackageName.BackColor == Color.White)
+                    if (serial.Arduino.PackageName != textBoxPackageName.Text && textBoxPackageName.BackColor == Color.White)
                         await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.PACKAGE_NAME, ACTION.WRITEVAR, textBoxPackageName.Text);
-                    if ((bool)radioButtonStartDelayNone.Tag != radioButtonStartDelayNone.Checked && radioButtonStartDelayNone.Checked)
+                    if ((serial.Arduino.StartDelay == 0) != radioButtonStartDelayNone.Checked && radioButtonStartDelayNone.Checked)
                         await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.START_DELAY, ACTION.WRITEVAR, 0);
-                    if ((bool)radioButtonStartDelayOneMin.Tag != radioButtonStartDelayOneMin.Checked && radioButtonStartDelayOneMin.Checked)
+                    if ((serial.Arduino.StartDelay == 60) != radioButtonStartDelayOneMin.Checked && radioButtonStartDelayOneMin.Checked)
                         await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.START_DELAY, ACTION.WRITEVAR, 60);
-                    if ((bool)radioButtonStartDelayThreeMin.Tag != radioButtonStartDelayThreeMin.Checked && radioButtonStartDelayThreeMin.Checked)
+                    if ((serial.Arduino.StartDelay == 60*3) != radioButtonStartDelayThreeMin.Checked && radioButtonStartDelayThreeMin.Checked)
                         await serial.Arduino.Communicate(DATACATEGORY.CONFIG, SUBCATEGORY.START_DELAY, ACTION.WRITEVAR, 180);
                     if (checkBoxSyncTimeDate.Checked == true)
                     {
@@ -349,7 +343,7 @@ namespace LCA_SYNC
 
             bool success = false;
 
-            if ((bool)buttonStatusStartStop.Tag == false)  // Test is currently not running 
+            if (serial.Arduino == null || !serial.Arduino.TestStarted)  // Test is currently not running 
             {
                 try
                 {
@@ -366,13 +360,12 @@ namespace LCA_SYNC
                 {
                     if (success)
                     {
-                        buttonStatusStartStop.Tag = true;  // Test is running
                         buttonStatusStartStop.Text = getLanguageText("StopTest", "Stop Test");
                     }
                     buttonStatusStartStop.Enabled = true;
                 }
             }
-            else
+            else  // Test is not running or no arduino is connected and selected 
             {
                 try
                 {
@@ -389,7 +382,6 @@ namespace LCA_SYNC
                 {
                     if (success)
                     {
-                        buttonStatusStartStop.Tag = false;  // Test is stopped
                         buttonStatusStartStop.Text = getLanguageText("StartTest", "Start Test");
                     }
                     buttonStatusStartStop.Enabled = true;
@@ -487,17 +479,17 @@ namespace LCA_SYNC
 
         private void buttonConfigDiscardChanges_Click(object sender, EventArgs e)
         {
-            numericUpDownSampleRate.Value = (decimal)numericUpDownSampleRate.Tag;
+            numericUpDownSamplePeriod.Value = (decimal)(serial.Arduino?.SamplePeriod ?? 1);
 
-            numericUpDownTestDurationHours.Value = (decimal)numericUpDownTestDurationHours.Tag;
-            numericUpDownTestDurationMinutes.Value = (decimal)numericUpDownTestDurationMinutes.Tag;
-            numericUpDownTestDurationSeconds.Value = (decimal)numericUpDownTestDurationSeconds.Tag;
+            numericUpDownTestDurationHours.Value = (serial.Arduino != null) ? (Math.Floor((decimal)serial.Arduino.TestDuration / 60 / 60)) : 0;
+            numericUpDownTestDurationMinutes.Value = (serial.Arduino != null) ? (Math.Floor((decimal)serial.Arduino.TestDuration / 60) % 60) : 0;
+            numericUpDownTestDurationSeconds.Value = (serial.Arduino != null) ? ((decimal)serial.Arduino.TestDuration % 60) : 30;
 
-            textBoxPackageName.Text = (string)textBoxPackageName.Tag;
+            textBoxPackageName.Text = serial.Arduino?.PackageName ?? "ERROR";
 
-            radioButtonStartDelayNone.Checked = (bool)radioButtonStartDelayNone.Tag;
-            radioButtonStartDelayOneMin.Checked = (bool)radioButtonStartDelayOneMin.Tag;
-            radioButtonStartDelayThreeMin.Checked = (bool)radioButtonStartDelayThreeMin.Tag;
+            radioButtonStartDelayNone.Checked = (serial.Arduino != null) ? (serial.Arduino.StartDelay == 0) : true;
+            radioButtonStartDelayOneMin.Checked = (serial.Arduino != null) ? (serial.Arduino.StartDelay == 60) : false;
+            radioButtonStartDelayThreeMin.Checked = (serial.Arduino != null) ? (serial.Arduino.StartDelay == 60*3) : false;
 
             checkBoxSyncTimeDate.Checked = (bool)checkBoxSyncTimeDate.Tag;
 
@@ -528,14 +520,15 @@ namespace LCA_SYNC
                 labelStatusElapsedTime.Text = getLanguageText("ElapsedTime", "Elapsed Time") + ":";
                 labelStatusDataFile.Text = getLanguageText("CurrentDataFile", "Current Data File") + ":";
 
+                buttonStatusStartStop.Text = getLanguageText("StartTest", "Start Test");
+
                 buttonConfigDiscardChanges_Click(this, new EventArgs()); // No ardunio connected, so discard user's config page changes  
             }
             else
             {
                 // The serial port name only changes when Arduino changes, so I'll update the serial port text label here instead 
                 //      of the serial arduino data changed event handler.  
-                labelStatusSerialPort.Tag = serial.Arduino.Port?.PortName ?? "ERROR";
-                labelStatusSerialPort.Text = "(" + (string)labelStatusSerialPort.Tag + ")";
+                labelStatusSerialPort.Text = "(" + (serial.Arduino.Port?.PortName ?? "ERROR") + ")";
             }
         }
 
@@ -562,37 +555,26 @@ namespace LCA_SYNC
                 case "PackageName":
                     Console.WriteLine("PackageName changed, so status page will be updated");
                     textBoxPackageName.Text = serial.Arduino.PackageName;
-                    textBoxPackageName.Tag = serial.Arduino.PackageName;
-                    labelStatusPackageName.Tag = serial.Arduino.PackageName;
                     labelStatusPackageName.Text = serial.Arduino.PackageName;
                     break;
                 case "StartDelay":
                     if (serial.Arduino.StartDelay == 0)  // No start delay 
                     {
                         radioButtonStartDelayNone.Checked = true;
-                        radioButtonStartDelayNone.Tag = true;
                         radioButtonStartDelayOneMin.Checked = false;
-                        radioButtonStartDelayOneMin.Tag = false;
                         radioButtonStartDelayThreeMin.Checked = false;
-                        radioButtonStartDelayThreeMin.Tag = false;
                     }
                     else if (serial.Arduino.StartDelay == 60)  // One minute 
                     {
                         radioButtonStartDelayNone.Checked = false;
-                        radioButtonStartDelayNone.Tag = false;
                         radioButtonStartDelayOneMin.Checked = true;
-                        radioButtonStartDelayOneMin.Tag = true;
                         radioButtonStartDelayThreeMin.Checked = false;
-                        radioButtonStartDelayThreeMin.Tag = false;
                     }
                     else if (serial.Arduino.StartDelay == 60 * 3) // Three minutes
                     {
                         radioButtonStartDelayNone.Checked = false;
-                        radioButtonStartDelayNone.Tag = false;
                         radioButtonStartDelayOneMin.Checked = false;
-                        radioButtonStartDelayOneMin.Tag = false;
                         radioButtonStartDelayThreeMin.Checked = true;
-                        radioButtonStartDelayThreeMin.Tag = true;
                     }
                     else
                     {
@@ -601,19 +583,13 @@ namespace LCA_SYNC
                     break;
                 case "TestDuration":
                     numericUpDownTestDurationHours.Value = Math.Floor((decimal)serial.Arduino.TestDuration / 60 / 60); // Get hours from total seconds 
-                    numericUpDownTestDurationHours.Tag = numericUpDownTestDurationHours.Value;   // Tag is the value the arduino is set to 
-
                     numericUpDownTestDurationMinutes.Value = Math.Floor((decimal)serial.Arduino.TestDuration / 60) % 60; // Get minutes from total seconds 
-                    numericUpDownTestDurationMinutes.Tag = numericUpDownTestDurationMinutes.Value;   // Tag is the value the arduino is set to 
-
                     numericUpDownTestDurationSeconds.Value = (decimal)serial.Arduino.TestDuration % 60; // Get seconds from total seconds 
-                    numericUpDownTestDurationSeconds.Tag = numericUpDownTestDurationSeconds.Value;   // Tag is the value the arduino is set to 
 
                     //Console.WriteLine("{0}:{1}:{2}", Math.Floor((decimal)serial.Arduino.TestDuration / 60 / 60), Math.Floor((decimal)serial.Arduino.TestDuration / 60) % 60, (decimal)serial.Arduino.TestDuration % 60);
                     break;
                 case "SamplePeriod":
-                    numericUpDownSampleRate.Value = (decimal)serial.Arduino.SamplePeriod;
-                    numericUpDownSampleRate.Tag = (decimal)serial.Arduino.SamplePeriod;   // Tag is the value the arduino is set to 
+                    numericUpDownSamplePeriod.Value = (decimal)serial.Arduino.SamplePeriod;
                     break;
                 case "TestStarted":
                     Console.WriteLine("TestStarted changed, so status page will be updated");
@@ -675,7 +651,7 @@ namespace LCA_SYNC
 
             bool enabled = serial.Arduino != null;
             textBoxPackageName.Enabled = enabled;
-            numericUpDownSampleRate.Enabled = enabled;
+            numericUpDownSamplePeriod.Enabled = enabled;
             numericUpDownTestDurationHours.Enabled = enabled;
             numericUpDownTestDurationMinutes.Enabled = enabled;
             numericUpDownTestDurationSeconds.Enabled = enabled;
@@ -696,15 +672,16 @@ namespace LCA_SYNC
         private void UpdateTabText()
         {
             // Config Tab: 
-            if ((decimal?)numericUpDownSampleRate.Tag != numericUpDownSampleRate.Value ||
-                (decimal?)numericUpDownTestDurationHours.Tag != numericUpDownTestDurationHours.Value ||
-                (decimal?)numericUpDownTestDurationMinutes.Tag != numericUpDownTestDurationMinutes.Value ||
-                (decimal?)numericUpDownTestDurationSeconds.Tag != numericUpDownTestDurationSeconds.Value ||
-                (string)textBoxPackageName.Tag != textBoxPackageName.Text ||
-                (bool)radioButtonStartDelayNone.Tag != radioButtonStartDelayNone.Checked ||
-                (bool)radioButtonStartDelayOneMin.Tag != radioButtonStartDelayOneMin.Checked ||
-                (bool)radioButtonStartDelayThreeMin.Tag != radioButtonStartDelayThreeMin.Checked ||
-                checkBoxSyncTimeDate.Checked == true)
+            if (serial.Arduino != null &&
+                ((decimal)serial.Arduino.SamplePeriod != numericUpDownSamplePeriod.Value ||
+                Math.Floor((decimal)serial.Arduino.TestDuration / 60 / 60) != numericUpDownTestDurationHours.Value ||
+                Math.Floor((decimal)serial.Arduino.TestDuration / 60) % 60 != numericUpDownTestDurationMinutes.Value ||
+                serial.Arduino.TestDuration % 60 != numericUpDownTestDurationSeconds.Value ||
+                serial.Arduino.PackageName != textBoxPackageName.Text ||
+                (serial.Arduino.StartDelay == 0) != radioButtonStartDelayNone.Checked ||
+                (serial.Arduino.StartDelay == 60) != radioButtonStartDelayOneMin.Checked ||
+                (serial.Arduino.StartDelay == 60*3) != radioButtonStartDelayThreeMin.Checked ||
+                checkBoxSyncTimeDate.Checked == true))
             {
                 // Difference detected
                 if (tabControl.TabPages[1].Text.Last() != '*')
@@ -969,8 +946,8 @@ namespace LCA_SYNC
             }
             else
             {
-                labelStatusPackageName.Text = (string)labelStatusPackageName.Tag;
-                labelStatusSerialPort.Text = "(" + (string)labelStatusSerialPort.Tag + ")";
+                labelStatusPackageName.Text = serial.Arduino.PackageName;
+                labelStatusSerialPort.Text = "(" + (serial.Arduino.Port?.PortName ?? "ERROR") + ")";
                 labelStatusTotalSensors.Text = getLanguageText("TotalSensors", "Total Sensors") + ": __"; // A placeholder
                 if (serial.Arduino.TestStarted)
                 {

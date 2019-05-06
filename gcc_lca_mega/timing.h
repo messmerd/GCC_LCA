@@ -13,6 +13,7 @@
 
 void setRTCSQWInput(float seconds); 
 void setCounter5(float seconds); 
+void Timer1_ISR();
 void pushbuttonPress(); 
 void startTest(bool sendSerialResponse);
 void stopTest();

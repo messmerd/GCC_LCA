@@ -1,9 +1,9 @@
 
-#include "ArduinoJson.h"
 #include "serialSync.h"
 #include "fileIO.h"
 #include "RTClib.h" 
 #include "timing.h" 
+#include <Wire.h>
 
 extern Config conf; 
 extern Sensor* sensors;
@@ -257,17 +257,27 @@ void ProcessOtherCategory()
     {
       if (dataInPos <= 13 && dataInPos >= 10) // There's a range because the length of the year is not fixed (0 to 9999)
       {
+        Serial.write(sot);
+        Serial.write((byte)(((byte)testStarted << 3) | 0x6));
+        Serial.write(eot);
+        
         // The data is structured as: sot, code byte, code byte, hr byte, min byte, sec byte, month byte, day byte, year (1 to 4 bytes), eot 
         char* yr = new char[dataInPos-9];
         for (int i = 8; i < dataInPos - 1; i++)
         {
           yr[i-8] = (char)dataIn[i];
         }
-        rtc.adjust(DateTime((uint16_t)atoi(yr), (uint8_t)(dataIn[6]-4), (uint8_t)(dataIn[7]-4), (uint8_t)(dataIn[3]-4), (uint8_t)(dataIn[4]-4), (uint8_t)(dataIn[5]-4)));
+        //noInterrupts(); 
+        DateTime* dt = new DateTime((uint16_t)atoi(yr), (uint8_t)(dataIn[6]-4), (uint8_t)(dataIn[7]-4), (uint8_t)(dataIn[3]-4), (uint8_t)(dataIn[4]-4), (uint8_t)(dataIn[5]-4)); 
+        //Wire.endTransmission(); // ? 
+        rtc.adjust(dt);  // For some reason, this line crashes everything if it is run after a test finishes 
         Serial.write(sot); 
         Serial.write(dataIn[1]);
         Serial.write(dataIn[2]);
         Serial.write(eot); 
+        delete [] yr; 
+        delete dt;
+        //interrupts();
       }
       else
       {

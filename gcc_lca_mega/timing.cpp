@@ -148,7 +148,7 @@ void startTest(bool sendSerialResponse)
   else  // Send a one-way message instead 
   {
     Serial.write(sot);
-    Serial.write(0x6); // Test Started, OneWay. In the future, this should be the current state: Ready or StartDelay 
+    Serial.write(0xE); // Test Started, OneWay. In the future, this should be the current state: Ready or StartDelay 
     Serial.write(eot);
   }
 
@@ -183,7 +183,7 @@ void stopTest()
   strcat(dataFileName, ".txt");  // THERE IS A MAX LENGTH TO THIS, SO THERE'S A MAX NUMBER OF DATA FILES
   
   Serial.write(sot);
-  Serial.write(0xE); // Test Ended, OneWay 
+  Serial.write(0x6); // Test Ended, OneWay 
   Serial.write(eot);
 
   digitalWrite(LED_PIN2, LOW);

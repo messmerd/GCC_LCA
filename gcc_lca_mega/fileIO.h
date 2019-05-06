@@ -27,7 +27,6 @@ public:
   boolean need_to_sync_bt;    // For future use
 
   boolean read(boolean setRTC = false); // Reads from SD card's config file, updates values of config variables stored on Arduino, and also sets RTC if needed. 
-  boolean read2(boolean setRTC = false); // Reads from SD card's config file, updates values of config variables stored on Arduino, and also sets RTC if needed. 
   boolean updateConfigFile(); // Overwrites the config file with the config file contents stored locally in conf.
 };
 

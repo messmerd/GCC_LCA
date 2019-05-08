@@ -1,18 +1,24 @@
+// This file contains methods that are used when communicating with the LCA Sync Windows application 
 
-#include "serialSync.h"
 #include "fileIO.h"
-#include "RTClib.h" 
+#include "serialSync.h"
 #include "timing.h" 
-#include <Wire.h>
 
+#include "RTClib.h"    // From https://github.com/messmerd/RTClib 
+
+// Use variables and constants defined in gcc_lca_mega.ino and other files: 
 extern Config conf; 
-extern Sensor* sensors;
+extern Sensor sensors;
 
 extern RTC_DS3231 rtc; 
-//extern char dataFileName[16];
 
-#define sot 0x02
-#define eot 0x03
+extern const char* CONFIG_FILE;
+extern const char* SENSORS_FILE;
+extern const char* DEBUG_FILE;
+extern const char* DATALOG_FILE_ROOT;
+
+extern const byte sot;
+extern const byte eot;
 
 extern bool dataReceived;
 extern byte dataIn[150]; 
@@ -20,15 +26,16 @@ extern int dataInPos;
 
 extern bool testStarted; 
 
-#define LED_PIN2 23               // CD (card detect) pin? 
+extern const int LED_PIN2;                // Multipurpose LED 
 
+// Processes serial data received from the LCA Sync Windows application 
 void ProcessData()
 {
-  //printToFile("log.txt", dataIn, true);  // For testing...
+  //printToFile("log.txt", dataIn, true);  // For testing
   
-  if (dataInPos < 3 || dataIn[0] != sot || dataIn[dataInPos-1] != eot) {
+  if (dataInPos < 3 || dataIn[0] != sot || dataIn[dataInPos-1] != eot) // All messages must have sot and eot characters
+  {
     dataReceived = false;
-    
     // Error occurred! 
     return;
   }
@@ -39,15 +46,15 @@ void ProcessData()
       // Error? 
       break; 
     case 0x01:  // Ping
-      if (dataInPos==4 && dataIn[0]==sot && dataIn[1]==0x01 && dataIn[2]==0xF0 && dataIn[3]==eot) 
+      if (dataInPos==4 && dataIn[0]==sot && dataIn[1]==0x01 && dataIn[2]==0xF0 && dataIn[3]==eot) // If the message is exactly the way a ping message should be 
       {
-        byte byte_array[] = {sot, 0x01, 0xF0, (byte)(testStarted), eot };
+        byte byte_array[] = {sot, 0x01, 0xF0, (byte)(testStarted), eot };  // A byte array containing the response. 
+        // Note: I'm now sending the arduino's state (testStarted) inside the ping response so that pinging is more useful 
         Serial.write(byte_array, 5);
         
         dataInPos = 0; 
         dataReceived = false;
-        
-        Serial.flush(); // ?  
+        Serial.flush(); // This probably isn't necessary.   
       } 
       break;
     case 0x02: // Config 
@@ -61,8 +68,10 @@ void ProcessData()
       dataReceived = false;
       break; 
 
-    case 0x04: // Not implemented yet, so return error
+    case 0x04: // Not implemented yet 
       break;
+    case 0x05: // Not implemented yet 
+      break; 
     default:
       // Error occurred! 
       break;
@@ -72,6 +81,7 @@ void ProcessData()
 }
 
 
+// Processes configuration-related requests from the LCA Sync application 
 void ProcessConfigRequest()
 {
   if (dataInPos < 4) {
@@ -207,9 +217,9 @@ void ProcessConfigRequest()
     return; 
   }
   
-  
 }
 
+// Processes miscellaneous requests from the LCA Sync application 
 void ProcessOtherCategory()
 {
   if (dataInPos < 4) {
@@ -231,11 +241,11 @@ void ProcessOtherCategory()
     {
       if (dataInPos == 4)
       {
-        if (subcat == 0 && !testStarted)
+        if (subcat == 0 && !testStarted)  // Need to start the test and the test isn't already started  
         {
           startTest(true); // Sends a response message in startTest method
         }
-        else if (subcat == 1 && testStarted) 
+        else if (subcat == 1 && testStarted) // Need to stop the test and the test isn't already stopped 
         {
           stopTest(); 
           Serial.write(sot); 
@@ -257,10 +267,6 @@ void ProcessOtherCategory()
     {
       if (dataInPos <= 13 && dataInPos >= 10) // There's a range because the length of the year is not fixed (0 to 9999)
       {
-        //Serial.write(sot);
-        //Serial.write((byte)(((byte)testStarted << 3) | 0x6));
-        //Serial.write(eot);
-        
         // The data is structured as: sot, code byte, code byte, hr byte, min byte, sec byte, month byte, day byte, year (1 to 4 bytes), eot 
         char* yr = new char[dataInPos-9];
         for (int i = 8; i < dataInPos - 1; i++)
@@ -268,15 +274,14 @@ void ProcessOtherCategory()
           yr[i-8] = (char)dataIn[i];
         }
         //noInterrupts(); 
-        DateTime* dt = new DateTime((uint16_t)atoi(yr), (uint8_t)(dataIn[6]-4), (uint8_t)(dataIn[7]-4), (uint8_t)(dataIn[3]-4), (uint8_t)(dataIn[4]-4), (uint8_t)(dataIn[5]-4)); 
-        //Wire.endTransmission(); // ? 
-        rtc.adjust(dt);  // For some reason, this line crashes everything if it is run after a test finishes 
+        DateTime dt = DateTime((uint16_t)atoi(yr), (uint8_t)(dataIn[6]-4), (uint8_t)(dataIn[7]-4), (uint8_t)(dataIn[3]-4), (uint8_t)(dataIn[4]-4), (uint8_t)(dataIn[5]-4)); 
+        
+        rtc.adjust(dt);  // Unsolved bug as of 5/8/2019: For some reason, this line crashes everything if it is run after a test finishes (at least it seems to be this line)
         Serial.write(sot); 
         Serial.write(dataIn[1]);
         Serial.write(dataIn[2]);
         Serial.write(eot); 
         delete [] yr; 
-        delete dt;
         //interrupts();
       }
       else
@@ -285,12 +290,7 @@ void ProcessOtherCategory()
         Serial.write(22); // Doesn't mean anything yet. Just here to know when an error occurs. 
         Serial.write(eot); 
       }
-      
     }
-
-    
   }
-
-
   
 }

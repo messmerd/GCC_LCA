@@ -1,21 +1,25 @@
+// This is the main file for the Arduino Mega prototype. 
+// This file contains the setup and loop routines as well as some global variable/macro definitions 
 
 #include <SPI.h>
 #include <SD.h>
 #include "fileIO.h"
-#include "Adafruit_MAX31855.h"
-#include "RTClib.h" 
-#include "TimerOne.h" 
 #include "serialSync.h"
 #include "timing.h"
 
-extern Config conf;     // An singleton object for working with the config file and sensor file
+#include "Adafruit_MAX31855.h"  // From https://github.com/adafruit/Adafruit-MAX31855-library 
+#include "RTClib.h"             // From https://github.com/messmerd/RTClib 
+#include "TimerOne.h"           // From https://github.com/PaulStoffregen/TimerOne 
 
-bool COMP_MODE;         // Whether in computer mode or not 
-
+extern Config conf;     // A singleton-ish object for working with the config.txt file
 RTC_DS3231 rtc;         // Real-time clock (RTC) object - Uses I2C (Wire, not Wire1)
 
+extern const char* CONFIG_FILE("/config.txt");
+extern const char* SENSORS_FILE("/sensors.txt");
+extern const char* DEBUG_FILE("/debug.txt");
+extern const char* DATALOG_FILE_ROOT("/data");
+
 // Digital thermocouple chip select and data output pins:
-// Note: pins 50 and 51 appear to not work on this Mega (50, 51, and 52 are used for SPI apparently)
 #define MAXDO_0   45
 #define MAXCS_0   44
 #define MAXDO_1   43
@@ -35,39 +39,32 @@ RTC_DS3231 rtc;         // Real-time clock (RTC) object - Uses I2C (Wire, not Wi
 
 #define MAXCLK    28              // Shared clock for all digital thermocouples
 
-#define LED_PIN 22                // Sample period LED 
-#define LED_PIN2 23               // CD (card detect) pin? 
-#define PUSHBUTTON_PIN 2          // Start test pushbutton
-#define CD_PIN 13                 // Card detect pin 
-#define RTC_INT_PIN 47            // RTC interrupt pin 
-//#define chipSelect 53             // For the SD card module - SD card module uses SPI. Use hardware chip select (pin 53)
+extern const int LED_PIN(22);                // Sample period LED
+extern const int LED_PIN2(23);               // Multipurpose LED 
+extern const int PUSHBUTTON_PIN(2);          // Start/stop test pushbutton
+extern const int CD_PIN(13);                 // Card detect pin 
+extern const int RTC_INT_PIN(47);            // Real-time clock (RTC) interrupt pin 
+// The SD card module uses hardware SPI. It uses the hardware SPI chip select which is pin 53. 
 
-unsigned long samples_elapsed = 0; 
-unsigned long last_sample = 0; 
+unsigned long samples_elapsed = 0;    // Stores how many samples have been taken since the start of a test 
+unsigned long last_sample = 0;        // The last sample before the test ends. Depends on conf.test_duration and conf.sample_period. 
+unsigned int data_file_number = 0;    // The current data file number. The current data file is "data#.txt" where "#" is data_file_number. 
+char dataFileName[16] = "";   // There's a max length to this! "data9999.txt" is the last file because the SD library uses short 8.3 names for files. 10,000 total data files.   
 
-unsigned int data_file_number = 0; 
+bool dataReceived = false;    // Is true if the main loop needs to process serial data that has been received 
+byte dataIn[150];             // Stores serial data received from the LCA Sync application
+int dataInPos;                // The current position within dataIn 
+String dataString;            // The string that is written to the data file each sample period 
 
-bool dataReceived = false;
-byte dataIn[150];
-int dataInPos;
-#define sot 0x02
-#define eot 0x03
+extern const byte sot(0x02);  // The ASCII start-of-text character. Has special significance when doing serial communication with the LCA Sync application. 
+extern const byte eot(0x03);  // The ASCII end-of-text character. Has special significance when doing serial communication with the LCA Sync application.
 
-volatile bool testStarted;
-bool samplePeriodReached;
-volatile bool missedClock = 0;
-volatile bool inSerialSafeRegion;
+volatile bool testStarted;          // The state of the Arduino: 0=Ready, 1=Running 
+volatile bool samplePeriodReached;  // If true and a test is running, the main loop will take a sample 
+volatile bool missedClock = 0;      // Isn't really used for much right now. But in the future it could be useful. 
+volatile bool inSerialSafeRegion;   // If this is true, the program will not communicate with the LCA Sync application. This is used to prevent the program being in the middle of communicating when it should be taking a sample. 
 
 boolean led_value = 0;
-
-char dataFileName[16] = DATALOG_FILE_ROOT;  // There's a max length to this! "data9999.txt" is the last file because the SD library uses short 8.3 names for files. 10,000 total data files.   
-
-String dataString;
-
-//void initTimer0(double seconds);
-//bool ProcessData();
-//void Timer1_ISR();
-
 
 // Initialize the digital thermocouples: 
 Adafruit_MAX31855 digital_thermo_0(MAXCLK, MAXCS_0, MAXDO_0);
@@ -85,11 +82,9 @@ void setup()
   pinMode(LED_PIN2, OUTPUT);
   pinMode(PUSHBUTTON_PIN, INPUT); 
   pinMode(CD_PIN, INPUT); 
+  pinMode(RTC_INT_PIN, INPUT_PULLUP);
 
   attachInterrupt(digitalPinToInterrupt(PUSHBUTTON_PIN), pushbuttonPress, RISING);
-
-  // This is only used for analog thermocouples currently, but we are no longer using them: 
-  //analogReference(DEFAULT); // 5v on Uno and Mega. Note: Due uses 3.3 v reference which would cause analog thermocouples to not work (given the way things are currently set up)
 
   samplePeriodReached = false; 
   testStarted = false; 
@@ -99,9 +94,6 @@ void setup()
   dataString.reserve(15+1+115); // I'm not sure about the exact size needed.
   dataString = ""; 
 
-  //dataIn.reserve(200);
-  //dataIn = "";
-  //dataIn = new byte[150];
   int i = 0;
   for (i=0; i<150; i++)
   {
@@ -109,8 +101,6 @@ void setup()
   }
   dataInPos = 0;
   dataReceived = false;
-
-  digitalWrite(LED_PIN2, digitalRead(CD_PIN));  // LED is on when SD card is inserted and off when it is not.
 
   Serial.begin(9600);
   while (!Serial) {
@@ -120,19 +110,18 @@ void setup()
   // Initialize SD library
   // Note: SD card must be formatted as FAT16 or FAT32 
   while (!SD.begin()) {
+    // Initialization failed. 
     //Serial.println(F("fail init. SD"));
     delay(1000);
   }
-  //Serial.println("SD init.");
-  
-  digitalWrite(LED_PIN2, LOW);
 
+  // Get filename of new data file: 
+  strcat(dataFileName, DATALOG_FILE_ROOT);
   data_file_number = getNextDataFile(); // Get unique number to use for new unique data file name
   strcat(dataFileName, String(data_file_number).c_str());
   strcat(dataFileName, ".txt");  // THERE IS A MAX LENGTH TO THIS, SO THERE'S A MAX NUMBER OF DATA FILES
-  //Serial.println("Output data file: " + (String)dataFileName);
 
-  // RTC init
+  // Real-time clock (RTC) initialization 
   if (!rtc.begin()) {
     //Serial.println("Couldn't find RTC");
     while (1);
@@ -142,25 +131,17 @@ void setup()
     //Serial.println("RTC lost power, lets set the time!");
     // following line sets the RTC to the date & time this sketch was compiled
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));  // Note: I believe this relies on the computer's language being English and the date format being month, day, year
-    // This line sets the RTC with an explicit date & time, for example to set
-    // January 21, 2014 at 3am you would call:
+    // January 21, 2014 at 3am:
     // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
   }
 
-  pinMode(RTC_INT_PIN, INPUT_PULLUP);
-  rtc.writeSqwPinMode(DS3231_SquareWave1kHz); // For sample interrupts 
+  rtc.writeSqwPinMode(DS3231_SquareWave1kHz); // Important for Timer5 sample interrupts 
   
-  conf.read(true);   // Read from config file, setting the date and time if needed
-  //Serial.println();
+  conf.read(true);   // Read test configurations from config file, setting the date and time if needed
 
-  // NEED TO CHECK THAT CONFIG STUFF IS VALID - especially the sample rate
+  Timer1.attachInterrupt( Timer1_ISR ); // Timer1 interrupt routine (see timing.cpp)
 
-  //delay(500); // Just in case things need to settle
-  
-  digitalWrite(LED_PIN2,LOW);
-  Timer1.attachInterrupt( Timer1_ISR ); // attach the service routine here
-
-  testStarted = false;
+  testStarted = false;  // Begin in the "Ready" state 
 
 }
 
@@ -169,30 +150,26 @@ void setup()
 void loop() 
 {
   
-  if (testStarted)
+  if (testStarted)  // If test is running 
   {
-    if (samplePeriodReached) // (_timer >= _timer_max)   // One sample period has passed
+    if (samplePeriodReached) // One sample period has passed - time to take a sample 
     {  
       noInterrupts();
-      EIMSK &= ~(1 << INT0);  // Disable pushbutton interrupt 
-      //TIMSK1 &= ~(1<<OCIE1A);   //timer1 disable the interrupt
+      EIMSK &= ~(1 << INT0);      // Disable pushbutton interrupt 
+      //TIMSK1 &= ~(1<<OCIE1A);   // Timer1 - disable the interrupt
       Timer1.stop(); 
       interrupts(); 
       
       // disable serial event interrupt? 
-      //noInterrupts();                 //Disable interrupts  (!!!)
-    
-      //unsigned long _time00 = micros(); 
+      //noInterrupts();                 // Disable interrupts
 
       digitalWrite(LED_PIN, led_value); // Blink LED to signify the sample period being reached
       led_value=!led_value;
 
       DateTime dt = rtc.now(); 
     
-      // Read from sensors and put results into a string
-      //dataString = "#" + (String)samples_elapsed + "\t";
-    
-      dataString = "#" + (String)dt.day() + (String)dt.month() + (String)(dt.year()-2000) + " " + (String)dt.hour() + ":" + (String)dt.minute() + ":" + (String)dt.second() + "\t";
+      // Read from sensors and put results into a string. Date format is MM/DD/YYYY. 
+      dataString = (String)dt.month() + "/" + (String)dt.day() + "/" + (String)dt.year() + " " + (String)dt.hour() + ":" + (String)dt.minute() + ":" + (String)dt.second() + "\t";
       dataString += (String)digital_thermo_0.readCelsius() + "\t"; 
       dataString += (String)digital_thermo_1.readCelsius() + "\t"; 
       dataString += (String)digital_thermo_2.readCelsius() + "\t"; 
@@ -205,54 +182,30 @@ void loop()
       // Write the measurements to the data file on the SD card
       printToFile(dataFileName, dataString, true); // print to file
 
-    
-      //Serial.println((String)(micros()-_time00));
-      //Serial.println((unsigned long)(conf.sample_rate*1000000) - SERIAL_COMM_TIME - (unsigned long)(1000000*TCNT5/1024));
-      //Serial.println(conf.sample_rate); 
-      //Serial.println(SERIAL_COMM_TIME);
-      //Serial.println(TCNT5); 
-      //printToFile(dataFileName, datStr, true);
-
       noInterrupts(); 
     
       samples_elapsed++;
-    
       missedClock = false; 
       inSerialSafeRegion = true; 
-
       samplePeriodReached = false;
-      //TIMSK1 |= (1<<OCIE1A);   //timer1 enable the interrupt  // This causes everything to stop working!
-
-      //Serial.print("TIFR1's interrupt flag is ");
-      //Serial.println((TIFR1 & (1<<OCF1A))>>1);
 
       Timer1.setPeriod((unsigned long)(conf.sample_period*1000000) - SERIAL_COMM_TIME - (unsigned long)(1000000*TCNT5/1024)); // Sample period - serial comm time - sampling routine time
       Timer1.restart(); 
 
-      //interrupts();                 //Enable interrupts  (!!!)
       EIMSK |= (1 << INT0);  // Enable pushbutton interrupt 
-
       interrupts(); 
     }
 
     if (dataReceived && inSerialSafeRegion) 
     {
-      //digitalWrite(LED_PIN, !digitalRead(LED_PIN));
-      //digitalWrite(LED_PIN2,HIGH);
-      //noInterrupts();
       if (Serial)  // Problem with this line? Maybe remove the Serial condition? 
       {
-        ProcessData();
-        //dataIn.clear();  // Not needed if you set dataInPos to 0. Will be overwritten.
+        ProcessData();  // See serialSync.cpp 
         dataInPos = 0; 
         dataReceived = false;
       }
-      //interrupts();
     }
 
-    //digitalWrite(LED_PIN2, digitalRead(CD_PIN));
-
-    //while (samples_elapsed >= last_sample) {}; // Ends the test by going into an infinite loop. It works for now, but we should probably change it later. 
     if (samples_elapsed >= last_sample)  // Stop the test once it reaches the test duration
     {
       stopTest(); 
@@ -267,11 +220,9 @@ void loop()
     // Communicate with computer here. Outside of the test here, there are no strict requirements for how much time serial communication can take
     if (dataReceived) 
     {
-      //digitalWrite(LED_PIN, !digitalRead(LED_PIN));
       if (Serial)  // Problem with this line? Maybe remove the Serial condition? 
       {
-        ProcessData();
-        //dataIn.clear();  // Not needed if you set dataInPos to 0. Will be overwritten.
+        ProcessData();   // See serialSync.cpp 
         dataInPos = 0; 
         dataReceived = false;
       }
@@ -283,7 +234,6 @@ void loop()
 
 void serialEvent(){   // Note: serialEvent() doesn't work on Arduino Due!!!
   //delay(100); 
-
   int inByte;
   while (Serial && Serial.available()>0) {
     // get the new byte:

@@ -327,7 +327,6 @@ namespace LCA_SYNC
         private async Task<List<byte>> CommunicateRaw(DATACATEGORY cat, SUBCATEGORY subcat, ACTION action, object data = null, double timeoutLength = -1.0)
         {
             // Returns the raw response without validating it. 
-            // It can still return some errors (in Response.validity), but it can't find fault with the content of the data received, so Response.validity should never be INVALID. 
             bool gotLock = false;  // Wait.... this should be a member variable of the class, not a local variable? 
             try
             {
@@ -357,9 +356,9 @@ namespace LCA_SYNC
                 // New line:
                 if (_ExpectedResponseCancellation.IsCancellationRequested) { _ExpectedResponseCancellation = new CancellationTokenSource(); Console.WriteLine("Made new cancellation token."); }
 
-                // try using the token.register thing
+                // try using the token.register thing?
 
-                _ReceivedBytes.Clear();  // This should be ok b/c we have the commLock. What about OneWay comm???????????????????????????????
+                _ReceivedBytes.Clear();  // This should be ok b/c we have the commLock. What about One-Way comm???????
                 _ReceivedTwoWayData.Clear();
 
                 SendData(cat, subcat, action, data);

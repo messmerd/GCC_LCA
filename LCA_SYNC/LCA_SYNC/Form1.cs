@@ -85,15 +85,13 @@ namespace LCA_SYNC
             Console.WriteLine("\n\n\n");
 
             // Arduino List setup: 
-            deviceList = new object[] { "<No Device>" };
+            deviceList = new object[] { "<No Device>" };  // This doesn't work 
             //arduinoList.Items.AddRange(deviceList);
             arduinoListBinding = new BindingSource();
             arduinoListBinding.DataSource = serial.LCAArduinos;
             arduinoListBinding.ListChanged += serial_LCAArduinos_Changed;
             arduinoList.DataSource = arduinoListBinding;
             arduinoList.DisplayMember = "displayName";
-            //arduinoList.ValueMember = "Self";   // What is the default value of this? Is it self? 
-            //arduinoList.SelectedIndex = 0;
 
             // Start watching for USB PnP devices to be added/removed/modified:
             serial.StartPnPWatcher();
@@ -101,8 +99,6 @@ namespace LCA_SYNC
             // Find LCA arduinos: 
             serial.ActivateAllArduinos();
             RefreshControlsEnable();
-
-            textBoxPackageName.Enabled = true;
 
         }
 
@@ -328,14 +324,22 @@ namespace LCA_SYNC
         private async void buttonArduinoSync_Click(object sender, EventArgs e)
         {
             // Untested 
-            // RefreshInfo for all arduinos already added: 
-            foreach (var ard in serial.LCAArduinos)
+            try
             {
-                await ard.RefreshInfo();
-            }
+                // RefreshInfo for all arduinos already added: 
+                foreach (var ard in serial.LCAArduinos)
+                {
+                    await ard.RefreshInfo();
+                }
 
-            await serial.ActivateAllArduinos();  // Activates (Ping + RefreshInfo) all arduinos that have not been added yet
-            RefreshControlsEnable();
+                await serial.ActivateAllArduinos();  // Activates (Ping + RefreshInfo) all arduinos that have not been added yet
+                RefreshControlsEnable();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("In buttonArduinoSync_Click: Exception: {0}", ex.Message);
+            }
+            
         }
 
         private async void buttonStatusStartStop_Click(object sender, EventArgs e)
@@ -547,6 +551,9 @@ namespace LCA_SYNC
 
         private void serial_ArduinoDataChanged(object sender, ArduinoEventArgs e)
         {
+            // Should probably return here if the arduino whose data changed is not the arduino in use, 
+            //   because the UI only needs refreshed if it is the arduino in use which has data that changed.  
+
             // Can do more here: 
             // Use e.Reason for the reason the event was called 
 
@@ -711,21 +718,7 @@ namespace LCA_SYNC
         }
 
         private void LoadLanguages()
-        {
-            // The one weird thing about this whole language thing is that if the en.dat file is missing, you cannot have English
-            //     unless you delete the other language files or the lang folder, and then all you can have is English. 
-            //     Maybe to be less weird, a copy of the English language files can be stored in the resources and if the lang 
-            //     directory or English language files don't exist, then it can create them before loading the languages. 
-            //     But what if the files fail to save for some reason and there are other languages that exist? Then the weird 
-            //     situation would still exist. So I would have to add the English language in a special way that does not involve 
-            //     files. It shouldn't be too hard, and it would be the best course of action probably. I'd have to get the 
-            //     alphabetical ordering right which would be the hardest part. I'd just use defaultLangIcon in the resources and 
-            //     DefaultLanguage and DefaultLanguageLong and RefreshLanguages would handle the rest. So if both the files for the 
-            //     UserDefaultLanguage and DefaultLanguage do not exist, there will still be English as an option regardless. 
-            //     No disabling of the imageComboLanguage would be needed ever since there will always be at least one option. 
-
-            string langShort;
-            string[] keyvalue = new string[2]; // keyvalue[0] = the key; keyvalue[1] = the value 
+        { 
             ImageComboItem comboItem;
 
             if (!Directory.Exists(Application.StartupPath + @"\lang\"))  // If lang directory is missing, disable language selection
@@ -745,11 +738,10 @@ namespace LCA_SYNC
                 return;
             }
 
-            string[] filePaths = Directory.GetFiles(Application.StartupPath + @"\lang\", "*.dat").OrderBy(s => s).ToArray();
-            //Array.Sort(filePaths, (x, y) => String.Compare(x, y));
-
+            bool noDefaultLangFile = false; 
+            string[] filePaths = Directory.GetFiles(Application.StartupPath + @"\lang\", "*.dat", SearchOption.TopDirectoryOnly);
             Console.WriteLine("Number of language files found: {0}", filePaths.Length);
-
+            
             if (filePaths.Length == 0)  // If no language files exist, disable language selection
             {
                 Console.WriteLine("Error: Could not locate any language files.");
@@ -767,22 +759,53 @@ namespace LCA_SYNC
                 return;
             }
 
+            if (!filePaths.Contains(Application.StartupPath + @"\lang\" + DefaultLanguage + ".dat")) // If default language cannot be found, add it anyway  
+            {
+                // The application's default language was not found in the lang folder, but it can still be added to the language list 
+                filePaths = filePaths.Append(Application.StartupPath + @"\lang\" + DefaultLanguage + ".dat").ToArray();
+                noDefaultLangFile = true;
+                Console.WriteLine("The application's default language file, {0}, was not found. However, it can still be added to the language list.", DefaultLanguageLong);
+            }
+            filePaths = filePaths.OrderBy(s => s).ToArray(); // Sort alphabetically so that languages are displayed alphebetically in the dropdown list 
+
+            string langShort;
+            string[] keyvalue = new string[2]; // keyvalue[0] = the key; keyvalue[1] = the value 
+            int equalsIndex;
             int i = 0;
             foreach (var file in filePaths)
             {
-                langShort = file.Split('\\').Last().Split('.').First();
+                langShort = Path.GetFileNameWithoutExtension(file);
+                if (noDefaultLangFile && langShort.Equals(DefaultLanguage))
+                {
+                    // Add the default language, even though it previously failed to load its .dat file. 
+                    LanguageIcons.Images.Add(DefaultLanguage, Properties.Resources.defaultLangIcon);
+                    LanguageText[DefaultLanguage + "Lang"] = DefaultLanguage;
+                    LanguageText[DefaultLanguage + "LangLong"] = DefaultLanguageLong;
+                    comboItem = new ImageComboItem(DefaultLanguageLong, i);
+                    comboItem.Tag = DefaultLanguage;
+                    imageComboLanguage.Items.Add(comboItem);
+                    AvailableLanguages.Add(DefaultLanguage);
+                    i++;
+                    continue;
+                }
 
                 // Load language text
                 foreach (string line in File.ReadAllLines(file, Encoding.Unicode))
                 {
-                    line.Split('=').CopyTo(keyvalue, 0);
-
-                    if (keyvalue[0] == "") { continue; }
-                    if (keyvalue.Length != 2) { Console.WriteLine("Error: A line in the file {0} does not have only one '=' character.", file); return; }
-
-                    if (!LanguageText.ContainsKey(langShort + keyvalue[0]))
+                    equalsIndex = line.IndexOf("="); 
+                    if (equalsIndex > 0)  // If there is at least 1 "=" character and it isn't the first character
                     {
-                        LanguageText.Add(langShort + keyvalue[0], keyvalue[1]);
+                        keyvalue[0] = line.Substring(0, equalsIndex);                                   // The key
+                        keyvalue[1] = line.Substring(equalsIndex + 1, line.Count() - equalsIndex - 1);  // The value
+
+                        if (!LanguageText.ContainsKey(langShort + keyvalue[0]))
+                        {
+                            LanguageText.Add(langShort + keyvalue[0], keyvalue[1]);
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Error: A line in the file {0} is not formatted properly.", file);
                     }
                 }
 
@@ -794,7 +817,6 @@ namespace LCA_SYNC
                         if (File.Exists(Application.StartupPath + @"\lang\" + LanguageText[langShort + "Icon"]))
                         {
                             LanguageIcons.Images.Add(langShort, Image.FromFile(Application.StartupPath + @"\lang\" + LanguageText[langShort + "Icon"]));
-                            //Console.WriteLine("Added language image file.");
                         }
                         else  // There was an error loading the language icon 
                         {
@@ -807,7 +829,6 @@ namespace LCA_SYNC
                         LanguageIcons.Images.Add(langShort, Properties.Resources.noLangIcon);
                     }
 
-                    imageComboLanguage.ImageList = LanguageIcons;
                     // Check if it's already in the list first? 
                     comboItem = new ImageComboItem(LanguageText[langShort + "LangLong"], i);
                     comboItem.Tag = langShort;
@@ -818,9 +839,11 @@ namespace LCA_SYNC
                 i++;
             }
 
+            imageComboLanguage.ImageList = LanguageIcons;
+
             if (CurrentLanguage == "")  // If the CurrentLanguage has not been set, then set it 
             {
-                if (AvailableLanguages.Contains(UserDefaultLanguage))  // 1st priority is the user's default language if it exists in the lang folder
+                if (AvailableLanguages.Contains(UserDefaultLanguage))  // 1st priority is the user's chosen default language if it exists in the lang folder
                 {
                     CurrentLanguage = UserDefaultLanguage;
                 }

@@ -257,9 +257,9 @@ void ProcessOtherCategory()
     {
       if (dataInPos <= 13 && dataInPos >= 10) // There's a range because the length of the year is not fixed (0 to 9999)
       {
-        Serial.write(sot);
-        Serial.write((byte)(((byte)testStarted << 3) | 0x6));
-        Serial.write(eot);
+        //Serial.write(sot);
+        //Serial.write((byte)(((byte)testStarted << 3) | 0x6));
+        //Serial.write(eot);
         
         // The data is structured as: sot, code byte, code byte, hr byte, min byte, sec byte, month byte, day byte, year (1 to 4 bytes), eot 
         char* yr = new char[dataInPos-9];

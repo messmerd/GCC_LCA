@@ -60,7 +60,7 @@ boolean Config::read(boolean setRTC)
           break;
         case 3: 
           sample_period = (byte)(filetext.toInt()); 
-          if (sample_period == 0) 
+          if (sample_period < 8)  // Don't allow sample periods less than one second. (Less than 1 second is probably too fast for the arduino)
           {
             sample_period = 8;  // default is 1 second 
           }

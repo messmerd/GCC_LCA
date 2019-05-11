@@ -9,15 +9,18 @@ using System.Management;
 
 namespace LCA_SYNC
 {
+    // The following enums split all the types of communication with an Arduino into categories to make using ArduinoBoard's Communicate method very easy
+    public enum DATACATEGORY : byte { NULL = 0x0, PING = 0x1, CONFIG = 0xF2, OTHER = 0xF3, SENSORS = 0x4, DATAFILE = 0x5, ONEWAY = 0x6 };
+    public enum SUBCATEGORY : byte { ALL = 0, START_TEST = 0, PACKAGE_NAME = 1, STOP_TEST = 1, TEST_DUR = 2, TIME_DATE = 2, START_DELAY = 3, SAMPLE_PERIOD = 4, TEMP_UNITS = 5, INIT_DATE = 6, INIT_TIME = 7, RESET_DT = 8, LANGUAGE = 9 };
+    public enum ACTION : byte { READFILE = 0, DELETEFILE = 1, READVAR = 32, WRITEVAR = 96, SENDCOMMAND = 96 };
+    public enum ONEWAYCATEGORY : byte { TEST_ENDED = 0, TEST_STARTED = 1, ELAPSED_SAMPLES = 2, ERROR_OCCURRED = 3 }; // Left-shifted 5 bits and OR'd with DATACATEGORY.ONEWAY 
+    
+    // public enum ARDUINOTYPE { UNO, MEGA, SERIAL_ADAPTER, ... };
+    // Make an enum for arduino operating states? (Unresponsive, Running, Ready, etc.)
 
+    // Represents a sensor array (an LCA Arduino) by keeping a copy of its important vaariables and providing methods for interacting with it
     public class ArduinoBoard
     {
-        // Is there a better way to do this in Form1? DataSource
-        public ArduinoBoard Self  
-        {
-            get { return this; }
-        }
-
         // Stores the Windows Management base object for the USB PnP device (the sensor package's arduino) 
         public ManagementBaseObject mgmtBaseObj { get; set; }
         // For sending and receiving data on the serial port 
@@ -38,12 +41,11 @@ namespace LCA_SYNC
         string pid;  // The arduino's USB PID 
         string type; // The arduino type: Mega, Uno, Nano, etc. 
 
-
         private CancellationTokenSource _ExpectedResponseCancellation { get; set; }
 
-        private List<byte> _ReceivedTwoWayData;   // Stores last data received via Serial
+        private List<byte> _ReceivedTwoWayData;   // Stores last two-way data received via usb
 
-        private List<byte> _ReceivedBytes;
+        private List<byte> _ReceivedBytes;  // Stores last data received via usb  
 
         private string _PackageName; 
         public string PackageName
@@ -118,7 +120,7 @@ namespace LCA_SYNC
         // Maybe this should be used in ArduinoCommunicationException to describe the error, in addition to the text descriptions: 
         // public enum COMMERROR { VALID = 0, NULL, INVALID, UNVALIDATED, TIMEOUT, PORTBUSY, INVALIDINPUT, PORTERROR, OTHER };
 
-        // The constructor: 
+        // The constructor 
         public ArduinoBoard(ManagementBaseObject device)
         {
             Console.WriteLine("Creating a new arduino device (in constructor now)");
@@ -141,17 +143,19 @@ namespace LCA_SYNC
             _TestStarted = false; 
 
             _ReceivedBytes = new List<byte>();
-            
-            Port.Encoding = Encoding.GetEncoding(28591);
+
+            // Serial communications use the Windows-1252 (code page 1252) character set. 
+            Port.Encoding = Encoding.GetEncoding(1252); // Used to use: Encoding.GetEncoding(28591); 
 
         }
 
+        // The destructor
         ~ArduinoBoard()
         {
             CloseConnection();
         }
 
-
+        // Sends a byte array over serial 
         private void SendData(byte[] data)
         {
             if (Port != null && Port.IsOpen)
@@ -180,14 +184,15 @@ namespace LCA_SYNC
             }
         }
 
-        public void SendData(DATACATEGORY cat, byte subcat, ACTION action, object data = null)
+        // Sends data over serial 
+        public void SendData(DATACATEGORY cat, SUBCATEGORY subcat, ACTION action, object data = null)
         {
             // Need to check for invalid input in this method!!!! 
             // Return a COMMERROR ?  An maybe change everything over to Exceptions (b/c some errors already begin as exceptions, and they are more detailed in description and don't require a special Response class)?
 
             switch (cat)
             {
-                case DATACATEGORY.NULL:  // Should never be used. 0x00 might cause issues when sending?
+                case DATACATEGORY.NULL:  // Not used. Or maybe it could have a use later? 
                     // cat = 0 
                     SendData(new byte[] { (byte)cat, 0x00 });  
                     break;
@@ -197,54 +202,54 @@ namespace LCA_SYNC
                     break;
                 case DATACATEGORY.CONFIG:
                     // cat = 2. The first hex is F just so that the byte isn't 0x02, which is sot (start of text). 
-                    if (subcat == (byte)SUBCATEGORY.SAMPLE_PERIOD && data != null)  // Write sample period 
+                    if ((byte)subcat == (byte)SUBCATEGORY.SAMPLE_PERIOD && data != null)  // Write sample period 
                     {
-                        SendData(new byte[] { (byte)cat, (byte)((byte)action | subcat), (byte)(((float)data) * 8.0 + 4.0) });  
+                        SendData(new byte[] { (byte)cat, (byte)((byte)action | (byte)subcat), (byte)(((float)data) * 8.0 + 4.0) });  
                     }
-                    else if (subcat == (byte)SUBCATEGORY.TEST_DUR && data != null)  // Write test duration 
+                    else if ((byte)subcat == (byte)SUBCATEGORY.TEST_DUR && data != null)  // Write test duration 
                     {
                         char[] hex = BitConverter.ToString(BitConverter.GetBytes((uint)data).Reverse().ToArray()).Replace("-","").ToCharArray(); // Converts test duration to ascii-encoded char array
-                        SendData(new byte[] { (byte)cat, (byte)((byte)action | subcat), (byte)hex[2], (byte)hex[3], (byte)hex[4], (byte)hex[5], (byte)hex[6], (byte)hex[7] });  // cat = 2
+                        SendData(new byte[] { (byte)cat, (byte)((byte)action | (byte)subcat), (byte)hex[2], (byte)hex[3], (byte)hex[4], (byte)hex[5], (byte)hex[6], (byte)hex[7] });  // cat = 2
                     }
-                    else if (subcat == (byte)SUBCATEGORY.PACKAGE_NAME && data != null)  // Write package name 
+                    else if ((byte)subcat == (byte)SUBCATEGORY.PACKAGE_NAME && data != null)  // Write package name 
                     {
                         List<byte> bytelist = new List<byte>();
                         bytelist.Add((byte)cat);
-                        bytelist.Add((byte)((byte)action | subcat));
+                        bytelist.Add((byte)((byte)action | (byte)subcat));
                         bytelist.AddRange(StringToBytes((string)data)); 
                         SendData(bytelist.ToArray()); 
                     }
-                    else if (subcat == (byte)SUBCATEGORY.START_DELAY && data != null)  // Write start delay 
+                    else if ((byte)subcat == (byte)SUBCATEGORY.START_DELAY && data != null)  // Write start delay 
                     {
                         // Add 4 to the start delay before sending to avoid sending 0x02 or 0x03 which are the special sotb and eotb bytes: 
-                        SendData(new byte[] { (byte)cat, (byte)((byte)action | subcat), Convert.ToByte((int)data + 4) }); 
+                        SendData(new byte[] { (byte)cat, (byte)((byte)action | (byte)subcat), Convert.ToByte((int)data + 4) }); 
                     }
                     else  // Else use the default case. Used for reading and whatever else 
                     {
-                        SendData(new byte[] { (byte)cat, (byte)((byte)action | subcat) }); 
+                        SendData(new byte[] { (byte)cat, (byte)((byte)action | (byte)subcat) }); 
                     }
 
                     break;
                 case DATACATEGORY.OTHER:
                     // cat = 3. The first hex is F just so that the byte isn't 0x03, which is eot (end of text). 
-                    if (subcat == (byte)SUBCATEGORY.START_TEST || subcat == (byte)SUBCATEGORY.STOP_TEST)  // Start test or stop test
+                    if (subcat == (byte)SUBCATEGORY.START_TEST || (byte)subcat == (byte)SUBCATEGORY.STOP_TEST)  // Start test or stop test
                     {
-                        SendData(new byte[] { (byte)cat, (byte)((byte)ACTION.SENDCOMMAND | subcat) });
+                        SendData(new byte[] { (byte)cat, (byte)((byte)ACTION.SENDCOMMAND | (byte)subcat) });
                     }
-                    else if (subcat == (byte)SUBCATEGORY.TIME_DATE)  // Set or read time/date 
+                    else if ((byte)subcat == (byte)SUBCATEGORY.TIME_DATE)  // Set or read time/date 
                     {
                         if ((action == ACTION.SENDCOMMAND || action == ACTION.WRITEVAR) && data != null)
                         {
                             // Set the time and date on the arduino's RTC (real-time clock)
                             DateTime dt = (DateTime)data;
                             List<byte> bytelist = new List<byte>();
-                            bytelist.AddRange(new byte[] { (byte)cat, (byte)((byte)action | subcat), (byte)(dt.Hour + 4), (byte)(dt.Minute + 4), (byte)(dt.Second + 4), (byte)(dt.Month + 4), (byte)(dt.Day + 4) });
-                            bytelist.AddRange(Encoding.ASCII.GetBytes(dt.Year.ToString())); // array of ascii-encoded bytes representing the year 
+                            bytelist.AddRange(new byte[] { (byte)cat, (byte)((byte)action | (byte)subcat), (byte)(dt.Hour + 4), (byte)(dt.Minute + 4), (byte)(dt.Second + 4), (byte)(dt.Month + 4), (byte)(dt.Day + 4) });
+                            bytelist.AddRange(Encoding.GetEncoding(1252).GetBytes(dt.Year.ToString())); // array of extended ascii-encoded bytes representing the year 
                             SendData(bytelist.ToArray());
                         }
                         else if (action == ACTION.READVAR)
                         {
-                            SendData(new byte[] { (byte)cat, (byte)((byte)action | subcat) });   
+                            SendData(new byte[] { (byte)cat, (byte)((byte)action | (byte)subcat) });   
                         }
 
                     }
@@ -259,26 +264,15 @@ namespace LCA_SYNC
                     break;
                 case DATACATEGORY.DATAFILE:
                     // The two bytes are structured as: (data file # - upper 5b)(cat), (data file # - lower 6b)0(action)
-                    SendData(new byte[] { (byte)(((subcat & 0x7C0) >> 3) | (byte)cat), (byte)(((subcat & 0x3F) << 2) | (byte)action) });
+                    SendData(new byte[] { (byte)((((byte)subcat & 0x7C0) >> 3) | (byte)cat), (byte)((((byte)subcat & 0x3F) << 2) | (byte)action) });
                     break;
                 default:
                     throw new ArduinoCommunicationException("Invalid transmission category.");
             }
 
         }
-
-        public void SendData(DATACATEGORY cat, SUBCATEGORY subcat, ACTION action, object data = null)
-        {
-            try
-            {
-                SendData(cat, (byte)subcat, action, data);
-            }
-            catch
-            {
-                throw;
-            }
-        }
-
+        
+        // Uses the Communicate method to ping the Arduino 
         public async Task Ping(double timeoutLength = -1)
         {
             try
@@ -292,12 +286,9 @@ namespace LCA_SYNC
             }
         }
 
-        public async Task RefreshInfo()
+        // Uses the Communicate method to read config data on the Arduino 
+        public async Task ReadConfig()
         {
-            // Get essential information about Arduino here
-            // List of data file filenames (if lastdatafile# - total#offiles > 0.5*total#offiles, then it would be less data needed to specify which files are present rather than missing (?))
-            // ...
-
             bool success = false; 
             try
             {
@@ -306,17 +297,18 @@ namespace LCA_SYNC
             }
             catch (Exception e)
             {
-                Console.WriteLine("Communicate error in RefreshInfo: " + e.Message);
+                Console.WriteLine("Communicate error in ReadConfig: " + e.Message);
                 throw e; 
             }
             finally
             {
                 //if (success)
-                //    ArduinoDataChanged.Invoke(this, new ArduinoEventArgs("RefreshInfo"));
+                //    ArduinoDataChanged.Invoke(this, new ArduinoEventArgs("ReadConfig"));
             }
 
         }
 
+        // Gets a timeout length in milliseconds 
         private double _GetTimeoutLength(DATACATEGORY cat, SUBCATEGORY subcat, ACTION action, object data = null)
         {
             // Different kinds of communication take different amounts of time, so maybe you'd want to adjust the timeout length based on that. 
@@ -324,10 +316,12 @@ namespace LCA_SYNC
             return 600.0;   // 600 ms (placeholder)
         }
 
+        // Sends a message to the Arduino and returns its response 
         private async Task<List<byte>> CommunicateRaw(DATACATEGORY cat, SUBCATEGORY subcat, ACTION action, object data = null, double timeoutLength = -1.0)
         {
             // Returns the raw response without validating it. 
-            bool gotLock = false;  // Wait.... this should be a member variable of the class, not a local variable? 
+            // If there is no response or if some other kind of error occurs, it throws an ArduinoCommunicationException exception. 
+            bool gotLock = false; 
             try
             {
                 // Spin for up to 500 ms trying to enter into communication 
@@ -353,18 +347,22 @@ namespace LCA_SYNC
 
                 bool noResponse = true;
                 
-                // New line:
-                if (_ExpectedResponseCancellation.IsCancellationRequested) { _ExpectedResponseCancellation = new CancellationTokenSource(); Console.WriteLine("Made new cancellation token."); }
+                if (_ExpectedResponseCancellation.IsCancellationRequested)
+                {
+                    _ExpectedResponseCancellation = new CancellationTokenSource();
+                    Console.WriteLine("Made new cancellation token.");  // Just for debugging 
+                }
 
                 // try using the token.register thing?
 
-                _ReceivedBytes.Clear();  // This should be ok b/c we have the commLock. What about One-Way comm???????
+                _ReceivedBytes.Clear();       // This should be ok b/c we have the commLock. But is One-Way communication data safe?
                 _ReceivedTwoWayData.Clear();
 
-                SendData(cat, subcat, action, data);
+                SendData(cat, subcat, action, data);  // Send the data 
                 try
                 {
-                    Task.Delay(TimeSpan.FromMilliseconds(timeoutLength), _ExpectedResponseCancellation.Token).Wait();
+                    // Wait until timeout or until response is received 
+                    Task.Delay(TimeSpan.FromMilliseconds(timeoutLength), _ExpectedResponseCancellation.Token).Wait();  
                     Console.WriteLine("---No longer waiting for a response!!!");
                 }
                 catch (TaskCanceledException)
@@ -384,13 +382,11 @@ namespace LCA_SYNC
                     }
                     if (noResponse)
                     {
-                        Console.WriteLine("In CommunicateRaw.... Yeeting AggregateException..");
                         throw ex;
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("In CommunicateRaw.... Yeeting unknown exception.");
                     throw ex; 
                 }
 
@@ -408,7 +404,7 @@ namespace LCA_SYNC
                 resp_data_bytes.AddRange(_ReceivedTwoWayData);
                 _ReceivedTwoWayData.Clear(); 
 
-                Console.WriteLine("################# CommunicateRaw. Received: {0}\nOR ALSO THE SAME AS............ : {1}", BytesToString(resp_data_bytes), BitConverter.ToString(resp_data_bytes.ToArray()));
+                Console.WriteLine("### CommunicateRaw. Received: {0}\n......Which is the same as: {1}", BytesToString(resp_data_bytes), BitConverter.ToString(resp_data_bytes.ToArray()));
 
                 if (gotLock) { commLock.Exit(false); }
                 return resp_data_bytes; 
@@ -439,35 +435,34 @@ namespace LCA_SYNC
             }
         }
 
+        // Sends a message to the Arduino and updates ArduinoBoard member variables upon receiving the response 
         public async Task Communicate(DATACATEGORY cat, SUBCATEGORY subcat, ACTION action, object data = null, double timeoutLength = -1.0)
         {
             // Throws an ArduinoCommunicationException if unsuccessful 
-            Console.WriteLine("In Communicate. The current thread is {0}", Thread.CurrentThread.Name);
+            Console.WriteLine("In Communicate. The current thread is {0}", Thread.CurrentThread.ManagedThreadId.ToString());
 
             List<byte> resp = new List<byte>();
             try
             {
+                // Send data to Arduino and get the raw response:
                 resp = await CommunicateRaw(cat, subcat, action, data, timeoutLength);
             }
             catch (Exception)
             {
-                Console.WriteLine("In Communicate (at beginning).....Yeeting an exception.  ");
                 throw;
             }
 
-
+            // Process the response received from the Arduino: 
             switch (cat)
             {
                 case DATACATEGORY.NULL:
                     // I'm not sure what sorts of repsonses would be in this category, if any, since I don't know anything that would be sent in this category
                     throw new ArduinoCommunicationException("The response was of the NULL category.");
                 case DATACATEGORY.PING:
-                    Console.WriteLine("In Communicate, in PING category, resp.data=" + BytesToString(resp));
                     if (resp.Count == 5 && resp[0] == sotb && resp[1] == 0x01 && resp[2] == 0xF0 && resp[4] == eotb)
                     {
                         if (resp[3] == 0x00 || resp[3] == 0x01)
                         {
-                            Console.WriteLine("Setting TestStarted.");
                             TestStarted = Convert.ToBoolean(resp[3]);
                             return; 
                         }
@@ -475,7 +470,6 @@ namespace LCA_SYNC
                         {
                             throw new ArduinoCommunicationException("Ping failed: Response contained an invalid value.");
                         }
-                        
                     }
                     else
                     {
@@ -487,7 +481,6 @@ namespace LCA_SYNC
                     { 
                         if (subcat == SUBCATEGORY.ALL)
                         {
-                            //List<byte> resp_data = (List<byte>)resp.data;
                             // Check for sot and eot ? When should that be done ?
                             if (resp.Count > 46 || resp.Count < 9) { throw new ArduinoCommunicationException("The response string is of the wrong length."); }
                             if (resp[1] != (byte)DATACATEGORY.CONFIG && resp[2] != (byte)((byte)action | (byte)subcat)) { throw new ArduinoCommunicationException("The response string contains the wrong request code."); }
@@ -499,12 +492,8 @@ namespace LCA_SYNC
                             }
                             else
                             {
-                                string str = "";
-                                for (int i = 3; i < nullterm; i++)  // Don't include the null term. in the package name 
-                                {
-                                    str += (char)resp[i];
-                                }
-                                PackageName = str;
+                                // As always, use Windows-1252 encoding for chars and strings sent over serial:
+                                PackageName = Encoding.GetEncoding(1252).GetString(resp.ToArray(), 3, nullterm - 3);
                             }
 
                             int nullterm2 = resp.IndexOf(0x00, nullterm + 1);
@@ -514,8 +503,7 @@ namespace LCA_SYNC
                             }
                             else
                             {
-                                // DON't USE DEFAULT ENCODING - CHANGES DEPENDING ON COMPUTER
-                                TestDuration = uint.Parse(Encoding.Default.GetString(resp.GetRange(nullterm + 1, nullterm2 - nullterm - 1).ToArray()), System.Globalization.NumberStyles.HexNumber); 
+                                TestDuration = uint.Parse(Encoding.GetEncoding(1252).GetString(resp.GetRange(nullterm + 1, nullterm2 - nullterm - 1).ToArray()), System.Globalization.NumberStyles.HexNumber); 
                             }
 
                             if (resp.Count < nullterm2 + 4) { throw new ArduinoCommunicationException("The response string is of the wrong length."); }
@@ -571,7 +559,6 @@ namespace LCA_SYNC
                                 }
                                 else
                                 {
-                                    Console.WriteLine("In Communicate------Yeeting an exception.");
                                     throw new ArduinoCommunicationException("The response didn't match the expected value.");
                                 }
                                     
@@ -644,14 +631,12 @@ namespace LCA_SYNC
             }
 
         }
-
-        /// <summary>
-        /// Opens the connection to an Arduino board
-        /// </summary>
+        
+        // Opens the connection to the Arduino 
         public void OpenConnection()
         {
-            Port.ReadTimeout = 2000;  // ???
-            Port.WriteTimeout = 1000; // Fixed the problem! yay 
+            Port.ReadTimeout = 2000;  // ??? 
+            Port.WriteTimeout = 1000; // ??? 
 
             // SerialPort() defaults: COM1, 9600 baud rate, 8 data bits, 0 parity bits, no parity, 1 stop bit, no handshake
             // Arduino defaults:                            8 data bits, 0 parity bits, no parity, 1 stop bit, no handshake(?). Can be changed. 
@@ -667,9 +652,7 @@ namespace LCA_SYNC
             }
         }
 
-        /// <summary>
-        /// Closes the connection to the Arduino Board.
-        /// </summary>
+        // Closes the connection to the Arduino 
         public void CloseConnection()
         {
             if (Port != null && Port.IsOpen == true)
@@ -678,14 +661,9 @@ namespace LCA_SYNC
             }
         }
 
-        /// <summary>
-        /// Reads data from the arduinoBoard serial port
-        /// </summary>
-        void arduinoBoard_DataReceived(object sender, SerialDataReceivedEventArgs e)
+        // Reads data from the ArduinoBoard serial port and has it processed 
+        private void arduinoBoard_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
-            
-            //Console.WriteLine("In arduinoBoard_DataReceived. The current thread is " + Thread.CurrentThread.ManagedThreadId.ToString());
-
             SerialPort p = (SerialPort)sender;
 
             if (Port == null)  // p is not null when Port is???
@@ -694,50 +672,48 @@ namespace LCA_SYNC
                 return;
             }
 
-            string data = null;
-            List<byte> data2 = new List<byte>();
+            List<byte> data = new List<byte>();
 
             try
             {
-                // This is not really working well. 
+                // The old way: 
+                /*
                 while (p.BytesToRead > 0)
                 {
-                    data2.Add((byte)p.ReadByte());
+                    data.Add((byte)p.ReadByte());
 
-
-                    if (data2.Last() == eotb)
+                    if (data.Last() == eotb)
                     {
                         break;
                     }
-                    //data += p.ReadLine();
                 }
+                */
 
-                //data = Port.ReadTo(eot.ToString()); // Read until the EOT char. This is working well as of 2/9/2019.
-                //data += eot;
+                // The new way (as of 5/9/2019): 
+                data.AddRange(StringToBytes(Port.ReadTo(((char)eotb).ToString()))); // Read until the EOT char. This is working well as of 2/9/2019.
+                data.Add(eotb);
             }
             catch (Exception exc)
             {
-                // For some reason, this keeps going on after the main loop finishes in the arduino program: (it eventually stops though)
-                Console.WriteLine("In arduino's DataReceived handler: " + exc.Message + " " + e.EventType + " _Busy=false");
+                Console.WriteLine("In arduino's DataReceived handler: " + exc.Message + " " + e.EventType);
                 // Other code here????
                 // Set state to unresponsive or timeout? 
                 return;
             }
             finally
             {
-                _ReceivedBytes.AddRange(data2);
+                _ReceivedBytes.AddRange(data);
             }
 
-            Console.WriteLine("In arduinoBoard_DataReceived  -----> Just received: {0}, and _ReceivedBytes={1} ", BitConverter.ToString(data2.ToArray()), BitConverter.ToString(_ReceivedBytes.ToArray()));
+            Console.WriteLine("In arduinoBoard_DataReceived  -----> Now _ReceivedBytes={0} ", BitConverter.ToString(_ReceivedBytes.ToArray()));
 
-            if (_ReceivedBytes.Count != 0 && _ReceivedBytes.Last() == eotb && _ReceivedBytes.First() == sotb)
+            if (_ReceivedBytes.Count != 0 && _ReceivedBytes.Last() == eotb && _ReceivedBytes.First() == sotb)  // If the data received is enclosed by sot and eot 
             {
-                // There are two main type of communication between PC and arduino: 2-way and 1-way. 
-                // As of 4/26/2019, only two-way communication has been implemented.
+                // There are two main type of communication between PC and arduino: two-way and one-way. 
                 // One-way communication (arduino to PC) would be used for a real-time data feed, 
                 //      notifying the PC that a test has been started/stopped, error messages, etc.
                 // This Windows program would not ask for the information beforehand so it needs to be handled differently. 
-                // One-way communication should be implemented to have its own DATACATEGORY entry. 
+                // One-way data has its own DATACATEGORY entry. 
 
                 if (_ReceivedBytes.Count > 2 && (_ReceivedBytes[1] & 0x07) == (byte)DATACATEGORY.ONEWAY)  // if (one-way communication is used) 
                 {
@@ -752,11 +728,11 @@ namespace LCA_SYNC
                 {
                     _ReceivedTwoWayData.AddRange(_ReceivedBytes);
                     _ReceivedBytes.Clear();
-                    if (_ExpectedResponseCancellation != null)  // In the future, also check that this is two-way communication 
+                    if (_ExpectedResponseCancellation != null)  // In the future, also check that this is two-way communication? 
                     {
-                        _ExpectedResponseCancellation?.Cancel();  // Data has been received, so cancel the delay in any thread waiting for this event (ActivateArduino)
+                        _ExpectedResponseCancellation?.Cancel();  // Data has been received, so cancel the delay in any thread waiting for this event (CommunicateRaw)
                                                                   // The entire data packet has been received. 
-                                                                  // _ReceivedBytes should be copied
+                                                                  // _ReceivedBytes should be copied?
                     }
                 }
 
@@ -764,22 +740,21 @@ namespace LCA_SYNC
 
         }
 
-        void ProcessOneWayData(List<byte> data)
+        // Processes a One-way message from the Arduino 
+        private void ProcessOneWayData(List<byte> data)
         {
-            Console.WriteLine("In ProcessOneWayData.");
-
             if (data.Count >= 3)
             {
-                Console.WriteLine("OneWay category: {0}", (byte)(data[1] >> 3));
+                //Console.WriteLine("OneWay category: {0}", (byte)(data[1] >> 3));
                 switch ((byte)(data[1] >> 3)) // Only look at upper 5 bits
                 {
                     case (byte)ONEWAYCATEGORY.TEST_ENDED:       // Test has ended 
                         TestStarted = false;
-                        Console.WriteLine("Just changed TestStarted to false");
+                        Console.WriteLine("OneWay: Just changed TestStarted to false");
                         break;
                     case (byte)ONEWAYCATEGORY.TEST_STARTED:     // Test has started 
                         TestStarted = true;
-                        Console.WriteLine("Just changed TestStarted to true");
+                        Console.WriteLine("OneWay: Just changed TestStarted to true");
                         break;
                     default:
                         Console.WriteLine("Unknown OneWay category.");
@@ -794,29 +769,16 @@ namespace LCA_SYNC
 
         }
 
+        // Converts byte list to a string using Windows-1252 encoding 
         public string BytesToString(List<byte> bytes)
         {
-            return Encoding.Default.GetString(bytes.ToArray());
+            return Encoding.GetEncoding(1252).GetString(bytes.ToArray());
         }
 
-        public string BytesToString(object bytes)
-        {
-            return Encoding.GetEncoding(28591).GetString(((List<byte>)bytes).ToArray());
-        }
-
-        public string BytesToString(byte[] bytes)
-        {
-            return Encoding.GetEncoding(28591).GetString(bytes);
-        }
-
+        // Converts a string into a byte list using Windows-1252 encoding 
         public List<byte> StringToBytes(string str)
         {
-            List<byte> bytes = new List<byte>();
-            foreach (char ch in str)
-            {
-                bytes.Add(Convert.ToByte(ch));
-            }
-            return bytes;
+            return Encoding.GetEncoding(1252).GetBytes(str).ToList(); 
         }
 
         // override object.Equals
@@ -855,6 +817,7 @@ namespace LCA_SYNC
 
     }
 
+    // Just a custom type of exception 
     public class ArduinoCommunicationException : Exception
     {
         public ArduinoCommunicationException()
@@ -872,8 +835,10 @@ namespace LCA_SYNC
         }
     }
 
+    // A custom type of event argument  
     public class ArduinoEventArgs : EventArgs
     {
+        // "Reason" and "Type" are probably not very accurate names for how I'm using them. 
         public ArduinoEventArgs()
         {
             Reason = "";

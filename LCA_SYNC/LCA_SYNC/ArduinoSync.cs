@@ -9,49 +9,54 @@ using System.ComponentModel;
 
 namespace LCA_SYNC
 {
-
-    public enum DATACATEGORY : byte { NULL=0x0, PING=0x1, CONFIG=0xF2, OTHER=0xF3, SENSORS=0x4, DATAFILE=0x5, ONEWAY=0x6 };  
-    public enum SUBCATEGORY : byte { ALL=0, START_TEST=0, PACKAGE_NAME=1, STOP_TEST=1, TEST_DUR=2, TIME_DATE=2, START_DELAY=3, SAMPLE_PERIOD=4, TEMP_UNITS=5, INIT_DATE=6, INIT_TIME=7, RESET_DT=8, LANGUAGE=9 };
-    public enum ACTION : byte { READFILE=0, DELETEFILE=1, READVAR=32, WRITEVAR=96, SENDCOMMAND=96 };
-    public enum ONEWAYCATEGORY : byte { TEST_ENDED=0, TEST_STARTED=1, ELAPSED_SAMPLES=2, ERROR_OCCURRED=3 }; // Left-shifted 5 bits and OR'd with DATACATEGORY.ONEWAY 
-    // public enum ARDUINOTYPE { UNO, MEGA, SERIAL_ADAPTER, ... };
-    // Make an enum for arduino operating states? (Unresponsive, Running, Ready, etc.)
-
-/// <summary>
-/// Encapsulates the communication to and from 
-/// serial ports, with support for arduino 
-/// devices.
-/// </summary>
+    // Provides methods for locating, organizing, and connecting to sensor arrays (LCA Arduinos)
     public class SerialInterface
     {
+        // This class is implemented using the singleton design pattern 
         private static SerialInterface singleton;
 
+        // For creating or accessing the single instance of this class 
         public static SerialInterface Create()
         {
-
             if (singleton == null)
             {
                 singleton = new SerialInterface();
             }
             return singleton;
-
         }
 
+        // Constructor
+        private SerialInterface()  
+        {
+            LCAArduinos = new BindingList<ArduinoBoard>();  // The list of sensor array Arduinos connected to the computer  
+            _Arduino = -1;    // No Arduino currently in-use 
+            Arduino = null;   // No Arduino currently in-use 
+
+            pnpWatcher = null;
+            pnpWatcherHandler = null;
+            USBPnPDeviceChanged += SerialInterface_USBPnPDeviceChanged;
+
+            _ActivateArduinoLock = new SpinLock();
+        }
+
+        // Destructor 
         ~SerialInterface()
         {
-            Console.WriteLine();
+            // This is supposed to stop the PnP watcher, because if it isn't stopped, it can continue to run after the program is closed. 
             if (pnpWatcher != null)
             {
                 if (pnpWatcherHandler != null)
                 {
                     pnpWatcher.EventArrived -= pnpWatcherHandler;
                 }
-                pnpWatcher.Stop();    // Will this fix the problem? 
+                pnpWatcher.Stop();    
                 pnpWatcher.Dispose();
             }
         }
 
+        // The index in LCAArduinos which stores the currently in-use Arduino  
         private int _Arduino = -1;
+        // Get or set the currently in-use Arduino, and invokes an event when it changes  
         public ArduinoBoard Arduino
         {
             get
@@ -64,7 +69,6 @@ namespace LCA_SYNC
                 {
                     return null;
                 }
-
             }
             set
             {
@@ -80,7 +84,7 @@ namespace LCA_SYNC
                 }
                 else
                 {
-                    _Arduino = LCAArduinos.IndexOf(value); // This should use the overrided Equals function of ArduinoBoard 
+                    _Arduino = LCAArduinos.IndexOf(value); // This should use the overridden Equals function of ArduinoBoard 
                     if (_Arduino == -1)
                     {
                         _Arduino = LCAArduinos.Count;
@@ -89,6 +93,7 @@ namespace LCA_SYNC
                 }
                 if (oldArduinoValue != _Arduino)  // The value of _Arduino changed 
                 {
+                    // The Main class (the GUI) has an event handler to respond to this 
                     ArduinoChanged.Invoke(this, new ArduinoEventArgs(oldArduinoValue, "ArduinoChanged"));
                 }
                 
@@ -104,8 +109,10 @@ namespace LCA_SYNC
             */
         }
 
+        // Used in ActivateArduino so that only one Arduino can be activated at a time 
         private static SpinLock _ActivateArduinoLock;
 
+        // A list of all the LCA Arduinos (sensor array Arduinos) connected to the computer 
         private BindingList<ArduinoBoard> _LCAArduinos;
         public BindingList<ArduinoBoard> LCAArduinos
         {
@@ -117,31 +124,12 @@ namespace LCA_SYNC
             }
             
         }
+
+        // Used when automatically detecting USB PnP (Plug and Play) devices that were plugged in, unplugged, or modified 
         public ManagementEventWatcher pnpWatcher { get; set; }
         public EventArrivedEventHandler pnpWatcherHandler { get; set; }
         
-
-        private SerialInterface()  // Default constructor
-        {
-            LCAArduinos = new BindingList<ArduinoBoard>();
-            _Arduino = -1;
-            Arduino = null;
-            
-            pnpWatcher = null;
-            pnpWatcherHandler = null;
-            USBPnPDeviceChanged += SerialInterface_USBPnPDeviceChanged;
-
-            _ActivateArduinoLock = new SpinLock();
-        }
-
-        /// <summary>
-        /// USBDeviceChanged event is caught in
-        /// order to prevent send/receive errors
-        /// and allow the program to connect to
-        /// the Arduino automatically.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
+        // Responds to USB PnP (Plug and Play) devices when they are plugged into the computer, unplugged from the computer, or modified 
         private void SerialInterface_USBPnPDeviceChanged(object sender, EventArrivedEventArgs e)
         {
             Console.WriteLine("USB PnP device changed");
@@ -221,10 +209,9 @@ namespace LCA_SYNC
             Console.WriteLine("Done with USB PnP device change.");
         }
 
+        // Starts the WMI management event watcher for detecting when a new USB PnP (Plug and Play) device is added, removed, or modified.
         public void StartPnPWatcher()
         {
-            // This code detects when a new PnP (Plug-n-Play) device is added or removed.
-            
             string scope = "root\\CIMV2";
             ManagementScope scopeObject = new ManagementScope(scope);
             WqlEventQuery queryObject = 
@@ -244,26 +231,30 @@ namespace LCA_SYNC
             // pnpWatcher is stopped when the program closes. 
         }
 
-        /// <summary>
-        /// Raised when a USB PnP device is added/removed/modified.  
-        /// </summary>
+        // Raised when a USB PnP device is added/removed/modified 
         public event EventArrivedEventHandler USBPnPDeviceChanged;
         
+        // Raised when an ArduinoBoard's copy of the data stored on its Arduino is changed  
         public event ArduinoEventHandler ArduinoDataChanged;
 
+        // Raised when the currently in-use Arduino (the Arduino variable) changes 
         public event ArduinoEventHandler ArduinoChanged;
         
+        // For all sensor arrays connected to the computer that aren't in LCAArduinos, this method pings them, adds them to LCAArduinos, and reads their config information 
         public async Task ActivateAllArduinos()
         {
-            // This method activates (Ping + Adding to LCAArduino + RefreshInfo) all arduinos that have not been added yet
+            // This method activates (Ping + Adding to LCAArduino + ReadConfig) all Arduinos that have not been added yet
             foreach (ManagementBaseObject dev in FindArduinos())
             {
-                await ActivateArduino(dev);  // ActivateArduino does nothing for arduinos already added
-
+                if (!LCAArduinos.ToList().Exists(a => a.Port.PortName == GetPortName(dev)))  // Do nothing for Arduinos already added
+                {
+                    await ActivateArduino(dev);  
+                }
             }
         }
-        
-        public List<ManagementBaseObject> FindArduinos()  // Find all arduinos connected
+
+        // Finds all Arduinos connected to the computer. They aren't necessarily our LCA Arduinos (sensor array Arduinos). 
+        public List<ManagementBaseObject> FindArduinos() 
         {
             // This method returns a list of Arduino device management objects for all Arduinos connected to the computer
             List<ManagementBaseObject> result = new List<ManagementBaseObject>();
@@ -271,7 +262,7 @@ namespace LCA_SYNC
             // Use WMI to get info
             ManagementObjectSearcher searcher = new ManagementObjectSearcher("root\\CIMV2", "SELECT * FROM Win32_PnPEntity WHERE ClassGuid=\"{4d36e978-e325-11ce-bfc1-08002be10318}\"");
 
-            // Search all USB PnP (Plug-n-Play) devices for Arduinos
+            // Search all USB PnP (Plug and Play) devices for Arduinos
             foreach (ManagementObject queryObj in searcher.Get())
             {
                 // Device IDs look like this: PNPDeviceID = USB\VID_1A86&PID_7523\5&1A63D808&0&2
@@ -305,7 +296,8 @@ namespace LCA_SYNC
             return result; 
         }
 
-        public async Task ActivateArduino(ManagementBaseObject device)  // Verifies that an arduino is LCA, and activates it if it is
+        // Pings an Arduino (to verify it is one of our LCA Arduinos), and if it is, it adds them to LCAArduinos and reads their config information 
+        public async Task ActivateArduino(ManagementBaseObject device) 
         {
             string port = GetPortName(device);  // "COM3", "COM4", etc.   
             bool ardExists = LCAArduinos.ToList().Exists(a => a.Port.PortName == port);  // Gives ArduinoBoard if one with that port exists, else null
@@ -322,7 +314,7 @@ namespace LCA_SYNC
                 // CancellationTokenSource source = new CancellationTokenSource();  // Can/should this be used? 
                 await Task.Run(async delegate
                 {
-                    Console.WriteLine("Lock status before TryEnter: _ActivateArduinoLock.IsHeld = {0}, _ActivateArduinoLock.IsHeldByCurrentThread = {1} ", _ActivateArduinoLock.IsHeld, _ActivateArduinoLock.IsHeldByCurrentThread);
+                    //Console.WriteLine("Lock status before TryEnter: _ActivateArduinoLock.IsHeld = {0}, _ActivateArduinoLock.IsHeldByCurrentThread = {1} ", _ActivateArduinoLock.IsHeld, _ActivateArduinoLock.IsHeldByCurrentThread);
                     bool _GotActivateArduinoLock = false;
                     try
                     {
@@ -337,13 +329,14 @@ namespace LCA_SYNC
 
                     if (!_GotActivateArduinoLock) { Console.WriteLine("Could not enter critical section. Lock is held by another thread. "); return; } // Don't enter the critical section if the lock wasn't acquired. 
 
-                    ArduinoBoard ard = new ArduinoBoard(device);
-                    
-                    Console.WriteLine("Created a new arduino device. _GotActivateArduinoLock = {0}", _GotActivateArduinoLock);
-                    Console.WriteLine("Lock status after TryEnter: _ActivateArduinoLock.IsHeld = {0}, _ActivateArduinoLock.IsHeldByCurrentThread = {1} ", _ActivateArduinoLock.IsHeld, _ActivateArduinoLock.IsHeldByCurrentThread); 
+                    ArduinoBoard ard = new ArduinoBoard(device); 
 
-                    ard.ArduinoDataChanged += delegate (object sender, ArduinoEventArgs e) { ArduinoDataChanged.Invoke(sender, e); };  // Pass event from arduinos' event handlers to SerialInterface's ArduinoDataChanged event handler 
-                    if (!ard.Port.IsOpen)  // 
+                    //Console.WriteLine("Lock status after TryEnter: _ActivateArduinoLock.IsHeld = {0}, _ActivateArduinoLock.IsHeldByCurrentThread = {1} ", _ActivateArduinoLock.IsHeld, _ActivateArduinoLock.IsHeldByCurrentThread); 
+
+                    // Pass event from Arduino's event handler to SerialInterface's ArduinoDataChanged event handler:  
+                    ard.ArduinoDataChanged += delegate (object sender, ArduinoEventArgs e) { ArduinoDataChanged.Invoke(sender, e); };  
+
+                    if (!ard.Port.IsOpen)  
                     {
                         ard.OpenConnection();
                     }
@@ -381,12 +374,13 @@ namespace LCA_SYNC
                             ard.Port.Close();
                             ard.Port = null;  // "Destroy" its serial port (unecessary?)
                             ard = null;       // "Destroy" the arduino instance, since ping was not received 
+                            // ard will be destroyed when garbage collection occurs. 
                             Console.WriteLine("Ping response not received. The ArduinoBoard instance was set to null.");
                         }
                     }
                     else
                     {
-                        Console.WriteLine("\n\nYES!!!! IT PINGED SUCCESSFULLY!!!!!\n\n");
+                        Console.WriteLine("\n\nThe ping was successful! \n\n");
 
                         if (Arduino == null)  // If there is no LCA arduino currently in use
                         {
@@ -399,14 +393,13 @@ namespace LCA_SYNC
                             LCAArduinos.Add(ard);  
                         }
                         
-
                         success = false; 
                         try
                         {
-                            // It already pinged successfully, so it's a real LCA arduino. Now we want more information about it. 
-                            // So RefreshInfo gets more info about the arduino in order to have something to show in the GUI 
-                            await ard.RefreshInfo();
-                            // If there's no response or there's another error, ard.RefreshInfo() will throw and exception and success will never be set to true.
+                            // It already pinged successfully, so it's a real LCA Arduino. Now we want more information about it. 
+                            // So ReadConfig gets more info about the Arduino in order to have something to show in the GUI 
+                            await ard.ReadConfig();
+                            // If there's no response or there's another error, ard.ReadConfig() will throw an exception and success will never be set to true.
                             success = true; 
                         }
                         catch (Exception ex)
@@ -415,13 +408,11 @@ namespace LCA_SYNC
                             success = false; 
                         }
                     }
-                    Console.WriteLine("About to exit lock. _ActivateArduinoLock.IsHeld = {0}, _ActivateArduinoLock.IsHeldByCurrentThread = {1} ", _ActivateArduinoLock.IsHeld, _ActivateArduinoLock.IsHeldByCurrentThread);
+                    //Console.WriteLine("About to exit lock. _ActivateArduinoLock.IsHeld = {0}, _ActivateArduinoLock.IsHeldByCurrentThread = {1} ", _ActivateArduinoLock.IsHeld, _ActivateArduinoLock.IsHeldByCurrentThread);
                     if (_GotActivateArduinoLock) { _ActivateArduinoLock.Exit(false); }
-                    Console.WriteLine("End of Task.\n\n\n");
+                    Console.WriteLine("End of ActivateArduino's task.\n\n");
                     return;
                 });
-
-                //Console.WriteLine("End of ActivateArduino.\n\n");
             }
             catch (Exception e)
             {
@@ -434,39 +425,25 @@ namespace LCA_SYNC
 
         }
 
-        // Unnecessary since we have getPortName? 
-        public List<string> GetLCAArduinoPorts(List<ManagementBaseObject> arduinos)
-        {
-            // Right now this code just assumes all arduinos are LCA arduinos. 
-            // Need to send special message to arduino and receive special response to detemine if it is an LCA Arduino. 
-
-            List<string> lcaArduinoPorts = new List<string>();
-            foreach (ManagementBaseObject ard in arduinos)
-            {
-                lcaArduinoPorts.Add(GetPortName(ard));
-            }
-
-            return lcaArduinoPorts; 
-        }
-
+        // Gets the port name ("COM1", "COM2", etc.) from the ManagementBaseObject object for the USB PnP device
         public static string GetPortName(ManagementBaseObject dev)
-        {
-            // Gets the port name ("COM1", "COM2", etc.) from the ManagementBaseObject for the USB PnP device 
+        { 
             return new Regex(@"\((COM\d+)\)").Match(dev["Name"].ToString()).Groups[1].Value;
         }
 
+        // Gets the USB VID (vendor ID) from the ManagementBaseObject object for the USB PnP device 
         public static string GetVID(ManagementBaseObject dev)
         {
-            // Gets the USB VID (vendor ID) from the ManagementBaseObject for the USB PnP device 
             return new Regex(@"(VID_)([0-9a-fA-F]+)").Match(dev["PNPDeviceID"].ToString()).Groups[2].Value.ToLower();
         }
 
+        // Gets the USB PID (product ID) from the ManagementBaseObject object for the USB PnP device 
         public static string GetPID(ManagementBaseObject dev)
         {
-            // Gets the USB PID (product ID) from the ManagementBaseObject for the USB PnP device 
             return new Regex(@"(PID_)([0-9a-fA-F]+)").Match(dev["PNPDeviceID"].ToString()).Groups[2].Value.ToLower();
         }
 
+        // Gets what type of Arduino a device with the given USB VID and USB PID is 
         public static string GetArduinoType(string vid, string pid)
         {
             // Maybe return an enum instead? And then make another funtion for getting the string from the enum? 
@@ -505,9 +482,10 @@ namespace LCA_SYNC
 
         }
 
+        // Gets whether or not a device is a genuine Arduino. Sketchy bootleg Arduinos and non-Arduinos return false. 
         public static bool IsGenuineArduino(ManagementBaseObject dev)
         {
-            // The 0403 VID was used by older Arduinos which use FTDI 
+            // The 0403 VID was used by older Arduinos which used FTDI 
             // Now, Arduinos use the 2341 VID. 
             string vid = GetVID(dev);
             return vid == "2341" || vid == "1b4f" || (vid == "0403" && dev["Description"].ToString().Contains("Arduino"));

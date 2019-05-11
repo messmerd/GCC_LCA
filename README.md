@@ -1,7 +1,7 @@
 # GCC LCA
 Grove City College - Low-Cost Array 
 
-Check out [our Wiki on GitHub](https://github.com/messmerd/GCC_LCA/wiki) for instructions on how to use the LCA Sync application and information on the source code for LCA Sync and all our Arduino prototypes. 
+[Check out our Wiki](https://github.com/messmerd/GCC_LCA/wiki) for instructions on how to use the LCA Sync application and information on the source code for LCA Sync and all our Arduino prototypes. 
 
 ## LCA Sync Installation Guide 
 
